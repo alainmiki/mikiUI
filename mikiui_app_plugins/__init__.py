@@ -1,20 +1,27 @@
 """MikiUI App Plugins package.
 
 Contains plugins for extending MikiUI apps with additional functionality:
-- Session: Authentication and session management
-- API: FastAPI endpoint generation from MikiUI routes
-- (future plugins: Database, Cache, Logging, etc.)
+- SessionPlugin: Authentication and session management
+- APIPlugin: FastAPI endpoint generation from MikiUI routes
+- Demo: Working example showing plugin usage
 
 Usage:
-    from mikiui_app_plugins import SessionPlugin, APIPlugin
+    from mikiui import MikiApp
+    from mikiui_app_plugins import SessionPlugin
+    from mikiui_app_plugins.demo import create_demo_app
 
-    # Session plugin for authentication
+    app = MikiApp(title="My App")
+
+    # Add session support
     session = SessionPlugin(secret_key="your-secret-key")
     app.use(session)
 
-    # API plugin for FastAPI endpoints
-    api = APIPlugin(session_plugin=session)
-    app.use(api)
+    # Use the demo's create_demo_app factory
+    fastapi_app = create_demo_app(app)
+
+    # Run with uvicorn
+    import uvicorn
+    uvicorn.run(fastapi_app, host="127.0.0.1", port=8000)
 """
 
 from .session import SessionPlugin

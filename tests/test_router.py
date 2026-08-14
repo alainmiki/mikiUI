@@ -269,6 +269,49 @@ def test_router_path_param():
     assert "admin-item-99" in resp.text
 
 
+def test_router_explicit_path_param():
+    """Router explicit form supports path params."""
+    app = MikiApp()
+    router = Router(prefix="/api")
+
+    @router.get(app, "/users/{user_id}")
+    def show_user(ctx, user_id: str):
+        return Div(f"api-user-{user_id}")
+
+    client = TestClient(create_app(app))
+    resp = client.get("/api/users/7")
+    assert resp.status_code == 200
+    assert "api-user-7" in resp.text
+
+
+def test_async_handler():
+    """Async route handlers are supported."""
+    app = MikiApp()
+
+    @app.route("/async")
+    async def async_handler(ctx):
+        return Div("async-ok")
+
+    client = TestClient(create_app(app))
+    resp = client.get("/async")
+    assert resp.status_code == 200
+    assert "async-ok" in resp.text
+
+
+def test_async_handler_with_path_param():
+    """Async handlers receive path params."""
+    app = MikiApp()
+
+    @app.route("/async/users/{user_id}")
+    async def async_user(ctx, user_id: str):
+        return Div(f"async-user-{user_id}")
+
+    client = TestClient(create_app(app))
+    resp = client.get("/async/users/55")
+    assert resp.status_code == 200
+    assert "async-user-55" in resp.text
+
+
 def test_query_params_via_ctx():
     """Query params are accessible via ctx.query_params."""
     app = MikiApp()

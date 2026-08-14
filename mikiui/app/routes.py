@@ -37,9 +37,13 @@ When the first parameter is named ``ctx`` or ``request``, it receives the
 from __future__ import annotations
 
 import inspect
+import re
 from typing import Any, Callable
 
 from ..engine.dom import normalize
+
+
+_PATH_PARAM_RE = re.compile(r"\{(\w+)\}")
 
 
 class Ctx:
@@ -137,9 +141,7 @@ class RouteDef:
 
         Supports FastAPI-style syntax: ``/users/{user_id}``.
         """
-        import re
-
-        return re.findall(r"\{(\w+)\}", path)
+        return _PATH_PARAM_RE.findall(path)
 
     def accepts_path_params(self) -> bool:
         """Return True if the handler declares path parameters."""
@@ -147,7 +149,10 @@ class RouteDef:
 
 
 def invoke_route(route: RouteDef, app: "Any", request: Any = None, path_params: dict[str, Any] | None = None):
-    """Call a route handler and return a normalized list of renderable nodes.
+    """Call a route handler and return a ``(result, ctx)`` tuple.
+
+    The ``result`` may be a sync return value or a coroutine (for async
+    handlers).  The caller should ``await`` the result if it is awaitable.
 
     Parameters
     ----------

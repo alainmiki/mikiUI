@@ -150,6 +150,18 @@ async def login(ctx):
     return Div(f"Welcome, {username}!")
 ```
 
+## Async Handlers
+
+Both sync and async handlers are supported.  Use `async def` when you need to
+perform asynchronous operations (database queries, API calls, etc.):
+
+```python
+@app.route("/async-users/{user_id}")
+async def get_user(ctx, user_id: str):
+    user = await fetch_user(user_id)
+    return Div(f"User: {user.name}")
+```
+
 ## Title Support
 
 Pass a `title` parameter for per-page `<title>` tags:
@@ -170,19 +182,18 @@ Title resolution priority (highest first):
 ### Router
 
 ```python
-class Router(prefix=..., app=None)
+class Router(prefix=...)
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `prefix` | `str` | URL prefix for all routes (default: `""`) |
-| `app` | `MikiApp \| None` | Pre-bind to an app (optional) |
 
 **Methods:**
-- `router.get(app?, path, name?, title?)` — register a GET handler
-- `router.post(app?, path, name?, title?)` — register a POST handler
-- `router.route(app?, path, methods, name?, title?)` — register with custom methods
-- `router.add(app?, path, methods, name?, title?)` — low-level registration
+- `router.get(path_or_app, path?, name?, title?)` — register a GET handler
+- `router.post(path_or_app, path?, name?, title?)` — register a POST handler
+- `router.route(path_or_app, path?, methods, name?, title?)` — register with custom methods
+- `router.add(path_or_app, path?, methods, name?, title?)` — low-level registration
 - `router.mount(app)` — bind router to an app (called by `app.mount(router)`)
 
 ### MikiApp.mount

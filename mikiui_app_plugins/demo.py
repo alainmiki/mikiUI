@@ -71,10 +71,8 @@ def api_logout():
 
 def create_demo_app():
     """Create FastAPI app with web pages and API endpoints."""
-    from fastapi import FastAPI, Request
-    from fastapi.responses import JSONResponse
+    from fastapi import FastAPI
     from fastapi.openapi.docs import get_swagger_ui_html
-    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, Security
     from mikiui.engine.renderer import render_page
 
     fastapi_app = FastAPI(title=app.title, version="1.0.0")

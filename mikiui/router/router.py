@@ -2,7 +2,9 @@
 
 This module provides :class:`Router` — a lightweight helper for grouping routes
 under a common prefix.  A ``Router`` can be created in a separate file/module and
-then mounted onto a :class:`~mikiui.app.MikiApp` via ``app.mount(router)``:
+then mounted onto a :class:`~mikiui.app.MikiApp` via ``app.mount(router)``.
+
+**Mounted (bare decorator) form** — the recommended pattern::
 
     # routes/users.py
     from mikiui.router import Router
@@ -18,6 +20,10 @@ then mounted onto a :class:`~mikiui.app.MikiApp` via ``app.mount(router)``:
     def profile():
         return Div("Profile page")
 
+    @router.post("/create")
+    def create_user():
+        return Div("User Created")
+
     # app.py
     from mikiui import MikiApp
     from routes.users import router as user_router
@@ -25,31 +31,23 @@ then mounted onto a :class:`~mikiui.app.MikiApp` via ``app.mount(router)``:
     app = MikiApp()
     app.mount(user_router)
 
+**Explicit form** — pass the app to each decorator (no mount needed)::
 
-Two usage patterns are supported:
+    router = Router(prefix="/admin")
+    app = MikiApp()
 
-1. **Explicit (no mount needed)** — pass ``app`` to each decorator:
+    @router.get(app, "/dashboard")
+    def admin_dashboard():
+        return Div("Admin Dashboard")
 
-       @router.get(app, "/items")
-       def items():
-           ...
-
-2. **Mounted (bare decorators)** — mount first, then decorators drop ``app``:
-
-       app.mount(router)
-
-       @router.get("/")
-       def items():
-           ...
-
-The :class:`Router` delegates all registration to ``MikiApp.route``, keeping
-a single source of truth (the app's route dict) while letting developers
-organise handlers across files.
+The :class:`Router` delegates all registration to ``MikiApp.route``, keeping a
+single source of truth (the app's route dict) while letting developers organise
+handlers across files.
 """
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from fastapi.responses import JSONResponse
 
@@ -69,15 +67,11 @@ class Router:
     prefix:
         URL prefix applied to every route added through this router.
         Trailing slashes are stripped automatically.
-    app:
-        Optional :class:`MikiApp` to register routes on immediately.
-        If provided, the **mounted (bare decorator)** form can be used without
-        calling ``app.mount(router)`` first.
     """
 
-    def __init__(self, prefix: str = "", app: Optional[MikiApp] = None) -> None:
+    def __init__(self, prefix: str = "") -> None:
         self.prefix = prefix.rstrip("/")
-        self._app: Optional[MikiApp] = app
+        self._app: MikiApp | None = None
 
     def _join(self, path: str) -> str:
         """Join the router prefix with a route path."""
@@ -87,13 +81,8 @@ class Router:
             return self.prefix
         return f"{self.prefix}{path}"
 
-    def _resolve_app(self, app: Optional[MikiApp]) -> MikiApp:
-        """Determine which MikiApp to register on.
-
-        Resolution order:
-        1. Explicit ``app`` argument (if provided)
-        2. ``self._app`` bound via mount() or constructor
-        """
+    def _resolve_app(self, app: MikiApp | None = None) -> MikiApp:
+        """Return the bound app, preferring an explicitly-passed app."""
         target = app or self._app
         if target is None:
             raise RuntimeError(
@@ -105,15 +94,15 @@ class Router:
 
     def add(
         self,
-        path_or_app: Union[str, MikiApp],
+        path_or_app: str | MikiApp,
         path: str = "/",
         methods: tuple[str, ...] = ("GET",),
         name: str | None = None,
         title: str | None = None,
-    ):
+    ) -> Callable[[Callable], Callable]:
         """Register a handler on the bound app at the prefixed path.
 
-        Works as a decorator in two forms::
+        Supports two calling conventions::
 
             # Explicit app (no mount needed)
             @router.add(app, "/items")
@@ -125,7 +114,7 @@ class Router:
             def items():
                 return Div("items")
         """
-        app: Optional[MikiApp]
+        app: MikiApp | None
         if isinstance(path_or_app, str):
             path = path_or_app
             app = None
@@ -146,32 +135,32 @@ class Router:
 
     def route(
         self,
-        path_or_app: Union[str, MikiApp],
+        path_or_app: str | MikiApp,
         path: str = "/",
         methods: tuple[str, ...] = ("GET",),
         name: str | None = None,
         title: str | None = None,
-    ):
+    ) -> Callable[[Callable], Callable]:
         """Register a handler at *path* with *methods* (decorator form)."""
         return self.add(path_or_app, path, methods, name, title=title)
 
     def get(
         self,
-        path_or_app: Union[str, MikiApp],
+        path_or_app: str | MikiApp,
         path: str = "/",
         name: str | None = None,
         title: str | None = None,
-    ):
+    ) -> Callable[[Callable], Callable]:
         """Register a GET-only handler."""
         return self.add(path_or_app, path, ("GET",), name, title=title)
 
     def post(
         self,
-        path_or_app: Union[str, MikiApp],
+        path_or_app: str | MikiApp,
         path: str = "/",
         name: str | None = None,
         title: str | None = None,
-    ):
+    ) -> Callable[[Callable], Callable]:
         """Register a POST-only handler."""
         return self.add(path_or_app, path, ("POST",), name, title=title)
 
@@ -214,7 +203,7 @@ def add_pwa_manifest(
     icon:
         URL to the app icon (512x512 recommended).
     start_url:
-        The URL the app opens on launch.
+        The URL the app opens at launch.
     display:
         CSS ``display-mode`` value (e.g. ``"standalone"``, ``"fullscreen"``).
     background_color:
