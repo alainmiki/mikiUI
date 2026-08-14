@@ -2,16 +2,19 @@
   "name": "mikiui-runtime",
   "version": "0.1.0",
   "private": true,
-  "description": "Frontend runtime bundling for MikiUI (HTMX + Alpine.js).",
+  "description": "Frontend runtime bundling for MikiUI (HTMX + Alpine.js + optional Tailwind/DaisyUI).",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "tailwind:config": "python -c \"from mikiui.build.tailwind import write_tailwind_config; import json,sys; opts=json.loads(sys.argv[1] if len(sys.argv)>1 else '{}'); print(write_tailwind_config('tailwind.config.js', **opts))\""
   },
   "dependencies": {
     "htmx.org": "^2.0.3",
     "alpinejs": "^3.14.1"
   },
   "devDependencies": {
-    "vite": "^5.0.0"
+    "vite": "^5.0.0",
+    "tailwindcss": "^3.4.0",
+    "daisyui": "^4.0.0"
   }
 }

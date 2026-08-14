@@ -16,21 +16,26 @@ from .button import Button
 
 
 class Tabs(Component):
-    """A simple tabbed interface.
+    """A simple tabbed interface with accessible tab/panel semantics.
 
-    ``tabs`` is a list of ``(label, content)`` pairs. Clicking a tab shows its
+    ``tabs`` is a list of ``(label, content)`` pairs.  Clicking a tab shows its
     panel and hides the others (pure JS, offline-friendly).
+
+    Pass ``class_`` for additional CSS classes, or combine with Tailwind/DaisyUI
+    classes for custom styling.
     """
 
     tag = "div"
 
     def __init__(self, tabs: list[tuple[str, Any]], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-tabs")
+        user_class = attrs.pop("class_", "")
+        attrs["class_"] = f"miki-tabs {user_class}".strip()
         attrs.setdefault("role", "tablist")
         group = "miki-tabs-" + uuid.uuid4().hex[:8]
         buttons = []
         panels = []
         for i, (label, content) in enumerate(tabs):
+            tab_class = "miki-tab" + (" miki-tab-active" if i == 0 else "")
             buttons.append(
                 Button(
                     label,
@@ -39,7 +44,7 @@ class Tabs(Component):
                     id=f"{group}-tab-{i}",
                     aria_selected="true" if i == 0 else "false",
                     onclick=f"mikiTabs.show('{group}', {i})",
-                    class_="miki-tab" + (" miki-tab-active" if i == 0 else ""),
+                    class_=tab_class,
                 )
             )
             panels.append(

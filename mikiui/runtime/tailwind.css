@@ -1,0 +1,22 @@
+@import "mikiui/runtime/miki.css";
+
+/* MikiUI Tailwind entry point.
+ *
+ * When using Tailwind CSS + DaisyUI in a production build, this file is the
+ * entry point that the Tailwind JIT compiler processes.  It imports the base
+ * MikiUI CSS (which uses CSS custom properties) so that:
+ *
+ *   1. All --miki-* variables are defined (via the active theme).
+ *   2. Component class names like .miki-btn, .miki-input, etc. are in the
+ *      content stream so Tailwind purges them correctly.
+ *   3. DaisyUI themes (mikiui-light, mikiui-dark, etc.) are registered.
+ *
+ * Add Tailwind @tailwind directives below for utility-class purging:
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DaisyUI component styles — only included when daisyui is installed. */
+@plugin "daisyui";

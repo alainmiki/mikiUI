@@ -46,18 +46,47 @@ class Router:
         return self.add(path, ("POST",), name)
 
 
-def add_pwa_manifest(app_fastapi: Any, name: str = "MikiUI App") -> None:
+def add_pwa_manifest(
+    app_fastapi: Any,
+    name: str = "MikiUI App",
+    icon: str | None = None,
+    start_url: str = "/",
+    display: str = "standalone",
+    background_color: str = "#ffffff",
+    theme_color: str = "#0f172a",
+    splash_background_color: str | None = None,
+    splash_images: list[str] | None = None,
+) -> None:
     """Add a ``/manifest.webmanifest`` route for installable PWA apps."""
 
     @app_fastapi.get("/manifest.webmanifest", include_in_schema=False)
     async def manifest() -> JSONResponse:
-        return JSONResponse(
-            {
-                "name": name,
-                "short_name": name,
-                "start_url": "/",
-                "display": "standalone",
-                "background_color": "#ffffff",
-                "theme_color": "#0f172a",
-            }
-        )
+        manifest_data: dict[str, Any] = {
+            "name": name,
+            "short_name": name.split()[0] if len(name.split()) > 1 else name,
+            "start_url": start_url,
+            "display": display,
+            "background_color": background_color,
+            "theme_color": theme_color,
+        }
+        if icon:
+            manifest_data["icons"] = [
+                {
+                    "src": icon,
+                    "sizes": "512x512",
+                    "type": "image/png",
+                },
+                {
+                    "src": icon,
+                    "sizes": "192x192",
+                    "type": "image/png",
+                },
+            ]
+        if splash_background_color:
+            manifest_data["background_color_splash"] = splash_background_color
+        if splash_images:
+            manifest_data["screenshots"] = [
+                {"src": img, "sizes": "1920x1080", "form_factor": "wide"},
+                {"src": img, "sizes": "1080x1920", "form_factor": "vertical"},
+            ]
+        return JSONResponse(manifest_data)

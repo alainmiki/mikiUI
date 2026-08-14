@@ -440,9 +440,18 @@ class MdiArea(Component):
 class CollapsiblePanel(Component):
     """A collapsible panel (maps a ``QCollapsibleWidget``-style control).
 
+    Uses native HTML ``<details>`` element for accessibility. The summary
+    arrow animates via CSS.
+
     :param title: summary text shown in the header.
     :param content: hidden/shown content.
     :param open: whether the panel starts expanded.
+    :param attrs: Extra HTML attributes.
+
+    Example::
+
+        CollapsiblePanel("More Details", P("Hidden content"), open=True)
+        CollapsiblePanel("Section", Div("Body"))
     """
 
     tag = "details"
@@ -451,7 +460,10 @@ class CollapsiblePanel(Component):
         attrs.setdefault("class", "miki-collapsible")
         if open:
             attrs["open"] = True
-        super().__init__(Summary(title, class_="miki-collapsible-summary"), *content, **attrs)
+        from ..components import Div
+        summary = Summary(title, class_="miki-collapsible-summary")
+        body = Div(*content, class_="miki-collapsible-body")
+        super().__init__(summary, body, **attrs)
 
 
 class SidePanel(Component):

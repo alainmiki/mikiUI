@@ -1,0 +1,43 @@
+/* MikiUI "solarized-dark" theme.
+   Based on the Solarized palette — muted, low-contrast, warm dark. */
+
+:root {
+  --miki-bg: #002b36;
+  --miki-fg: #839496;
+  --miki-accent: #268bd2;
+  --miki-accent-hover: #2989d6;
+  --miki-border: #073642;
+  --miki-border-hover: #07424c;
+
+  --miki-surface: #073642;
+  --miki-surface-hover: #07424c;
+  --miki-surface-active: #07565c;
+
+  --miki-input-bg: #003641;
+  --miki-input-border: #07424c;
+  --miki-input-focus: #268bd2;
+
+  --miki-text-muted: #586e73;
+  --miki-text-secondary: #657b83;
+
+  --miki-yellow: #b58900;
+  --miki-orange: #cb4b12;
+  --miki-red: #dc322f;
+  --miki-magenta: #d33682;
+  --miki-violet: #6c71c4;
+  --miki-blue: #268bd2;
+  --miki-cyan: #2aa198;
+  --miki-green: #859900;
+
+  --miki-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --miki-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.35), 0 4px 6px rgba(0, 0, 0, 0.2);
+
+  --miki-radius: 0.5rem;
+  --miki-radius-lg: 0.75rem;
+
+  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-miki-theme="solarized-dark"] {
+  color-scheme: dark;
+}

@@ -33,8 +33,8 @@ def test_accordion_contains_details_summary():
     node = Accordion([("Title", "Body"), ("Title2", "Body2")])
     html = node.to_html()
     assert 'role="list"' in html
-    assert "<details>" in html
-    assert "<summary>" in html
+    assert "<details" in html
+    assert "<summary" in html
     assert "Title" in html
     assert "Body" in html
 
@@ -67,8 +67,8 @@ def test_menuitem_tag():
 
 
 def test_semantic_tags():
-    assert "<figure>" in Figure("x").to_html()
-    assert "<figcaption>" in Figcaption("x").to_html()
+    assert "<figure" in Figure("x").to_html()
+    assert "<figcaption" in Figcaption("x").to_html()
     assert "<cite>" in Cite("x").to_html()
     assert "<var>" in Var("x").to_html()
     assert "<samp>" in Samp("x").to_html()

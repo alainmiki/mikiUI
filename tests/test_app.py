@@ -85,3 +85,20 @@ def test_hx_request_returns_fragment():
     resp = client.get("/", headers={"HX-Request": "true"})
     assert "<!doctype html>" not in resp.text.lower()
     assert "home-page" in resp.text
+
+
+def test_app_default_favicon():
+    app = MikiApp(title="Test App")
+    assert app.favicon == "/_miki/runtime/mikiui-icon.png"
+
+
+def test_app_customizable_favicon():
+    app = MikiApp(title="Test App", favicon="/custom/favicon.ico")
+    assert app.favicon == "/custom/favicon.ico"
+
+
+def test_page_includes_favicon():
+    app = make_app()
+    client = TestClient(create_app(app))
+    resp = client.get("/")
+    assert '<link rel="icon" href="/_miki/runtime/mikiui-icon.png"' in resp.text

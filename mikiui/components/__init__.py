@@ -73,6 +73,7 @@ from .accordion import Accordion
 from .tooltip import Tooltip
 from .breadcrumbs import Breadcrumbs
 from .menuitem import MenuItem
+from .navbar import Navbar
 from .input import Input, Textarea, Checkbox, Radio, Slider
 from .form import Form, Label, Select, Option, Optgroup, Fieldset, Legend
 from .table import Table, Caption, Thead, Tbody, Tfoot, Tr, Th, Td
@@ -176,6 +177,7 @@ __all__ = [
     "Progress",
     "Meter",
     "Output",
+    "Navbar",
     "TreeView",
     "ListView",
     "Calendar",

@@ -57,3 +57,18 @@ def test_pwa_manifest_route():
     data = resp.json()
     assert data["display"] == "standalone"
     assert "name" in data
+
+
+def test_pwa_manifest_with_icon():
+    app = MikiApp(title="Icon Test App")
+    app.favicon = "/_miki/runtime/mikiui-icon.png"
+    fastapi_app = create_app(app)
+    client = TestClient(fastapi_app)
+    resp = client.get("/manifest.webmanifest")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "icons" in data
+    icons = data["icons"]
+    assert any("512x512" in str(i.get("sizes", "")) for i in icons)
+    assert any("192x192" in str(i.get("sizes", "")) for i in icons)
+    assert icons[0]["src"] == "/_miki/runtime/mikiui-icon.png"

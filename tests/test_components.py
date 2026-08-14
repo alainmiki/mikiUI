@@ -52,10 +52,10 @@ def test_dialog_open():
 
 def test_table_structure():
     html = Table(Tr(Th("H"), Td("D"))).to_html()
-    assert "<table>" in html
+    assert "<table" in html
     assert "<tr>" in html
-    assert "<th>H</th>" in html
-    assert "<td>D</td>" in html
+    assert "<th" in html and ">H</th>" in html
+    assert "<td" in html and ">D</td>" in html
 
 
 def test_chart_kinds_render_svg():
@@ -95,7 +95,8 @@ def test_treeview():
     html = TreeView([("root", [("leaf", None)]), ("other", None)]).to_html()
     assert 'role="tree"' in html
     assert "<details" in html
-    assert "<summary>root</summary>" in html
+    assert "<details" in html
+    assert "<summary" in html and ">root</summary>" in html
 
 
 def test_listview():

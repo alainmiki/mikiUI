@@ -1,0 +1,34 @@
+/* MikiUI "dark" theme.
+   A modern dark theme with a deep background and vibrant accent. */
+
+:root {
+  --miki-bg: #0f172a;
+  --miki-fg: #f1f5f9;
+  --miki-accent: #3b82f6;
+  --miki-accent-hover: #60a5fa;
+  --miki-border: #334155;
+  --miki-border-hover: #475569;
+
+  --miki-surface: #1e293b;
+  --miki-surface-hover: #334155;
+  --miki-surface-active: #475569;
+
+  --miki-input-bg: #1e293b;
+  --miki-input-border: #475569;
+  --miki-input-focus: #3b82f6;
+
+  --miki-text-muted: #94a3b8;
+  --miki-text-secondary: #cbd5e1;
+
+  --miki-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --miki-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.15);
+
+  --miki-radius: 0.5rem;
+  --miki-radius-lg: 0.75rem;
+
+  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-miki-theme="dark"] {
+  color-scheme: dark;
+}

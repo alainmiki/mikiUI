@@ -8,15 +8,19 @@ described in ``context/components.md``.
 from __future__ import annotations
 
 from .advanced import FormWizard, SearchPanel, StreamingPanel, NotificationPanel
+from .advanced_widgets import Avatar, Badge, Card, Carousel, Pagination, Progress
 from .auth import LoginForm, SignupForm
 from .chatui import ChatUI
 from .dashboard import Dashboard
 from .datagrid import DataGrid
 from .dockable_panel import DockablePanel
 from .ide_editor import IDEEditor
+from .icon import Icon, IconSet
 from .inspector_panel import InspectorPanel
 from .kanbanboard import KanbanBoard
+from .layout_widgets import Footer, Hero, Sidebar
 from .mediaplayer import MediaPlayer
+from .navigation_widgets import ContextWindow, Drawer, Rail
 from .panels import (
     ColorPicker,
     CollapsiblePanel,
@@ -44,17 +48,27 @@ from .splitview import SplitView
 from .terminal_widget import TerminalWidget
 
 __all__ = [
+    "Avatar",
+    "Badge",
+    "Card",
+    "Carousel",
     "ChatUI",
     "ColorPicker",
     "CollapsiblePanel",
+    "ContextWindow",
     "Dashboard",
     "DataGrid",
     "DatePicker",
     "Dial",
     "DockablePanel",
+    "Drawer",
+    "Footer",
     "FormWizard",
     "GroupBox",
+    "Hero",
     "IDEEditor",
+    "Icon",
+    "IconSet",
     "InspectorPanel",
     "KanbanBoard",
     "LCDNumber",
@@ -66,10 +80,14 @@ __all__ = [
     "MdiArea",
     "MdiSubWindow",
     "NotificationPanel",
+    "Pagination",
+    "Progress",
     "ProgressDialog",
     "PropertyGrid",
+    "Rail",
     "ScrollPanel",
     "SearchPanel",
+    "Sidebar",
     "SidePanel",
     "SignupForm",
     "SplashScreen",

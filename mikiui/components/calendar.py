@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-
 from datetime import date
 
 from .base import Component
@@ -15,7 +14,8 @@ class Calendar(Component):
     """A minimal month-grid calendar.
 
     ``year``/``month`` select the displayed month (1-12). ``events`` maps
-    ``day -> label`` to annotate specific days.
+    ``day -> label`` to annotate specific days.  Pass ``class_`` for additional
+    CSS classes.
     """
 
     tag = "div"
@@ -31,10 +31,10 @@ class Calendar(Component):
         year = year or today.year
         month = month or today.month
         events = events or {}
+        user_class = attrs.pop("class_", "")
+        attrs["class_"] = f"miki-calendar {user_class}".strip()
         attrs.setdefault("role", "grid")
-        attrs.setdefault("class", "miki-calendar")
         first = date(year, month, 1)
-        # Number of days in the month (handles leap years).
         if month == 12:
             ndays = 31
         else:
@@ -50,7 +50,7 @@ class Calendar(Component):
         for i in range(0, len(cells), 7):
             rows.append(Tr(*cells[i : i + 7]))
         grid = Table(
-            Caption(first.strftime("%B %Y")),
+            Caption(first.strftime("%B %Y"), class_="miki-calendar-caption"),
             Thead(Tr(*(Th(d) for d in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")))),
             Tbody(*rows),
         )

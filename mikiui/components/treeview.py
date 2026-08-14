@@ -13,14 +13,18 @@ class TreeView(Component):
     """A hierarchical, expandable tree.
 
     ``nodes`` is a list of ``(label, children)`` where ``children`` is a
-    recursive list or ``None``. Leaves render as plain items; branches use
-    ``<details>`` for native disclosure.
+    recursive list or ``None``.  Branches render as ``<details>`` for native
+    disclosure; leaves render as plain items.  ARIA roles are included for
+    accessibility.
+
+    Pass ``class_`` for additional CSS classes.
     """
 
     tag = "div"
-    role = "tree"
 
     def __init__(self, nodes: list[tuple[Any, Any]], **attrs: Any) -> None:
+        user_class = attrs.pop("class_", "")
+        attrs["class_"] = f"miki-treeview {user_class}".strip()
         attrs.setdefault("role", "tree")
         super().__init__(self._build(nodes), **attrs)
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from .app import MikiApp
-from .routes import Ctx, RouteDef
+from .routes import Ctx, RouteDef, resolve_title
 from .state import AppState
-from .plugins import Plugin
+from .plugins import Plugin, ThemePlugin, ComponentPlugin, WidgetPlugin
 
-__all__ = ["MikiApp", "Ctx", "RouteDef", "AppState", "Plugin"]
+__all__ = ["MikiApp", "Ctx", "RouteDef", "AppState", "Plugin", "ThemePlugin", "ComponentPlugin", "WidgetPlugin", "resolve_title"]
+

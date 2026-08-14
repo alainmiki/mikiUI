@@ -15,6 +15,8 @@ class FilePicker(Component):
 
     ``multiple`` and ``accept`` mirror the native ``<input type=file>``.
     On desktop targets this maps to OS file-system APIs (see build system).
+
+    Pass ``class_`` for additional CSS classes.
     """
 
     tag = "div"
@@ -27,15 +29,16 @@ class FilePicker(Component):
         accept: str | None = None,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-filepicker")
-        input_el = Input(
-            type="file",
-            name=name,
-            **({"multiple": True} if multiple else {}),
-            **({"accept": accept} if accept else {}),
-        )
+        user_class = attrs.pop("class_", "")
+        attrs["class_"] = f"miki-filepicker {user_class}".strip()
+        input_attrs: dict[str, Any] = {"type": "file", "name": name, "class_": "miki-file-input"}
+        if multiple:
+            input_attrs["multiple"] = True
+        if accept:
+            input_attrs["accept"] = accept
+        input_el = Input(**input_attrs)
         super().__init__(
-            Label(label, for_=name),
+            Label(label, for_=name, class_="miki-file-label"),
             input_el,
             Span("", class_="miki-filepicker-name"),
             **attrs,

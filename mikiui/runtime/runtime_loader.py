@@ -18,12 +18,14 @@ def runtime_scripts(mode: str = "local") -> List[str]:
             "https://unpkg.com/htmx.org@2.0.3",
             "https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js",
             "/_miki/runtime/miki_ui.js",
-            "/_miki/runtime/miki_runtime.js",
+            "/_miki/runtime/htmx_runtime.js",
             "/_miki/runtime/alpine_runtime.js",
         ]
     # Offline-first: real HTMX + Alpine served locally by the backend.
     return [
         "/_miki/runtime/htmx.min.js",
+        "/_miki/runtime/htmx_runtime.js",
         "/_miki/runtime/alpine.min.js",
+        "/_miki/runtime/alpine_runtime.js",
         "/_miki/runtime/miki_ui.js",
     ]
