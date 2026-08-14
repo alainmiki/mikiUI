@@ -30,7 +30,8 @@ _RUNTIME_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ru
 
 def _make_endpoint(miki_app: MikiApp, route: RouteDef):
     async def endpoint(request: Request) -> HTMLResponse:
-        nodes, ctx = await miki_app.invoke(route, request)
+        path_params = dict(request.path_params) if hasattr(request, "path_params") else {}
+        nodes, ctx = await miki_app.invoke(route, request, path_params)
         is_partial = request.headers.get("HX-Request") is not None or request.method == "POST"
         if is_partial:
             return HTMLResponse(render_fragment(nodes))

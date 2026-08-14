@@ -44,6 +44,14 @@ class MikiApp:
         name: str | None = None,
         title: str | None = None,
     ):
+        """Register a route handler for *path*.
+
+        Works as a decorator::
+
+            @app.route("/about")
+            def about():
+                return Div("About")
+        """
         def decorator(fn: Callable) -> Callable:
             self.routes[path] = RouteDef(
                 path, fn, tuple(m.upper() for m in methods), name, title
@@ -51,6 +59,42 @@ class MikiApp:
             return fn
 
         return decorator
+
+    def mount(self, router: "Router", *, prefix: str | None = None) -> "MikiApp":
+        """Mount a :class:`~mikiui.router.Router` onto this app.
+
+        After mounting, the router's decorator methods (``router.get``,
+        ``router.post``, ``router.route``) can be used in their bare form
+        (without passing the app explicitly):
+
+            from mikiui.router import Router
+
+            router = Router(prefix="/admin")
+            app.mount(router)
+
+            @router.get("/")
+            def admin_home():
+                return Div("Admin")
+
+        Parameters
+        ----------
+        router:
+            A :class:`~mikiui.router.Router` instance whose ``prefix``
+            determines the route grouping.
+        prefix:
+            Optional override for the router's prefix.  When ``None`` (the
+            default) the router's own ``prefix`` attribute is used.
+        """
+        from ..router.router import Router as _Router
+
+        if not isinstance(router, _Router):
+            raise TypeError(
+                f"Expected a Router instance, got {type(router).__name__}"
+            )
+        if prefix is not None:
+            router.prefix = prefix.rstrip("/")
+        router.mount(self)
+        return self
 
     def get(self, path: str, name: str | None = None, title: str | None = None):
         return self.route(path, ("GET",), name, title)
@@ -105,13 +149,22 @@ class MikiApp:
         return self
 
     # -- invocation ------------------------------------------------------------
-    async def invoke(self, route: RouteDef, request: Any = None) -> tuple[list[Any], Any]:
+    async def invoke(self, route: RouteDef, request: Any = None, path_params: dict[str, Any] | None = None) -> tuple[list[Any], Any]:
         """Call a route handler and return ``(normalized_nodes, ctx)``.
 
         The returned ``ctx`` (which may be ``None``) carries ``ctx.meta`` so the
         server can resolve the per-page title via :func:`resolve_title`.
+
+        Parameters
+        ----------
+        route:
+            The :class:`RouteDef` to invoke.
+        request:
+            The raw ASGI request (may be ``None`` in tests).
+        path_params:
+            Path parameters extracted from the URL (e.g. ``{"user_id": "42"}``).
         """
-        result, ctx = invoke_route(route, self, request)
+        result, ctx = invoke_route(route, self, request, path_params)
         if hasattr(result, "__await__"):
             result = await result
         tree = normalize(result)
