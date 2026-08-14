@@ -60,7 +60,12 @@ def create_app(miki_app: MikiApp, runtime: str = "local") -> FastAPI:
             StaticFiles(directory=_RUNTIME_DIR),
             name="miki-runtime",
         )
+    has_api_plugin = any(
+        getattr(p, "name", None) == "api" for p in miki_app.plugins
+    )
     for route in miki_app.routes.values():
+        if has_api_plugin and route.path.startswith("/api/"):
+            continue
         app.add_api_route(
             route.path,
             _make_endpoint(miki_app, route),

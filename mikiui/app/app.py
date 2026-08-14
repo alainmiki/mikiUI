@@ -43,19 +43,38 @@ class MikiApp:
         methods: tuple[str, ...] = ("GET",),
         name: str | None = None,
         title: str | None = None,
+        requires_auth: bool = False,
     ):
         """Register a route handler for *path*.
 
-        Works as a decorator::
+        Supports FastAPI-style path parameters::
 
-            @app.route("/about")
-            def about():
-                return Div("About")
+            @app.route("/users/{user_id}")
+            def show_user(ctx, user_id):
+                return Div(f"User {user_id}")
+
+        Parameters
+        ----------
+        path:
+            URL path.  Use ``{param}`` for path parameters.
+        methods:
+            Tuple of HTTP methods.
+        name:
+            Route name (defaults to the handler function name).
+        title:
+            Per-page ``<title>`` tag content.
+        requires_auth:
+            If ``True``, require a valid session token when the APIPlugin is
+            active.
         """
         def decorator(fn: Callable) -> Callable:
+            upper_methods = tuple(m.upper() for m in methods)
             self.routes[path] = RouteDef(
-                path, fn, tuple(m.upper() for m in methods), name, title
+                path, fn, upper_methods, name, title, requires_auth
             )
+            for plugin in self.plugins:
+                if hasattr(plugin, "on_route_add"):
+                    plugin.on_route_add(path, upper_methods, fn)
             return fn
 
         return decorator

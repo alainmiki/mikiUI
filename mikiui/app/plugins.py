@@ -31,6 +31,10 @@ class Plugin:
       component tree.
     * :meth:`on_request` — called with each incoming request (for analytics,
       auth, etc.).
+    * :meth:`on_route_add` — called when a route is registered via
+      ``app.route`` / ``app.get`` / ``app.post``.  Receives the path, method,
+      and handler.  Used by :class:`~mikiui_app_plugins.api.APIPlugin` to
+      collect ``/api/`` routes.
     """
 
     name: str = "plugin"
@@ -44,6 +48,19 @@ class Plugin:
 
     def on_request(self, request: Any) -> None:
         """Optional hook invoked for every incoming request."""
+
+    def on_route_add(self, path: str, methods: tuple[str, ...], handler: Any) -> None:
+        """Optional hook called when a route is registered.
+
+        Parameters
+        ----------
+        path:
+            The full URL path (including any router prefix).
+        methods:
+            Tuple of HTTP methods for this route.
+        handler:
+            The raw handler function.
+        """
 
 
 class ThemePlugin(Plugin):

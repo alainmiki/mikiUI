@@ -112,6 +112,7 @@ class RouteDef:
         "title",
         "path_params",
         "param_names",
+        "requires_auth",
     )
 
     def __init__(
@@ -121,12 +122,14 @@ class RouteDef:
         methods: tuple[str, ...],
         name: str | None,
         title: str | None = None,
+        requires_auth: bool = False,
     ) -> None:
         self.path = path
         self.handler = handler
         self.methods = methods
         self.name = name or getattr(handler, "__name__", "route")
         self.title = title
+        self.requires_auth = requires_auth
         # Extract {param} placeholders from the path
         self.path_params: list[str] = self._extract_path_params(path)
         params = list(inspect.signature(handler).parameters)

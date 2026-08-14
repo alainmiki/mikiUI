@@ -99,6 +99,7 @@ class Router:
         methods: tuple[str, ...] = ("GET",),
         name: str | None = None,
         title: str | None = None,
+        requires_auth: bool = False,
     ) -> Callable[[Callable], Callable]:
         """Register a handler on the bound app at the prefixed path.
 
@@ -113,6 +114,9 @@ class Router:
             @router.add("/items")
             def items():
                 return Div("items")
+
+        Set ``requires_auth=True`` to require a valid session token (requires
+        :class:`~mikiui_app_plugins.api.APIPlugin` to be active).
         """
         app: MikiApp | None
         if isinstance(path_or_app, str):
@@ -128,6 +132,7 @@ class Router:
                 methods,
                 name,
                 title=title,
+                requires_auth=requires_auth,
             )(fn)
             return fn
 
@@ -140,9 +145,10 @@ class Router:
         methods: tuple[str, ...] = ("GET",),
         name: str | None = None,
         title: str | None = None,
+        requires_auth: bool = False,
     ) -> Callable[[Callable], Callable]:
         """Register a handler at *path* with *methods* (decorator form)."""
-        return self.add(path_or_app, path, methods, name, title=title)
+        return self.add(path_or_app, path, methods, name, title=title, requires_auth=requires_auth)
 
     def get(
         self,
@@ -150,9 +156,10 @@ class Router:
         path: str = "/",
         name: str | None = None,
         title: str | None = None,
+        requires_auth: bool = False,
     ) -> Callable[[Callable], Callable]:
         """Register a GET-only handler."""
-        return self.add(path_or_app, path, ("GET",), name, title=title)
+        return self.add(path_or_app, path, ("GET",), name, title=title, requires_auth=requires_auth)
 
     def post(
         self,
@@ -160,9 +167,10 @@ class Router:
         path: str = "/",
         name: str | None = None,
         title: str | None = None,
+        requires_auth: bool = False,
     ) -> Callable[[Callable], Callable]:
         """Register a POST-only handler."""
-        return self.add(path_or_app, path, ("POST",), name, title=title)
+        return self.add(path_or_app, path, ("POST",), name, title=title, requires_auth=requires_auth)
 
     def mount(self, app: MikiApp) -> "Router":
         """Bind this router to *app* for bare-decorator usage.
