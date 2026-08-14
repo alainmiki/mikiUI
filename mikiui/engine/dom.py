@@ -1,0 +1,180 @@
+"""DOM model and HTML serialization for MikiUI.
+
+This module is dependency-free so the renderer can be unit-tested and used
+without a running server. It defines the node types that components render to
+and the logic that turns them into safe HTML.
+"""
+
+from __future__ import annotations
+
+import html
+from typing import Any, Iterable, Mapping
+
+# HTML void elements: they have no closing tag and no children.
+VOID_TAGS = {
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr",
+}
+
+# --- Internationalization hook ------------------------------------------------
+# Components mark translatable text with `_("key", "Default")`. A translator can
+# be registered globally; otherwise the default text is used and the key is
+# emitted as `data-i18n` so client-side runtimes can re-translate.
+
+_translator = None
+
+
+def set_translator(fn) -> None:
+    """Register a translator callable ``fn(key, default) -> str``."""
+    global _translator
+    _translator = fn
+
+
+def get_translator():
+    return _translator
+
+
+def _(key: str, default: str | None = None) -> "I18nText":
+    """Mark ``default`` as translatable under ``key`` (i18n hook)."""
+    if default is None:
+        default = key
+    return I18nText(key, default)
+
+
+class I18nText:
+    """A translatable text node. Rendered with a ``data-i18n`` attribute."""
+
+    __slots__ = ("key", "default")
+
+    def __init__(self, key: str, default: str) -> None:
+        self.key = key
+        self.default = default
+
+    def to_html(self) -> str:
+        text = _translator(self.key, self.default) if _translator else self.default
+        return (
+            f'<span data-i18n="{html.escape(self.key, True)}">'
+            f"{html.escape(str(text), quote=False)}</span>"
+        )
+
+
+class Text:
+    """A plain text node. Always HTML-escaped."""
+
+    __slots__ = ("content",)
+
+    def __init__(self, content: Any) -> None:
+        self.content = content
+
+    def to_html(self) -> str:
+        return html.escape(str(self.content), quote=False)
+
+
+def _render_child(child: Any) -> str:
+    if child is None or child is False:
+        return ""
+    if isinstance(child, (Element, Text, I18nText)):
+        return child.to_html()
+    if isinstance(child, (list, tuple)):
+        return "".join(_render_child(c) for c in child)
+    return html.escape(str(child), quote=False)
+
+
+def _attr_name(key: str) -> str:
+    # Python keyword collisions use a trailing underscore (class_, for_).
+    if key == "class_":
+        return "class"
+    if key == "for_":
+        return "for"
+    # Generic mapping: underscores become hyphens so aria_label -> aria-label,
+    # data_foo -> data-foo, and hx_get -> hx-get (HTMX attributes).
+    return key.replace("_", "-")
+
+
+class Element:
+    """A renderable HTML element with attributes and children."""
+
+    tag: str = "div"
+
+    def __init__(self, *children: Any, **attrs: Any) -> None:
+        self.tag = self.__class__.tag if self.__class__ is not Element else self.tag
+        self.children: list[Any] = list(children)
+        self.attrs: dict[str, Any] = attrs
+
+    # -- tree manipulation -----------------------------------------------------
+    def append(self, *children: Any) -> "Element":
+        self.children.extend(children)
+        return self
+
+    def with_id(self, id: str) -> "Element":
+        self.attrs["id"] = id
+        return self
+
+    # -- serialization ---------------------------------------------------------
+    def _render_attrs(self) -> str:
+        parts: list[str] = []
+        for key, value in self.attrs.items():
+            if value is None or value is False:
+                continue
+            name = _attr_name(key)
+            if value is True:
+                parts.append(name)
+                continue
+            if name == "style" and isinstance(value, Mapping):
+                value = "; ".join(f"{k}:{v}" for k, v in value.items())
+            elif name == "class" and isinstance(value, (list, tuple, set)):
+                value = " ".join(str(v) for v in value if v)
+            elif isinstance(value, (list, tuple, set)) and name != "class":
+                value = " ".join(str(v) for v in value if v)
+            parts.append(f'{name}="{html.escape(str(value), True)}"')
+        return " ".join(parts)
+
+    def to_html(self) -> str:
+        attr_str = self._render_attrs()
+        open_tag = f"<{self.tag}" + (f" {attr_str}" if attr_str else "") + ">"
+        if self.tag in VOID_TAGS:
+            # Emit a self-closing style void tag for clarity.
+            return open_tag[:-1] + " />"
+        inner = "".join(_render_child(c) for c in self.children)
+        return f"{open_tag}{inner}</{self.tag}>"
+
+    def __str__(self) -> str:
+        return self.to_html()
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} tag={self.tag!r} #{len(self.children)} children>"
+
+
+def render(node: Any) -> str:
+    """Render any node (Element/Text/I18nText/str/list) to an HTML string."""
+    if node is None or node is False:
+        return ""
+    if isinstance(node, (Element, Text, I18nText)):
+        return node.to_html()
+    if isinstance(node, (list, tuple)):
+        return "".join(_render_child(c) for c in node)
+    return html.escape(str(node), quote=False)
+
+
+def normalize(node: Any) -> list[Any]:
+    """Normalize a route handler return value into a list of renderable nodes."""
+    if node is None or node is False:
+        return []
+    if isinstance(node, (list, tuple)):
+        out: list[Any] = []
+        for child in node:
+            out.extend(normalize(child))
+        return out
+    return [node]

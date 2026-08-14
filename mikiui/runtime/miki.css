@@ -1,0 +1,90 @@
+/* MikiUI base styles (offline, no bundler required).
+ * Loaded on every page via /_miki/runtime/miki.css. Swap for Tailwind/Bootstrap
+ * in production builds (see context/plan.md). */
+
+:root {
+  --miki-bg: #f8fafc;
+  --miki-fg: #0f172a;
+  --miki-accent: #2563eb;
+  --miki-border: #e2e8f0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--miki-bg);
+  color: var(--miki-fg);
+  line-height: 1.5;
+}
+
+main, .miki-container { max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem; }
+
+h1 { font-size: 1.9rem; margin: 0 0 1rem; }
+h2 { font-size: 1.5rem; }
+p { margin: 0 0 1rem; }
+
+a { color: var(--miki-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button, .miki-btn {
+  font: inherit;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--miki-border);
+  border-radius: 0.5rem;
+  background: #fff;
+  color: var(--miki-fg);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+button:hover, .miki-btn:hover { border-color: var(--miki-accent); }
+button[type="submit"], .miki-btn-primary {
+  background: var(--miki-accent);
+  border-color: var(--miki-accent);
+  color: #fff;
+}
+
+input, textarea, select {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--miki-border);
+  border-radius: 0.5rem;
+  background: #fff;
+  color: var(--miki-fg);
+}
+
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--miki-border); padding: 0.4rem 0.6rem; text-align: left; }
+th { background: #f1f5f9; }
+
+/* Modal */
+.miki-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.miki-modal-panel {
+  background: #fff; border-radius: 0.75rem; padding: 1.5rem;
+  max-width: 90vw; max-height: 90vh; overflow: auto;
+}
+
+/* Tabs */
+[role="tablist"] { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--miki-border); margin-bottom: 1rem; }
+[role="tab"] { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; }
+.miki-tab-active { border-bottom-color: var(--miki-accent); color: var(--miki-accent); }
+
+/* ListView */
+.miki-listview { max-height: 240px; overflow: auto; border: 1px solid var(--miki-border); border-radius: 0.5rem; }
+.miki-listview ul { list-style: none; margin: 0; padding: 0; }
+.miki-listview li { padding: 0.4rem 0.6rem; cursor: pointer; }
+.miki-listview li:hover { background: #f1f5f9; }
+.miki-listview [aria-selected="true"] { background: #dbeafe; }
+
+/* Calendar */
+.miki-calendar table { max-width: 320px; }
+tr { display: table-row; }
+
+/* Chart */
+svg { color: var(--miki-accent); }

@@ -1,0 +1,17 @@
+{
+  "name": "mikiui-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend runtime bundling for MikiUI (HTMX + Alpine.js).",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "htmx.org": "^2.0.3",
+    "alpinejs": "^3.14.1"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

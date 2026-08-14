@@ -1,0 +1,511 @@
+"""PyQt5/6 & PySide6 style panels and widgets.
+
+Each class maps a Qt widget (QGroupBox, QScrollArea, QMdiArea, ...) onto a
+MikiUI component tree, keeping the beginner-friendly constructor style and
+accessibility attributes from the framework conventions.
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from ..components import (
+    Aside,
+    Button,
+    Details,
+    Dialog,
+    Div,
+    Fieldset,
+    Footer,
+    Input,
+    Label,
+    Legend,
+    Nav,
+    P,
+    Progress,
+    Section,
+    Span,
+    Summary,
+    Ul,
+    Li,
+    A,
+)
+from ..components.base import Component
+from ..components.tabs import Tabs
+from ..engine import _
+
+
+class GroupBox(Component):
+    """A titled group box (maps ``QGroupBox``).
+
+    :param title: legend text shown at the top of the fieldset.
+    :param content: child content placed inside the group.
+    """
+
+    tag = "fieldset"
+
+    def __init__(self, title: str, *content: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-groupbox")
+        super().__init__(Legend(title), *content, **attrs)
+
+
+class ScrollPanel(Component):
+    """A scrollable panel (maps ``QScrollArea``).
+
+    :param content: child content placed in the scrollable area.
+    """
+
+    tag = "div"
+
+    def __init__(self, *content: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-scrollpanel")
+        style = attrs.get("style")
+        if isinstance(style, dict):
+            style.setdefault("overflow", "auto")
+        elif isinstance(style, str):
+            if "overflow" not in style:
+                style = (style.rstrip(";") + "; overflow:auto").lstrip(";")
+        else:
+            style = "overflow:auto"
+        attrs["style"] = style
+        super().__init__(*content, **attrs)
+
+
+class StackedPanel(Component):
+    """A stacked widget showing one page at a time (maps ``QStackedWidget``).
+
+    :param pages: a list of ``(title, content)`` pairs.
+    """
+
+    tag = "div"
+
+    def __init__(self, pages: list[tuple[str, Any]], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-stackedpanel")
+        group = "miki-stacked-" + uuid.uuid4().hex[:8]
+
+        buttons = []
+        panels = []
+        for i, (title, content) in enumerate(pages):
+            buttons.append(
+                Button(
+                    title,
+                    type="button",
+                    role="tab",
+                    aria_selected="true" if i == 0 else "false",
+                    class_="miki-stack-tab" + (" miki-stack-tab-active" if i == 0 else ""),
+                    onclick=(
+                        "var ps=document.getElementById('" + group + "-pages').children;"
+                        "for(var i=0;i<ps.length;i++){"
+                        "ps[i].style.display=(i===" + str(i) + ")?'block':'none';"
+                        "this.parentNode.children[i].setAttribute('aria-selected',i==="
+                        + str(i) + ");}"
+                    ),
+                )
+            )
+            panels.append(
+                Div(
+                    content,
+                    role="tabpanel",
+                    id=f"{group}-page-{i}",
+                    **({"style": "display:none"} if i != 0 else {}),
+                )
+            )
+
+        super().__init__(
+            Div(*buttons, class_="miki-stack-tabs", role="tablist"),
+            Div(*panels, id=f"{group}-pages", class_="miki-stack-pages"),
+            **attrs,
+        )
+
+
+class ToolboxPanel(Component):
+    """A collapsible toolbox of grouped items (maps ``QToolBox``).
+
+    :param groups: a dict mapping a group title to a list of item contents.
+    """
+
+    tag = "div"
+
+    def __init__(self, groups: dict[str, list[Any]], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-toolbox")
+        blocks = []
+        for title, items in groups.items():
+            blocks.append(
+                Details(
+                    Summary(title, class_="miki-toolbox-summary"),
+                    Ul(*[Li(item) for item in items], class_="miki-toolbox-items"),
+                    class_="miki-toolbox-group",
+                )
+            )
+        super().__init__(*blocks, **attrs)
+
+
+class Toolbar(Component):
+    """A horizontal toolbar of actions (maps ``QToolBar``).
+
+    :param items: toolbar child content (buttons, actions, ...).
+    """
+
+    tag = "div"
+
+    def __init__(self, *items: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-toolbar")
+        attrs.setdefault("role", "toolbar")
+        attrs.setdefault("aria_label", _("toolbar_label", "Toolbar"))
+        super().__init__(*items, **attrs)
+
+
+class StatusBar(Component):
+    """A status bar showing informational items (maps ``QStatusBar``).
+
+    :param items: status child content.
+    """
+
+    tag = "footer"
+
+    def __init__(self, *items: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-statusbar")
+        attrs.setdefault("role", "status")
+        attrs.setdefault("aria_live", "polite")
+        super().__init__(*items, **attrs)
+
+
+class MenuBar(Component):
+    """A menu bar with dropdown sub-menus (maps ``QMenuBar``/``QMenu``).
+
+    :param items: a list of ``(label, sub_items)`` pairs where ``sub_items`` is a
+        list of ``(label, href)`` pairs.
+    """
+
+    tag = "nav"
+
+    def __init__(self, items: list[tuple[str, list[tuple[str, str]]]], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-menubar")
+        attrs.setdefault("aria_label", _("menubar_label", "Main menu"))
+        menus = []
+        for label, sub_items in items:
+            menus.append(
+                Div(
+                    Button(
+                        label,
+                        type="button",
+                        class_="miki-menu-title",
+                        aria_haspopup="true",
+                    ),
+                    Ul(
+                        *[
+                            Li(A(sub_label, href=href), class_="miki-menu-item")
+                            for sub_label, href in sub_items
+                        ],
+                        class_="miki-menu-dropdown",
+                    ),
+                    class_="miki-menu",
+                )
+            )
+        super().__init__(*menus, **attrs)
+
+
+class SplashScreen(Component):
+    """A full-screen splash overlay (maps ``QSplashScreen``).
+
+    :param title: large centered title text.
+    :param subtitle: smaller centered subtitle text.
+    """
+
+    tag = "div"
+
+    def __init__(self, title: str, subtitle: str = "", **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-splash")
+        attrs.setdefault("role", "dialog")
+        attrs.setdefault("aria_label", title)
+        children = [Div(title, class_="miki-splash-title")]
+        if subtitle:
+            children.append(Div(subtitle, class_="miki-splash-subtitle"))
+        super().__init__(*children, **attrs)
+
+
+class MessageBox(Component):
+    """A modal message box (maps ``QMessageBox``).
+
+    :param title: message box heading.
+    :param message: body message text.
+    :param kind: one of ``"info"``, ``"warning"``, ``"error"``, ``"question"``.
+    """
+
+    tag = "div"
+
+    def __init__(self, title: str, message: str, kind: str = "info", **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-messagebox miki-messagebox-" + kind)
+        attrs.setdefault("role", "alertdialog")
+        attrs.setdefault("aria_label", title)
+        attrs.setdefault("aria_modal", "true")
+        body = Div(
+            Div(title, class_="miki-messagebox-title"),
+            P(message, class_="miki-messagebox-message"),
+            Button(
+                _("messagebox_ok", "OK"),
+                type="button",
+                class_="miki-messagebox-ok",
+                onclick="var d=this.closest('.miki-messagebox'); if(d) d.style.display='none';",
+            ),
+            class_="miki-messagebox-body",
+        )
+        super().__init__(body, **attrs)
+
+
+class ColorPicker(Component):
+    """A color input with a label (maps ``QColorDialog``/color edit).
+
+    :param label: label text.
+    :param name: form field name.
+    :param value: initial color (``#rrggbb``).
+    """
+
+    tag = "div"
+
+    def __init__(
+        self,
+        label: str = "Color",
+        name: str = "color",
+        value: str = "#000000",
+        **attrs: Any,
+    ) -> None:
+        attrs.setdefault("class", "miki-colorpicker")
+        field_id = "miki-color-" + uuid.uuid4().hex[:8]
+        super().__init__(
+            Label(label, for_=field_id, class_="miki-colorpicker-label"),
+            Input(
+                type="color",
+                name=name,
+                value=value,
+                id=field_id,
+                class_="miki-colorpicker-input",
+            ),
+            **attrs,
+        )
+
+
+class DatePicker(Component):
+    """A date input with a label (maps ``QDateEdit``).
+
+    :param label: label text.
+    :param name: form field name.
+    :param value: initial ISO date (``YYYY-MM-DD``) or ``None``.
+    """
+
+    tag = "div"
+
+    def __init__(
+        self,
+        label: str = "Date",
+        name: str = "date",
+        value: str | None = None,
+        **attrs: Any,
+    ) -> None:
+        attrs.setdefault("class", "miki-datepicker")
+        field_id = "miki-date-" + uuid.uuid4().hex[:8]
+        input_attrs: dict[str, Any] = {
+            "type": "date",
+            "name": name,
+            "id": field_id,
+            "class_": "miki-datepicker-input",
+        }
+        if value:
+            input_attrs["value"] = value
+        super().__init__(
+            Label(label, for_=field_id, class_="miki-datepicker-label"),
+            Input(**input_attrs),
+            **attrs,
+        )
+
+
+class ProgressDialog(Component):
+    """A modal progress dialog (maps ``QProgressDialog``).
+
+    :param title: dialog heading.
+    :param message: descriptive message shown above the progress bar.
+    :param value: current progress (0-100).
+    """
+
+    tag = "dialog"
+
+    def __init__(
+        self, title: str = "Please wait", message: str = "", value: int = 0, **attrs: Any
+    ) -> None:
+        attrs.setdefault("class", "miki-progressdialog")
+        attrs.setdefault("aria_label", title)
+        children = [
+            Div(title, class_="miki-progressdialog-title"),
+        ]
+        if message:
+            children.append(P(message, class_="miki-progressdialog-message"))
+        children.append(
+            Progress(value=value, max=100, class_="miki-progressdialog-bar")
+        )
+        super().__init__(*children, **attrs)
+
+
+class LCDNumber(Component):
+    """A seven-segment style numeric display (maps ``QLCDNumber``).
+
+    :param value: the number to display.
+    :param digits: number of digits to reserve.
+    """
+
+    tag = "div"
+
+    def __init__(self, value: int | float = 0, digits: int = 6, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-lcd")
+        attrs.setdefault("role", "status")
+        attrs.setdefault("aria_label", _("lcd_label", "LCD display"))
+        text = f"{value:0{digits}d}" if isinstance(value, int) else str(value)
+        super().__init__(Span(text, class_="miki-lcd-value"), **attrs)
+
+
+class Dial(Component):
+    """A circular dial control (maps ``QDial``).
+
+    Renders a styled range input acting as the dial value.
+
+    :param value: initial value.
+    :param min: minimum value.
+    :param max: maximum value.
+    """
+
+    tag = "div"
+
+    def __init__(
+        self,
+        value: int = 0,
+        min: int = 0,
+        max: int = 100,
+        **attrs: Any,
+    ) -> None:
+        attrs.setdefault("class", "miki-dial")
+        attrs.setdefault("role", "group")
+        attrs.setdefault("aria_label", _("dial_label", "Dial"))
+        super().__init__(
+            Input(
+                type="range",
+                min=min,
+                max=max,
+                value=value,
+                class_="miki-dial-input",
+            ),
+            Span(str(value), class_="miki-dial-value"),
+            **attrs,
+        )
+
+
+class MdiSubWindow(Component):
+    """A sub-window inside an :class:`MdiArea` (maps ``QMdiSubWindow``).
+
+    :param title: window title bar text.
+    :param content: window body content.
+    """
+
+    tag = "section"
+
+    def __init__(self, title: str, *content: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-mdi-subwindow")
+        title_bar = Div(
+            Span(title, class_="miki-mdi-title"),
+            Button(
+                "×",
+                type="button",
+                class_="miki-mdi-close",
+                aria_label=_("mdi_close", "Close window"),
+                onclick="var w=this.closest('.miki-mdi-subwindow'); if(w) w.style.display='none';",
+            ),
+            class_="miki-mdi-titlebar",
+        )
+        body = Div(*content, class_="miki-mdi-body")
+        super().__init__(title_bar, body, **attrs)
+
+
+class MdiArea(Component):
+    """A multiple-document interface area (maps ``QMdiArea``).
+
+    :param windows: :class:`MdiSubWindow` instances placed in the area.
+    """
+
+    tag = "div"
+
+    def __init__(self, *windows: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-mdiarea")
+        super().__init__(*windows, **attrs)
+
+
+class CollapsiblePanel(Component):
+    """A collapsible panel (maps a ``QCollapsibleWidget``-style control).
+
+    :param title: summary text shown in the header.
+    :param content: hidden/shown content.
+    :param open: whether the panel starts expanded.
+    """
+
+    tag = "details"
+
+    def __init__(self, title: str, *content: Any, open: bool = False, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-collapsible")
+        if open:
+            attrs["open"] = True
+        super().__init__(Summary(title, class_="miki-collapsible-summary"), *content, **attrs)
+
+
+class SidePanel(Component):
+    """A fixed side panel (maps a ``QDockWidget`` side).
+
+    :param side: ``"left"`` or ``"right"``.
+    :param content: panel body content.
+    """
+
+    tag = "aside"
+
+    def __init__(self, side: str = "left", *content: Any, **attrs: Any) -> None:
+        attrs.setdefault("class", f"miki-sidepanel miki-side-{side}")
+        attrs.setdefault("aria_label", _("sidepanel_label", "Side panel"))
+        super().__init__(*content, **attrs)
+
+
+class TabbedPanel(Tabs):
+    """A tabbed panel (maps ``QTabWidget``).
+
+    Reuses the offline-friendly switching logic of :class:`Tabs` but with a
+    distinct ``miki-tabbedpanel`` class.
+
+    :param tabs: a list of ``(label, content)`` pairs.
+    """
+
+    def __init__(self, tabs: list[tuple[str, Any]], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-tabbedpanel")
+        super().__init__(tabs, **attrs)
+
+
+class LogViewer(Component):
+    """A monospace log viewer with severity coloring (maps a log widget).
+
+    :param lines: a list of log entries. Each entry may be a string (treated as
+        ``"info"``) or a ``(level, message)`` tuple.
+    """
+
+    tag = "div"
+
+    def __init__(self, lines: list[Any] | None = None, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-logviewer")
+        attrs.setdefault("role", "log")
+        attrs.setdefault("aria_live", "polite")
+        children = []
+        for entry in lines or []:
+            if isinstance(entry, (tuple, list)) and len(entry) == 2:
+                level, message = entry
+            else:
+                level, message = "info", entry
+            children.append(
+                Div(
+                    str(message),
+                    class_="miki-log-line miki-log-" + str(level),
+                )
+            )
+        super().__init__(*children, **attrs)
