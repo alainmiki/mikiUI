@@ -27,10 +27,17 @@ This scans your app's components/widgets and generates `dist/mikiui.css`.
 
 from __future__ import annotations
 
+import html as _html
 import os
 from typing import Any, Iterable
 
 from .dom import Element, I18nText, Text, normalize, render
+
+
+def _esc(value: Any) -> str:
+    """Escape a value for safe insertion into HTML."""
+    return _html.escape(str(value), quote=True)
+
 
 BASE_TEMPLATE = """<!doctype html>
 <html lang="{html_lang}">
@@ -55,17 +62,17 @@ BASE_TEMPLATE = """<!doctype html>
 
 
 def _style_tag(href: str, media: str = "all", rel: str = "stylesheet") -> str:
-    return f'  <link rel="{rel}" href="{href}" media="{media}" />'
+    return f'  <link rel="{_esc(rel)}" href="{_esc(href)}" media="{_esc(media)}" />'
 
 
 def _script_tag(src: str, defer: bool = True, type_: str | None = None) -> str:
     parts = []
     if type_:
-        parts.append(f'type="{type_}"')
+        parts.append(f'type="{_esc(type_)}"')
     if defer:
         parts.append("defer")
     attrs = " ".join(parts)
-    return f'  <script src="{src}" {attrs}></script>'
+    return f'  <script src="{_esc(src)}" {attrs}></script>'
 
 
 def _theme_styles(theme_name: str) -> dict[str, Any]:
@@ -93,7 +100,6 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
 
     # Framework CSS links (Tailwind, Bootstrap, or custom CSS file)
     if theme.framework == "tailwind":
-        # Load Tailwind from CDN or local file path
         if theme.cdn_url:
             result["links"].append(_style_tag(theme.cdn_url))
         elif theme.css_path:
@@ -108,7 +114,6 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
         if theme.cdn_url:
             result["links"].append(_style_tag(theme.cdn_url))
         if theme.js_url:
-            # Include Bootstrap JS (requires type="module" or defer for bundle)
             result["js_tags"] = _script_tag(theme.js_url)
         if theme.css_path:
             href = theme.css_path
@@ -134,16 +139,21 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     # Color theme inline CSS (merges with base miki.css)
     color_css = theme.css()
     if color_css:
-        result["inline_css"].append(f'<style id="miki-theme">{color_css}</style>')
+        result["inline_css"].append(f"<style id=\"miki-theme\">{color_css}</style>")
 
     # Body classes/data attributes
     extra = list(theme.extra_classes) or []
+    data_attrs = ""
+    if theme.framework == "tailwind" and "daisyui" in (theme.source or "").lower():
+        data_attrs = f" data-theme=\"mikiui-{_esc(theme_name)}\""
     if extra:
-        result["body_attrs"] = f' class="{ " ".join(extra) }"'
+        result["body_attrs"] = f" class=\"{ _esc(' '.join(extra)) }\"{data_attrs}"
+    elif data_attrs:
+        result["body_attrs"] = data_attrs
 
     # CSS variables layer (overrides theme settings)
     if theme.variables:
-        vars_css = ":root { " + "; ".join(f"{k}: {v}" for k, v in theme.variables.items()) + " }"
+        vars_css = ":root { " + "; ".join(f"{_esc(k)}: {_esc(v)}" for k, v in theme.variables.items()) + " }"
         result["variables"] = f"<style>{vars_css}</style>"
 
     return result
@@ -155,7 +165,7 @@ def _script_tags(scripts: Iterable[str]) -> str:
         if src.startswith("http") or src.endswith(".js"):
             tags.append(_script_tag(src))
         else:
-            tags.append(f'  {src}')
+            tags.append(f"  {src}")
     return "\n".join(tags)
 
 
@@ -209,7 +219,7 @@ def render_page(
     # Build favicon tag
     favicon_tag = ""
     if favicon:
-        favicon_tag = f'  <link rel="icon" href="{favicon}" type="image/png" />'
+        favicon_tag = f"  <link rel=\"icon\" href=\"{_esc(favicon)}\" type=\"image/png\" />"
 
     # Resolve framework override or use theme's framework
     theme_data = _theme_styles(theme)
@@ -224,8 +234,8 @@ def render_page(
     scripts = _script_tags(runtime_scripts)
 
     return BASE_TEMPLATE.format(
-        html_lang=lang,
-        page_title=title,
+        html_lang=_esc(lang),
+        page_title=_esc(title),
         favicon=favicon_tag,
         theme_links=links,
         base_css=base_css,
@@ -235,7 +245,7 @@ def render_page(
         head_extra=head_extra,
         runtime_scripts=scripts,
         js_tags=js_tags,
-        active_theme=theme,
+        active_theme=_esc(theme),
         body=body,
     )
 

@@ -22,4 +22,6 @@ class Breadcrumbs(Component):
                 lis.append(Li(A(label, href=href)))
             else:
                 lis.append(Li(label))
+        user_class = attrs.pop("class_", "")
+        attrs["class_"] = f"miki-breadcrumb {user_class}".strip()
         super().__init__(Nav(Ol(*lis), aria_label="breadcrumb"), **attrs)

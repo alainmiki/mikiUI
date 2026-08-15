@@ -22,6 +22,8 @@ def runtime_scripts(mode: str = "local") -> List[str]:
             "/_miki/runtime/alpine_runtime.js",
         ]
     # Offline-first: real HTMX + Alpine served locally by the backend.
+    # Order matters: HTMX loads first, then Alpine.js (depends on being on page),
+    # then the runtime wrappers, then MikiUI's own widget handlers.
     return [
         "/_miki/runtime/htmx.min.js",
         "/_miki/runtime/htmx_runtime.js",

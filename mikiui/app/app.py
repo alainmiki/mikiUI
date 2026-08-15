@@ -8,6 +8,7 @@ the request and shared state.
 
 from __future__ import annotations
 
+import html as _html
 from typing import Any, Callable
 
 from ..engine.dom import normalize
@@ -15,6 +16,11 @@ from ..themes import Theme, register_theme, get_theme, list_themes
 from .routes import Ctx, RouteDef, invoke_route
 from .state import AppState
 from .plugins import Plugin
+
+
+def _esc(value: Any) -> str:
+    """Escape a value for safe insertion into an HTML attribute or text node."""
+    return _html.escape(str(value), quote=True)
 
 
 class MikiApp:
@@ -35,6 +41,10 @@ class MikiApp:
         self.favicon: str | None = favicon or "/_miki/runtime/mikiui-icon.png"
         self.desktop_icon: str | None = desktop_icon
         self.splash_screen: str | None = splash_screen
+        self.palette_color: str = "#0f172a"
+        self._head_meta: list[dict[str, str]] = []
+        self._head_links: list[dict[str, str]] = []
+        self._head_scripts: str = ""
 
     # -- routing ---------------------------------------------------------------
     def route(
@@ -69,6 +79,12 @@ class MikiApp:
         """
         def decorator(fn: Callable) -> Callable:
             upper_methods = tuple(m.upper() for m in methods)
+            if path in self.routes:
+                existing = self.routes[path]
+                raise ValueError(
+                    f"Route {path!r} is already registered by {existing.name!r}. "
+                    "Use a different path or remove the existing route first."
+                )
             self.routes[path] = RouteDef(
                 path, fn, upper_methods, name, title, requires_auth
             )
@@ -145,6 +161,81 @@ class MikiApp:
         register_theme(theme)
         self.theme = theme.name
         return self
+
+    def set_head_meta(self, name: str, content: str, **extra: Any) -> "MikiApp":
+        """Add a ``<meta>`` tag to the page head.
+
+        Parameters
+        ----------
+        name : str
+            Meta tag name (e.g. "description", "author", "viewport").
+        content : str
+            Meta tag content value.
+        **extra : Additional HTML attributes for the meta tag.
+
+        Example
+        -------
+        >>> app.set_head_meta("description", "My app description")
+        >>> app.set_head_meta("viewport", "width=device-width, initial-scale=1")
+        """
+        tag = {"name": name, "content": content}
+        tag.update(extra)
+        self._head_meta.append(tag)
+        return self
+
+    def add_head_link(self, href: str, rel: str = "stylesheet", **attrs: Any) -> "MikiApp":
+        """Add a ``<link>`` tag to the page head.
+
+        Parameters
+        ----------
+        href : str
+            URL or path to the resource.
+        rel : str
+            Relationship type (default "stylesheet").
+        **attrs : Additional HTML attributes.
+
+        Example
+        -------
+        >>> app.add_head_link("/static/bootstrap.min.css", rel="stylesheet")
+        >>> app.add_head_link("/static/app.js", rel="modulepreload")
+        """
+        tag = {"href": href, "rel": rel}
+        tag.update(attrs)
+        self._head_links.append(tag)
+        return self
+
+    def add_head_script(self, src: str, **attrs: Any) -> "MikiApp":
+        """Add a ``<script>`` tag to the page head.
+
+        Parameters
+        ----------
+        src :
+            URL or path to the JavaScript file.
+        **attrs : Additional HTML attributes (e.g., type="module", defer=True).
+
+        Example
+        -------
+        >>> app.add_head_script("/static/bootstrap.bundle.min.js")
+        >>> app.add_head_script("/static/app.js", type="module")
+        """
+        tag = f'<script src="{_esc(src)}"'
+        for k, v in attrs.items():
+            tag += f' {_esc(k)}="{_esc(v)}"'
+        tag += "></script>\n"
+        self._head_scripts += tag
+        return self
+
+    def head_extra_html(self) -> str:
+        """Build the HTML string for all head extras (internal use)."""
+        parts: list[str] = []
+        for meta in self._head_meta:
+            attrs = " ".join(f'{_esc(k)}="{_esc(v)}"' for k, v in meta.items())
+            parts.append(f"<meta {attrs}>")
+        for link in self._head_links:
+            attrs = " ".join(f'{_esc(k)}="{_esc(v)}"' for k, v in link.items())
+            parts.append(f'<link {attrs}>')
+        parts.append(self._head_scripts)
+        return "\n".join(parts)
 
     def theme_config(self) -> dict[str, Any]:
         """Return theme configuration for rendering (CSS links, variables, etc.)."""

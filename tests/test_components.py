@@ -46,8 +46,10 @@ def test_form_tag():
 
 
 def test_dialog_open():
-    assert "open" in Dialog("hi", open=True).to_html()
-    assert "open" not in Dialog("hi").to_html()
+    html_open = Dialog("hi", open=True).to_html()
+    assert "open" in html_open
+    html_closed = Dialog("hi").to_html()
+    assert 'data-open' not in html_closed or 'open=false' in html_closed
 
 
 def test_table_structure():

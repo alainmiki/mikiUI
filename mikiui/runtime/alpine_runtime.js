@@ -23,3 +23,16 @@ document.addEventListener("miki:swapped", function () {
     Alpine.initTree(document.body);
   }
 });
+
+// Initialize Alpine when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.Alpine) {
+      Alpine.initTree(document.body);
+    }
+  });
+} else {
+  if (window.Alpine) {
+    Alpine.initTree(document.body);
+  }
+}

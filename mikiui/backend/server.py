@@ -1,8 +1,8 @@
 """FastAPI backend that serves MikiUI apps.
 
 Creates a FastAPI app from a :class:`MikiApp`: each route is exposed, full HTML
-is returned on navigation, and HTMX-driven requests (``HX-Request`` header or
-POST) receive a fragment for partial / optimistic updates.
+is returned on navigation, and HTMX-driven requests (``HX-Request`` header)
+receive a fragment for partial / optimistic updates.
 
 Per-page titles are resolved by :func:`~mikiui.app.routes.resolve_title`,
 which checks (in order): ``ctx.meta["title"]``, ``route.title``, then the
@@ -12,9 +12,10 @@ app's global ``title``.
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from fastapi import APIRouter, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..app import MikiApp, RouteDef
@@ -30,13 +31,23 @@ _RUNTIME_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ru
 
 def _make_endpoint(miki_app: MikiApp, route: RouteDef):
     async def endpoint(request: Request) -> HTMLResponse:
+        if route.requires_auth:
+            session_cookie = request.cookies.get("mikiui_session")
+            if not session_cookie:
+                return JSONResponse(
+                    {"error": "Unauthorized", "detail": "Login required"},
+                    status_code=401,
+                    headers={"HX-Redirect": "/login"} if request.headers.get("HX-Request") else {},
+                )
+
         path_params = dict(request.path_params) if hasattr(request, "path_params") else {}
         nodes, ctx = await miki_app.invoke(route, request, path_params)
-        is_partial = request.headers.get("HX-Request") is not None or request.method == "POST"
+        is_partial = request.headers.get("HX-Request") is not None
         if is_partial:
             return HTMLResponse(render_fragment(nodes))
         scripts = getattr(request.app.state, "runtime_scripts", None)
         page_title = resolve_title(route, ctx, miki_app.title)
+        head_extra = miki_app.head_extra_html()
         return HTMLResponse(
             render_page(
                 nodes,
@@ -45,6 +56,7 @@ def _make_endpoint(miki_app: MikiApp, route: RouteDef):
                 runtime_scripts=scripts,
                 theme=miki_app.theme,
                 favicon=miki_app.favicon,
+                head_extra=head_extra,
             )
         )
 
@@ -52,14 +64,43 @@ def _make_endpoint(miki_app: MikiApp, route: RouteDef):
     return endpoint
 
 
-def create_app(miki_app: MikiApp, runtime: str = "local") -> FastAPI:
+def create_app(
+    miki_app: MikiApp,
+    runtime: str = "local",
+    cors_origins: list[str] | None = None,
+) -> FastAPI:
+    """Create a FastAPI ASGI app from a MikiApp.
+
+    Parameters
+    ----------
+    miki_app:
+        The MikiUI application instance.
+    runtime:
+        JS runtime mode: ``"local"`` (offline) or ``"cdn"``.
+    cors_origins:
+        Allowed CORS origins.  When ``None``, CORS middleware is not added.
+        Pass ``["*"]`` to allow all origins (development only).
+    """
     app = FastAPI(title=miki_app.title)
+
     if os.path.isdir(_RUNTIME_DIR):
         app.mount(
             "/_miki/runtime",
             StaticFiles(directory=_RUNTIME_DIR),
             name="miki-runtime",
         )
+
+    if cors_origins:
+        from starlette.middleware.cors import CORSMiddleware
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
     has_api_plugin = any(
         getattr(p, "name", None) == "api" for p in miki_app.plugins
     )
@@ -79,7 +120,7 @@ def create_app(miki_app: MikiApp, runtime: str = "local") -> FastAPI:
         app,
         name=miki_app.title,
         icon=miki_app.favicon,
-        theme_color=miki_app.palette_color if hasattr(miki_app, "palette_color") else "#0f172a",
+        theme_color=miki_app.palette_color,
     )
     apply_default_middleware(app)
     app.state.miki_app = miki_app

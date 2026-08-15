@@ -11,13 +11,14 @@ import uuid
 from typing import Any
 
 from ..components import (
-    Aside,
+    A,
     Button,
     Details,
     Dialog,
     Div,
     Fieldset,
     Footer,
+    H1,
     Input,
     Label,
     Legend,
@@ -29,7 +30,6 @@ from ..components import (
     Summary,
     Ul,
     Li,
-    A,
 )
 from ..components.base import Component
 from ..components.tabs import Tabs
@@ -65,10 +65,10 @@ class ScrollPanel(Component):
             style.setdefault("overflow", "auto")
         elif isinstance(style, str):
             if "overflow" not in style:
-                style = (style.rstrip(";") + "; overflow:auto").lstrip(";")
+                style = style.rstrip(";") + "; overflow:auto"
+            attrs["style"] = style.lstrip(";")
         else:
-            style = "overflow:auto"
-        attrs["style"] = style
+            attrs["style"] = "overflow:auto"
         super().__init__(*content, **attrs)
 
 
@@ -226,31 +226,80 @@ class SplashScreen(Component):
 
 
 class MessageBox(Component):
-    """A modal message box (maps ``QMessageBox``).
+    """A modal message box with improved UX and styling.
 
-    :param title: message box heading.
-    :param message: body message text.
-    :param kind: one of ``"info"``, ``"warning"``, ``"error"``, ``"question"``.
+    Features:
+    - Smooth fade-in/out animations
+    - Icon indicators based on kind
+    - Promise-style button handling (using native JS)
+    - Customizable button text
+
+    Parameters
+    ----------
+    title : str
+        Message box heading.
+    message : str
+        Body message text.
+    kind : str
+        One of "info", "warning", "error", "success", or "question".
+    buttons : list of (text, value) tuples
+        Custom button labels and values.
+    **attrs : Additional HTML attributes.
     """
 
     tag = "div"
 
-    def __init__(self, title: str, message: str, kind: str = "info", **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-messagebox miki-messagebox-" + kind)
+    def __init__(
+        self,
+        title: str,
+        message: str,
+        kind: str = "info",
+        buttons: list[tuple[str, str]] | None = None,
+        **attrs: Any,
+    ) -> None:
+        valid_kinds = ("info", "warning", "error", "success", "question")
+        if kind not in valid_kinds:
+            raise ValueError(f"kind must be one of {valid_kinds}, got {kind!r}")
+
+        attrs.setdefault("class", f"miki-messagebox miki-messagebox-{kind}")
         attrs.setdefault("role", "alertdialog")
         attrs.setdefault("aria_label", title)
         attrs.setdefault("aria_modal", "true")
+
+        icons = {
+            "info": "ℹ️",
+            "warning": "⚠️",
+            "error": "❌",
+            "success": "✅",
+            "question": "❓",
+        }
+
+        icon_html = Span(icons.get(kind, "ℹ️"), class_="miki-messagebox-icon")
+
+        default_buttons = buttons or [("OK", "ok")]
+        button_list = []
+        for i, (text, value) in enumerate(default_buttons):
+            btn_class = "miki-messagebox-btn"
+            if i == 0:
+                btn_class += " miki-messagebox-btn-primary"
+            button_list.append(
+                Button(
+                    text,
+                    type="button",
+                    class_=btn_class,
+                    role="button",
+                    aria_label=f"Button {text}",
+                    **{"onclick": "this.closest('.miki-messagebox').style.display='none';"},
+                )
+            )
+
         body = Div(
-            Div(title, class_="miki-messagebox-title"),
+            Div(icon_html, title, class_="miki-messagebox-title"),
             P(message, class_="miki-messagebox-message"),
-            Button(
-                _("messagebox_ok", "OK"),
-                type="button",
-                class_="miki-messagebox-ok",
-                onclick="var d=this.closest('.miki-messagebox'); if(d) d.style.display='none';",
-            ),
+            Div(*button_list, class_="miki-messagebox-buttons"),
             class_="miki-messagebox-body",
         )
+
         super().__init__(body, **attrs)
 
 
@@ -438,47 +487,175 @@ class MdiArea(Component):
 
 
 class CollapsiblePanel(Component):
-    """A collapsible panel (maps a ``QCollapsibleWidget``-style control).
+    """A collapsible panel with smooth animations and accessibility.
 
-    Uses native HTML ``<details>`` element for accessibility. The summary
-    arrow animates via CSS.
+    Uses native DOM events for expand/collapse with smooth transitions.
 
-    :param title: summary text shown in the header.
-    :param content: hidden/shown content.
-    :param open: whether the panel starts expanded.
-    :param attrs: Extra HTML attributes.
-
-    Example::
-
-        CollapsiblePanel("More Details", P("Hidden content"), open=True)
-        CollapsiblePanel("Section", Div("Body"))
+    Parameters
+    ----------
+    title : str
+        Summary text shown in the header.
+    *content : Any
+        Content to hide/show.
+    open : bool
+        Whether the panel starts expanded.
+    animate : bool
+        Enable smooth height transition animation.
+    icon : str | None
+        Optional icon to show in the header.
+    **attrs : Additional HTML attributes.
     """
 
-    tag = "details"
+    tag = "div"
 
-    def __init__(self, title: str, *content: Any, open: bool = False, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-collapsible")
-        if open:
-            attrs["open"] = True
-        from ..components import Div
-        summary = Summary(title, class_="miki-collapsible-summary")
-        body = Div(*content, class_="miki-collapsible-body")
+    def __init__(
+        self,
+        title: str,
+        *content: Any,
+        open: bool = False,
+        animate: bool = True,
+        icon: str | None = None,
+        **attrs: Any,
+    ) -> None:
+        state = "open" if open else "closed"
+        attrs.setdefault("class", f"miki-collapsible miki-collapsible-{state}")
+        attrs.setdefault("role", "group")
+        attrs.setdefault("aria-label", f"{title} panel")
+
+        summary_children: list[Any] = []
+        if icon:
+            summary_children.append(Span(icon, class_="miki-collapsible-icon"))
+        summary_children.append(Span(title, class_="miki-collapsible-summary"))
+
+        if animate:
+            body_class = "miki-collapsible-body miki-collapsible-body-animated"
+        else:
+            body_class = "miki-collapsible-body"
+
+        summary_inner = Div(*summary_children, class_="miki-collapsible-summary-inner")
+        summary = Div(
+            summary_inner,
+            Span("▼" if open else "▶", class_="miki-collapsible-toggle"),
+            class_="miki-collapsible-summary miki-collapsible-summary-clickable",
+            role="button",
+            tabindex="0",
+            aria_expanded=str(open).lower(),
+            onclick=(
+                "var panel=this.closest('.miki-collapsible');"
+                "var is_open=panel.classList.contains('miki-collapsible-open');"
+                "panel.classList.toggle('miki-collapsible-open',!is_open);"
+                "panel.classList.toggle('miki-collapsible-closed',is_open);"
+                "var toggle=panel.querySelector('.miki-collapsible-toggle');"
+                "if(toggle) toggle.textContent=is_open?'▶':'▼';"
+            ),
+        )
+
+        body = Div(*content, class_=body_class, hidden=not open)
+
         super().__init__(summary, body, **attrs)
 
 
 class SidePanel(Component):
-    """A fixed side panel (maps a ``QDockWidget`` side).
+    """A fixed side panel with improved styling and accessibility.
 
-    :param side: ``"left"`` or ``"right"``.
-    :param content: panel body content.
+    Parameters
+    ----------
+    side : str
+        "left" or "right".
+    *content : Any
+        Panel body content.
+    collapsible : bool
+        Allow collapsing via overlay toggle.
+    header : str | None
+        Optional header title.
+    **attrs : Additional HTML attributes.
     """
 
     tag = "aside"
 
-    def __init__(self, side: str = "left", *content: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", f"miki-sidepanel miki-side-{side}")
-        attrs.setdefault("aria_label", _("sidepanel_label", "Side panel"))
-        super().__init__(*content, **attrs)
+    def __init__(
+        self,
+        side: str = "left",
+        *content: Any,
+        collapsible: bool = False,
+        header: str | None = None,
+        class_: str | None = None,
+        **attrs: Any,
+    ) -> None:
+        if side not in ("left", "right"):
+            raise ValueError(f"side must be 'left' or 'right', got {side!r}")
+
+        classes = f"miki-sidepanel miki-side-{side}"
+        if class_:
+            classes += f" {class_}"
+        if collapsible:
+            classes += " miki-side-collapsible"
+
+        attrs.setdefault("class", classes)
+        attrs.setdefault("aria_label", f"Side panel ({side})")
+        attrs.setdefault("role", "complementary")
+
+        children: list[Any] = []
+
+        if header:
+            children.append(H1(header, class_="miki-sidepanel-title"))
+
+        children.extend(content)
+
+        super().__init__(*children, **attrs)
+
+
+class LogViewer(Component):
+    """A monospace log viewer with severity coloring (maps a log widget).
+
+    Parameters
+    ----------
+    lines : list | None
+        A list of log entries. Each entry may be a string (treated as "info")
+        or a ``(level, message)`` tuple.
+    auto_scroll : bool
+        Auto-scroll to bottom when new lines added.
+    line_numbers : bool
+        Show line numbers.
+    **attrs : Additional HTML attributes.
+    """
+
+    tag = "div"
+
+    def __init__(
+        self,
+        lines: list[Any] | None = None,
+        auto_scroll: bool = True,
+        line_numbers: bool = False,
+        **attrs: Any,
+    ) -> None:
+        attrs.setdefault("class", "miki-logviewer")
+        attrs.setdefault("role", "log")
+        attrs.setdefault("aria_live", "polite")
+
+        children = []
+        for line_num, entry in enumerate(lines or [], start=1):
+            if isinstance(entry, (tuple, list)) and len(entry) == 2:
+                level, message = entry
+            else:
+                level, message = "info", entry
+
+            line_attrs = {"class_": f"miki-log-line miki-log-{level}"}
+            if line_numbers:
+                line_attrs["class_"] += " miki-log-line-numbered"
+
+            if line_numbers:
+                children.append(
+                    Div(
+                        Span(f"{line_num:4d}", class_="miki-log-line-num"),
+                        Span(str(message), class_="miki-log-line-content"),
+                        **line_attrs,
+                    )
+                )
+            else:
+                children.append(Div(str(message), **line_attrs))
+
+        super().__init__(*children, **attrs)
 
 
 class TabbedPanel(Tabs):
@@ -487,37 +664,53 @@ class TabbedPanel(Tabs):
     Reuses the offline-friendly switching logic of :class:`Tabs` but with a
     distinct ``miki-tabbedpanel`` class.
 
-    :param tabs: a list of ``(label, content)`` pairs.
+    Features:
+    - Keyboard navigation between tabs
+    - Closeable tabs (optional)
+    - Icon support
+
+    Parameters
+    ----------
+    tabs : list
+        A list of ``(label, content)`` pairs.
+    closable : bool
+        Show close button on each tab.
+    **attrs : Additional HTML attributes.
     """
 
-    def __init__(self, tabs: list[tuple[str, Any]], **attrs: Any) -> None:
+    def __init__(self, tabs: list[tuple[str, Any]], closable: bool = False, **attrs: Any) -> None:
         attrs.setdefault("class", "miki-tabbedpanel")
-        super().__init__(tabs, **attrs)
+        super().__init__(tabs, closeable=closable, **attrs)
 
 
-class LogViewer(Component):
-    """A monospace log viewer with severity coloring (maps a log widget).
+class ProfilerPanel(Component):
+    """A simple profiler panel showing performance metrics.
 
-    :param lines: a list of log entries. Each entry may be a string (treated as
-        ``"info"``) or a ``(level, message)`` tuple.
+    Renders a list of ``(label, value)`` pairs in a styled panel.
+
+    Parameters
+    ----------
+    metrics : list
+        A list of ``(label, value)`` pairs.
+    **attrs : Additional HTML attributes.
     """
 
     tag = "div"
 
-    def __init__(self, lines: list[Any] | None = None, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-logviewer")
-        attrs.setdefault("role", "log")
-        attrs.setdefault("aria_live", "polite")
-        children = []
-        for entry in lines or []:
-            if isinstance(entry, (tuple, list)) and len(entry) == 2:
-                level, message = entry
-            else:
-                level, message = "info", entry
-            children.append(
+    def __init__(self, metrics: list[tuple[str, Any]], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-profiler")
+        attrs.setdefault("role", "region")
+        attrs.setdefault("aria_label", _("profiler_label", "Profiler"))
+        rows = []
+        for label, value in metrics:
+            rows.append(
                 Div(
-                    str(message),
-                    class_="miki-log-line miki-log-" + str(level),
+                    Span(label, class_="miki-profiler-label"),
+                    Span(str(value), class_="miki-profiler-value"),
+                    class_="miki-profiler-row",
                 )
             )
-        super().__init__(*children, **attrs)
+        super().__init__(
+            Div(*rows, class_="miki-profiler-body"),
+            **attrs,
+        )

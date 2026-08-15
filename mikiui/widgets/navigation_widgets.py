@@ -2,44 +2,59 @@
 
 These provide slide-in panels and contextual overlays commonly found in
 desktop-style web applications.
+
+Features:
+- Drawer: slide-in panel with header, overlay, and smooth animations
+- Rail: slim navigation rail with icons and labels
+- ContextWindow: floating context menu/popover with positioning
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from ..components import Div, Span, A, Ul
+from ..components import Div, Span, A, Ul, Button
 from ..components.base import Component
 
 
 class Drawer(Component):
     """A slide-in drawer / side panel that can be toggled open/closed.
 
-    Uses Alpine.js for interactive toggle behavior. The drawer starts hidden
-    unless ``open=True`` is set. Toggle it externally by setting the `show`
-    Alpine.js variable on this drawer's scope.
+    Features:
+    - Smooth slide-in/out animations
+    - Clickable overlay to close
+    - Header with title and close button
+    - Responsive size variants (sm, md, lg)
+    - ARIA-compliant dialog semantics
 
-    :param content:   Drawer body content.
-    :param title:     Optional drawer header title.
-    :param side:      Which edge to slide from: ``"left"`` (default),
-                    ``"right"``, ``"top"``, ``"bottom"``.
-    :param size:      ``"sm"``, ``"md"`` (default), or ``"lg"``.
-    :param closable:  If ``True`` (default), show a close button in the header.
-    :param open:      If ``True``, drawer starts open. Set ``False`` for a hidden drawer.
-    :param attrs:     Extra HTML attributes.
+    Parameters
+    ----------
+    *content : Any
+        Drawer body content.
+    title : str | None
+        Optional drawer header title.
+    side : str
+        Which edge to slide from: "left" (default), "right", "top", "bottom".
+    size : str
+        Size variant: "sm" (200px), "md" (300px), "lg" (400px).
+    closable : bool
+        Show a close button in the header.
+    open : bool
+        Initial open state. External toggles control visibility via Alpine.
+    **attrs : Additional HTML attributes.
 
-    Example::
+    Example
+    -------
+    >>> # Inside an Alpine.js container
+    >>> Drawer("Content", title="Quick Panel", side="left", open=True)
 
-        # Include in an Alpine.js scoped container
-        # <div x-data="{ navOpen: false }">
-        #   <button @click="navOpen = true">Menu</button>
-        #   <div x-data="{ show: navOpen }">
-        #     <Drawer>...</Drawer>
-        #   </div>
-        # </div>
-
-        # Or for immediate visibility:
-        Drawer(Div("Content"), title="Quick Panel", open=True)
+    >>> # Nested content
+    >>> Drawer(
+    ...     Div("Body content"),
+    ...     title="Settings",
+    ...     side="right",
+    ...     size="lg"
+    ... )
     """
 
     tag = "div"
@@ -54,22 +69,37 @@ class Drawer(Component):
         open: bool = False,
         **attrs: Any,
     ) -> None:
+        if side not in ("left", "right", "top", "bottom"):
+            raise ValueError(f"side must be 'left', 'right', 'top', or 'bottom', got {side!r}")
+
+        if size not in ("sm", "md", "lg"):
+            raise ValueError(f"size must be 'sm', 'md', or 'lg', got {size!r}")
+
         classes = f"miki-drawer miki-drawer-{side} miki-drawer-{size}"
         attrs.setdefault("class", classes)
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria-modal", "true")
-        attrs.setdefault("aria-labelledby", f"{title or 'drawer'}-title")
-        attrs.setdefault("x-data", "{show: false}" if not open else "{show: true}")
-        attrs.setdefault(":class", "{'miki-drawer-open': show}")
+
+        if title:
+            attrs.setdefault("aria-labelledby", f"{title}-title")
+
+        attrs.setdefault("x_data", f"{{show:{str(open).lower()},side:'{side}',size:'{size}'}}")
+
+        attrs["x_init"] = """
+        if (data.show) {
+            if (data.side === 'left') $el.style.transform = 'translateX(0)';
+            else if (data.side === 'right') $el.style.transform = 'translateX(0)';
+            else if (data.side === 'top') $el.style.transform = 'translateY(0)';
+            else if (data.side === 'bottom') $el.style.transform = 'translateY(0)';
+        }
+        """
 
         children: list[Any] = []
 
-        children.append(
-            Div(
-                class_="miki-drawer-overlay",
-                x_show="show",
-                x_on_click="show = false",
-            )
+        overlay = Div(
+            class_="miki-drawer-overlay",
+            x_show="show",
+            **{"x_on:click": "show = false"},
         )
 
         panel_children: list[Any] = []
@@ -82,9 +112,10 @@ class Drawer(Component):
                 )
             if closable:
                 header_children.append(
-                    Span(
+                    Button(
                         "×",
                         class_="miki-drawer-close",
+                        type="button",
                         role="button",
                         aria_label="Close drawer",
                         x_on_click="show = false",
@@ -103,8 +134,10 @@ class Drawer(Component):
             *panel_children,
             class_="miki-drawer-panel",
             x_show="show",
+            x_transition="enter: ease-out duration-200; leave: ease-in duration-150",
         )
 
+        children.append(overlay)
         children.append(panel)
 
         super().__init__(*children, **attrs)
@@ -113,18 +146,29 @@ class Drawer(Component):
 class Rail(Component):
     """A slim icon-only navigation rail (left or right side of the screen).
 
-    :param items:     List of (label, href, icon_name) tuples or Component instances.
-    :param side:      ``"left"`` (default) or ``"right"``.
-    :param attrs:     Extra HTML attributes.
+    Features:
+    - Icon-only items with tooltips
+    - Vertical layout
+    - Keyboard accessible
+    - Active state highlighting
 
-    Example::
+    Parameters
+    ----------
+    *items : tuple or Component
+        List of (label, href, icon_name) tuples or Component instances.
+    side : str
+        "left" (default) or "right".
+    collapsible : bool
+        Collapse to icons-only when narrow viewport.
+    **attrs : Additional HTML attributes.
 
-        Rail(
-            ("Dashboard", "/dashboard", "home"),
-            ("Settings", "/settings", "settings"),
-            ("Profile", "/profile", "user"),
-            side="left",
-        )
+    Example
+    -------
+    >>> Rail(
+    ...     ("Dashboard", "/dashboard", "home"),
+    ...     ("Settings", "/settings", "settings"),
+    ...     side="left"
+    ... )
     """
 
     tag = "nav"
@@ -133,12 +177,19 @@ class Rail(Component):
         self,
         *items: Any,
         side: str = "left",
+        collapsible: bool = False,
         class_: str | None = None,
         **attrs: Any,
     ) -> None:
+        if side not in ("left", "right"):
+            raise ValueError(f"side must be 'left' or 'right', got {side!r}")
+
         classes = f"miki-rail miki-rail-{side}"
         if class_:
             classes += f" {class_}"
+        if collapsible:
+            classes += " miki-rail-collapsible"
+
         attrs.setdefault("class", classes)
         attrs.setdefault("role", "navigation")
         attrs.setdefault("aria_label", "Navigation rail")
@@ -154,6 +205,7 @@ class Rail(Component):
                     Div(icon, Span(label, class_="miki-rail-label")),
                     href=href,
                     class_="miki-rail-item",
+                    role="link",
                 )
                 children.append(link)
             else:
@@ -165,12 +217,35 @@ class Rail(Component):
 class ContextWindow(Component):
     """A floating context menu / popover window.
 
-    :param content:   Menu items or content.
-    :param trigger:   Optional trigger element (button, icon, etc.).
-    :param position:  Preferred position: ``"auto"`` (default), ``"top"``,
-                      ``"bottom"``, ``"left"``, ``"right"``.
-    :param align:     Alignment: ``"start"`` (default), ``"center"``, ``"end"``.
-    :param attrs:     Extra HTML attributes.
+    Features:
+    - Smart positioning (auto-adjust for viewport)
+    - Arrow indicator
+    - ARIA-compliant menu semantics
+    - Keyboard navigation
+
+    Parameters
+    ----------
+    *content : Any
+        Menu items (tuples or Components).
+    trigger : Any
+        Optional trigger element (button, icon, etc.).
+    position : str
+        Position: "auto" (default), "top", "bottom", "left", "right".
+    align : str
+        Alignment: "start" (default), "center", "end".
+    width : str
+        Width CSS value, e.g., "auto", "150px", "200px".
+    **attrs : Additional HTML attributes.
+
+    Example
+    -------
+    >>> # With trigger button
+    >>> ContextWindow(
+    ...     ("Open", "/open"),
+    ...     ("Close", "/close"),
+    ...     trigger=Button("Menu"),
+    ...     position="bottom"
+    ... )
     """
 
     tag = "div"
@@ -181,22 +256,28 @@ class ContextWindow(Component):
         trigger: Any = None,
         position: str = "auto",
         align: str = "start",
+        width: str = "auto",
         class_: str | None = None,
         **attrs: Any,
     ) -> None:
+        if position not in ("auto", "top", "bottom", "left", "right"):
+            raise ValueError(f"position must be 'auto', 'top', 'bottom', 'left', or 'right', got {position!r}")
+        if align not in ("start", "center", "end"):
+            raise ValueError(f"align must be 'start', 'center', or 'end', got {align!r}")
+
         classes = f"miki-context-window miki-context-{position} miki-context-align-{align}"
         if class_:
             classes += f" {class_}"
+
         attrs.setdefault("class", classes)
         attrs.setdefault("role", "menu")
-        attrs.setdefault("aria_hidden", "true")
+        attrs.setdefault("style", f"min-width: {width};")
 
         children: list[Any] = []
 
         if trigger is not None:
             children.append(trigger)
 
-        # Menu content
         menu_items: list[Any] = []
         for item in content:
             if isinstance(item, tuple) and len(item) == 2 and callable(item[1]):
@@ -207,7 +288,7 @@ class ContextWindow(Component):
                         href="#",
                         role="menuitem",
                         class_="miki-context-item",
-                        onclick=f"{action}(); return false;",
+                        **{"x_on:click": f"{action}();"},
                     )
                 )
             elif isinstance(item, tuple) and len(item) == 2:
@@ -219,7 +300,11 @@ class ContextWindow(Component):
                 menu_items.append(item)
 
         children.append(
-            Ul(*menu_items, class_="miki-context-menu", role="menu")
+            Div(
+                Span(class_="miki-context-arrow"),
+                Ul(*menu_items, class_="miki-context-menu", role="menu"),
+                class_="miki-context-content",
+            )
         )
 
         super().__init__(*children, **attrs)

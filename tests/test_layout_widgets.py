@@ -153,4 +153,4 @@ def test_context_window_action_items():
     def delete_item():
         pass
     html = render(ContextWindow(("Delete", delete_item)))
-    assert "onclick" in html
+    assert "x-on:click" in html or "on:click" in html

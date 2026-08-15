@@ -29,6 +29,13 @@
   --miki-cyan: #8be9fd;
   --miki-green: #50fa7b;
 
+  --miki-success: #50fa7b;
+  --miki-success-hover: #40e06a;
+  --miki-warning: #f1fa8c;
+  --miki-warning-hover: #e2e27a;
+  --miki-error: #ff6e67;
+  --miki-error-hover: #ff5e57;
+
   --miki-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --miki-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
 

@@ -67,17 +67,17 @@ from .html import (
     Var,
     Samp,
 )
-from .button import Button, SubmitButton
+from .button import Button, SubmitButton, IconButton
 from .picture import Picture
 from .accordion import Accordion
 from .tooltip import Tooltip
 from .breadcrumbs import Breadcrumbs
 from .menuitem import MenuItem
 from .navbar import Navbar
-from .input import Input, Textarea, Checkbox, Radio, Slider
+from .input import Input, Textarea, Checkbox, Radio, Slider, Switch, Select, Option, Upload
 from .form import Form, Label, Select, Option, Optgroup, Fieldset, Legend
 from .table import Table, Caption, Thead, Tbody, Tfoot, Tr, Th, Td
-from .dialog import Dialog, Details, Summary
+from .dialog import Dialog, Details, Summary, DialogTitle, DialogBody, DialogFooter
 from .modal import Modal
 from .tabs import Tabs
 from .progressbar import Progress, Meter, Output
@@ -149,11 +149,14 @@ __all__ = [
     "Samp",
     "Button",
     "SubmitButton",
+    "IconButton",
     "Input",
     "Textarea",
     "Checkbox",
     "Radio",
     "Slider",
+    "Switch",
+    "Upload",
     "Form",
     "Label",
     "Select",
@@ -172,6 +175,9 @@ __all__ = [
     "Dialog",
     "Details",
     "Summary",
+    "DialogTitle",
+    "DialogBody",
+    "DialogFooter",
     "Modal",
     "Tabs",
     "Progress",

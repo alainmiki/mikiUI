@@ -46,14 +46,13 @@ def test_get_returns_full_page():
     assert "home-page" in resp.text
 
 
-def test_post_returns_fragment():
+def test_post_returns_full_page():
     app = make_app()
     client = TestClient(create_app(app))
     resp = client.post("/inc")
     assert resp.status_code == 200
     assert "count=1" in resp.text
-    assert "<!doctype html>" not in resp.text
-    assert "<!DOCTYPE html>" not in resp.text.upper()
+    assert "<!doctype html>" in resp.text
 
 
 def test_state_persists_across_requests():

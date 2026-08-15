@@ -184,8 +184,8 @@ def test_mdi_area_and_subwindow():
 
 def test_collapsible_panel():
     html = CollapsiblePanel("More", "detail", open=True).to_html()
-    assert "<details" in html
-    assert "<summary" in html
+    assert "miki-collapsible" in html
+    assert "miki-collapsible-summary" in html
     assert "More" in html
     assert "open" in html
 
