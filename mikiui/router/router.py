@@ -172,8 +172,11 @@ class Router:
         """Register a POST-only handler."""
         return self.add(path_or_app, path, ("POST",), name, title=title, requires_auth=requires_auth)
 
-    def mount(self, app: MikiApp) -> "Router":
-        """Bind this router to *app* for bare-decorator usage.
+    def mount(self, target: "MikiApp | Router") -> "Router":
+        """Bind this router to *target* for bare-decorator usage.
+
+        *target* may be a :class:`MikiApp` (registers routes directly) or
+        another :class:`Router` (propagates the combined prefix).
 
         After mounting, decorator methods can be called without passing
         ``app`` explicitly::
@@ -184,9 +187,26 @@ class Router:
             @router.get("/")
             def admin_home():
                 return Div("Admin")
+
+        Nested routers are supported::
+
+            api = Router(prefix="/api")
+            v1 = Router(prefix="/v1")
+            api.mount(v1)          # v1 inherits /api prefix
+            app.mount(api)         # v1 routes live under /api/v1/...
+
+            @v1.get("/items")
+            def items():
+                return Div("items")  # mounted at /api/v1/items
         """
-        self._app = app
+        if isinstance(target, Router):
+            combined = (target.prefix or "") + (self.prefix or "")
+            target.prefix = combined.rstrip("/")
+            target._app = target._app
+        else:
+            self._app = target
         return self
+
 
 
 def add_pwa_manifest(

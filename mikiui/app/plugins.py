@@ -16,9 +16,12 @@ plugins should be installed.  See ``context/PRD.md`` for sandboxing guidance.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable
 
 from ..themes import Theme
+
+logger = logging.getLogger(__name__)
 
 
 class Plugin:
@@ -35,9 +38,15 @@ class Plugin:
       ``app.route`` / ``app.get`` / ``app.post``.  Receives the path, method,
       and handler.  Used by :class:`~mikiui_app_plugins.api.APIPlugin` to
       collect ``/api/`` routes.
+
+    Lifecycle hooks are called in insertion order.  Plugins can declare
+    ``depends_on`` to control ordering: a plugin's ``depends_on`` list names
+    other plugins that must run before it.  Missing dependencies raise
+    ``RuntimeError`` at registration time.
     """
 
     name: str = "plugin"
+    depends_on: list[str] = []
 
     def register(self, app: Any) -> None:
         """Called by ``app.use``. Override to extend the app (routes, themes, etc.)."""
@@ -81,17 +90,24 @@ class ThemePlugin(Plugin):
         app.use(MyTheme())
     """
 
+    name: str = "theme"
+
     def theme(self) -> Theme:
         """Return the :class:`~mikiui.themes.Theme` to register. Override me."""
         raise NotImplementedError
 
     def register(self, app: Any) -> None:
         t = self.theme()
-        from ..themes import register_theme as _register
+        from ..themes import register_theme as _register, get_theme
 
+        existing = get_theme(t.name)
+        if existing and existing.source != "builtin-color":
+            raise ValueError(
+                f"Theme {t.name!r} is already registered by {existing.source!r}. "
+                "Use a different theme name."
+            )
         _register(t)
-        if getattr(app, "theme", None) is None:
-            app.theme = t.name
+        app.theme = t.name
 
 
 class ComponentPlugin(Plugin):
@@ -100,6 +116,8 @@ class ComponentPlugin(Plugin):
     Override :meth:`components` to return a dict mapping names to classes.
     They become accessible as ``app.components["MyWidget"]``.
     """
+
+    name: str = "component"
 
     def components(self) -> dict[str, type]:
         """Return ``{name: ComponentClass}``. Override me."""
@@ -110,6 +128,8 @@ class ComponentPlugin(Plugin):
         if not hasattr(app, "_component_registry"):
             app._component_registry = {}
         for name, cls in comps.items():
+            if name in app._component_registry:
+                logger.warning("Component %r already registered; overwriting.", name)
             app._component_registry[name] = cls
 
 
@@ -120,6 +140,8 @@ class WidgetPlugin(Plugin):
     They become accessible as ``app.widgets["MyCustomWidget"]``.
     """
 
+    name: str = "widget"
+
     def widgets(self) -> dict[str, type]:
         """Return ``{name: WidgetClass}``. Override me."""
         return {}
@@ -129,6 +151,8 @@ class WidgetPlugin(Plugin):
         if not hasattr(app, "_widget_registry"):
             app._widget_registry = {}
         for name, cls in widgets.items():
+            if name in app._widget_registry:
+                logger.warning("Widget %r already registered; overwriting.", name)
             app._widget_registry[name] = cls
 
 

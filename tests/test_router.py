@@ -318,7 +318,7 @@ def test_query_params_via_ctx():
 
     @app.route("/search")
     def search(ctx):
-        q = ctx.query_params.get("q", "")
+        q = ctx.query_params.get("q", [""])[0]
         return Div(f"search-{q}")
 
     client = TestClient(create_app(app))

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import inspect
 import re
+from collections import defaultdict
 from typing import Any, Callable
 
 from ..engine.dom import normalize
@@ -56,7 +57,9 @@ class Ctx:
     * ``ctx.state`` — the app's shared :class:`~mikiui.app.state.AppState`.
     * ``ctx.meta`` — a per-request dict for metadata (e.g. ``"title"``).
     * ``ctx.path_params`` — dict of path parameters extracted from the URL.
-    * ``ctx.query_params`` — dict of query string parameters.
+    * ``ctx.query_params`` — dict of query string parameters (multi-values preserved).
+    * ``ctx.cookies`` — dict of request cookies.
+    * ``ctx.url`` — the request URL string.
     * ``ctx.form()`` — async method to parse form / query / path params.
     """
 
@@ -68,11 +71,31 @@ class Ctx:
         self.path_params: dict[str, Any] = path_params or {}
 
     @property
-    def query_params(self) -> dict[str, Any]:
-        """Return the request's query-string parameters as a dict."""
+    def query_params(self) -> dict[str, list[str]]:
+        """Return the request's query-string parameters as a dict of lists.
+
+        Multi-value parameters (e.g. ``?tag=a&tag=b``) are preserved.
+        """
         if self.request is None or not hasattr(self.request, "query_params"):
             return {}
-        return dict(self.request.query_params)
+        result: dict[str, list[str]] = defaultdict(list)
+        for k, v in self.request.query_params.multi_items():
+            result[k].append(v)
+        return dict(result)
+
+    @property
+    def cookies(self) -> dict[str, str]:
+        """Return the request's cookies as a plain dict."""
+        if self.request is None or not hasattr(self.request, "cookies"):
+            return {}
+        return dict(self.request.cookies)
+
+    @property
+    def url(self) -> str | None:
+        """Return the request URL as a string, or ``None`` if no request."""
+        if self.request is None or not hasattr(self.request, "url"):
+            return None
+        return str(self.request.url)
 
     async def form(self) -> dict[str, Any]:
         """Parse the incoming request form / query / path params (best-effort).
@@ -83,7 +106,8 @@ class Ctx:
             return dict(self.path_params)
         data: dict[str, Any] = dict(self.path_params)
         if hasattr(self.request, "query_params"):
-            data.update(dict(self.request.query_params))
+            for k, v in self.request.query_params.multi_items():
+                data.setdefault(k, []).append(v) if k in data else data.update({k: v})
             try:
                 form = await self.request.form()
                 data.update(dict(form))
@@ -170,9 +194,15 @@ def invoke_route(route: RouteDef, app: "Any", request: Any = None, path_params: 
         ``{"user_id": "42"}``).
     """
     path_params = path_params or {}
+    missing = [p for p in route.path_params if p not in path_params]
+    if missing:
+        raise ValueError(
+            f"Missing required path parameters for {route.path!r}: {missing!r}. "
+            f"Provided: {list(path_params)}"
+        )
     ctx = Ctx(request, app, path_params) if route.accepts_ctx else None
     if ctx is not None:
-        kwargs = {p: path_params[p] for p in route.path_params if p in path_params}
+        kwargs = {p: path_params[p] for p in route.param_names if p in path_params}
         result = route.handler(ctx, **kwargs)
     elif route.param_names:
         kwargs = {p: path_params[p] for p in route.param_names if p in path_params}
@@ -201,3 +231,4 @@ def resolve_title(route: RouteDef, ctx: Ctx | None, fallback: str) -> str:
 
 
 __all__ = ["RouteDef", "Ctx", "invoke_route", "resolve_title", "normalize"]
+

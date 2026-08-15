@@ -254,6 +254,13 @@ class MikiApp:
 
     # -- plugins ---------------------------------------------------------------
     def use(self, plugin: Plugin) -> "MikiApp":
+        missing = [d for d in plugin.depends_on if not any(p.name == d for p in self.plugins)]
+        if missing:
+            raise RuntimeError(
+                f"Plugin {plugin.name!r} depends on {missing!r}, "
+                "but those plugins are not registered yet. "
+                "Register dependencies before registering this plugin."
+            )
         self.plugins.append(plugin)
         plugin.register(self)
         return self
@@ -279,8 +286,44 @@ class MikiApp:
             result = await result
         tree = normalize(result)
         for plugin in self.plugins:
-            tree = plugin.on_render(tree)
+            try:
+                tree = plugin.on_render(tree)
+            except Exception:
+                logger.exception("Plugin %r on_render failed; skipping.", plugin.name)
         return tree, ctx
+
+    def url_for(self, name: str, **path_params: Any) -> str:
+        """Reverse-resolve a registered route name to its URL path.
+
+        Parameters
+        ----------
+        name:
+            The route name (defaults to the handler function name).
+        **path_params:
+            Path parameter values to fill ``{param}`` placeholders.
+
+        Returns
+        -------
+        str
+            The resolved URL path (e.g. ``/users/42``).
+
+        Raises
+        ------
+        ValueError
+            If the route name is not found or required path params are missing.
+        """
+        route = next((r for r in self.routes.values() if r.name == name), None)
+        if route is None:
+            raise ValueError(f"No route named {name!r}. Available: {[r.name for r in self.routes.values()]}")
+        path = route.path
+        for param in route.path_params:
+            if param not in path_params:
+                raise ValueError(
+                    f"Route {name!r} requires path parameter {param!r}. "
+                    f"Provided: {list(path_params)}"
+                )
+            path = path.replace("{" + param + "}", str(path_params[param]))
+        return path
 
     def get_route(self, path: str) -> RouteDef | None:
         return self.routes.get(path)
