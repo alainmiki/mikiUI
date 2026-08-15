@@ -72,6 +72,7 @@ class Router:
     def __init__(self, prefix: str = "") -> None:
         self.prefix = prefix.rstrip("/")
         self._app: MikiApp | None = None
+        self._parent: "Router | None" = None
 
     def _join(self, path: str) -> str:
         """Join the router prefix with a route path."""
@@ -84,6 +85,8 @@ class Router:
     def _resolve_app(self, app: MikiApp | None = None) -> MikiApp:
         """Return the bound app, preferring an explicitly-passed app."""
         target = app or self._app
+        if target is None and self._parent is not None:
+            target = self._parent._resolve_app()
         if target is None:
             raise RuntimeError(
                 "Router is not bound to a MikiApp. "
@@ -176,7 +179,7 @@ class Router:
         """Bind this router to *target* for bare-decorator usage.
 
         *target* may be a :class:`MikiApp` (registers routes directly) or
-        another :class:`Router` (propagates the combined prefix).
+        another :class:`Router` (propagates the combined prefix and parent chain).
 
         After mounting, decorator methods can be called without passing
         ``app`` explicitly::
@@ -192,7 +195,7 @@ class Router:
 
             api = Router(prefix="/api")
             v1 = Router(prefix="/v1")
-            api.mount(v1)          # v1 inherits /api prefix
+            api.mount(v1)          # v1 inherits /api prefix and parent chain
             app.mount(api)         # v1 routes live under /api/v1/...
 
             @v1.get("/items")
@@ -200,9 +203,9 @@ class Router:
                 return Div("items")  # mounted at /api/v1/items
         """
         if isinstance(target, Router):
-            combined = (target.prefix or "") + (self.prefix or "")
+            combined = (self.prefix or "") + (target.prefix or "")
             target.prefix = combined.rstrip("/")
-            target._app = target._app
+            target._parent = self
         else:
             self._app = target
         return self

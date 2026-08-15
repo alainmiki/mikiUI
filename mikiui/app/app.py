@@ -9,6 +9,7 @@ the request and shared state.
 from __future__ import annotations
 
 import html as _html
+import logging
 from typing import Any, Callable
 
 from ..engine.dom import normalize
@@ -16,6 +17,8 @@ from ..themes import Theme, register_theme, get_theme, list_themes
 from .routes import Ctx, RouteDef, invoke_route
 from .state import AppState
 from .plugins import Plugin
+
+logger = logging.getLogger(__name__)
 
 
 def _esc(value: Any) -> str:

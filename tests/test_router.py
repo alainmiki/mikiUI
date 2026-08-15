@@ -374,3 +374,132 @@ def test_pwa_manifest_with_icon():
     assert any("512x512" in str(i.get("sizes", "")) for i in icons)
     assert any("192x192" in str(i.get("sizes", "")) for i in icons)
     assert icons[0]["src"] == "/_miki/runtime/mikiui-icon.png"
+
+
+def test_url_for_resolves_named_route():
+    app = MikiApp()
+
+    @app.route("/users/{user_id}", name="user_detail")
+    def detail(ctx, user_id: str):
+        return Div(f"user-{user_id}")
+
+    assert app.url_for("user_detail", user_id="42") == "/users/42"
+
+
+def test_url_for_raises_for_unknown_name():
+    app = MikiApp()
+    with pytest.raises(ValueError, match="No route named"):
+        app.url_for("does_not_exist")
+
+
+def test_url_for_raises_for_missing_path_params():
+    app = MikiApp()
+
+    @app.route("/users/{user_id}", name="user_detail")
+    def detail(ctx, user_id: str):
+        return Div(f"user-{user_id}")
+
+    with pytest.raises(ValueError, match="requires path parameter"):
+        app.url_for("user_detail")
+
+
+def test_nested_routers():
+    api = Router(prefix="/api")
+    v1 = Router(prefix="/v1")
+    api.mount(v1)
+
+    app = MikiApp()
+    app.mount(api)
+
+    @v1.get("/items")
+    def items():
+        return Div("items")
+
+    client = TestClient(create_app(app))
+    resp = client.get("/api/v1/items")
+    assert resp.status_code == 200
+    assert "items" in resp.text
+
+
+def test_plugin_error_isolation():
+    from mikiui.app.plugins import Plugin
+
+    class BadPlugin(Plugin):
+        name = "bad"
+
+        def on_render(self, tree):
+            raise RuntimeError("boom")
+
+    class GoodPlugin(Plugin):
+        name = "good"
+
+        def on_render(self, tree):
+            tree.append(Div("OK"))
+            return tree
+
+    app = MikiApp()
+
+    @app.route("/")
+    def home():
+        return Div("home")
+
+    app.use(BadPlugin())
+    app.use(GoodPlugin())
+    client = TestClient(create_app(app))
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "OK" in resp.text
+
+
+def test_duplicate_route_raises():
+    app = MikiApp()
+
+    @app.route("/same")
+    def first():
+        return Div("first")
+
+    with pytest.raises(ValueError, match="already registered"):
+        @app.route("/same")
+        def second():
+            return Div("second")
+
+
+def test_plugin_depends_on_ordering():
+    from mikiui.app.plugins import Plugin
+
+    class DepPlugin(Plugin):
+        name = "dep"
+        depends_on = ["base"]
+
+    class BasePlugin(Plugin):
+        name = "base"
+
+    app = MikiApp()
+    app.use(BasePlugin())
+    app.use(DepPlugin())  # should not raise
+
+
+def test_plugin_depends_on_missing_raises():
+    from mikiui.app.plugins import Plugin
+
+    class DepPlugin(Plugin):
+        name = "dep"
+        depends_on = ["missing"]
+
+    app = MikiApp()
+    with pytest.raises(RuntimeError, match="depends on"):
+        app.use(DepPlugin())
+
+
+def test_path_param_missing_raises():
+    app = MikiApp()
+
+    @app.route("/users/{user_id}")
+    def show(ctx, user_id: str):
+        return Div(f"user-{user_id}")
+
+    from mikiui.app.routes import invoke_route
+    route = list(app.routes.values())[0]
+    with pytest.raises(ValueError, match="Missing required path parameters"):
+        invoke_route(route, app, path_params={})
+
