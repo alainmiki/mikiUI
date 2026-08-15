@@ -153,7 +153,7 @@ class APIPlugin(Plugin):
 
         async def endpoint(request: Request) -> Any:
             if requires_auth and self.session_plugin:
-                token = request.cookies.get("session") or request.headers.get("Authorization", "").replace("Bearer ", "")
+                token = request.cookies.get("mikiui_session") or request.headers.get("Authorization", "").replace("Bearer ", "")
                 app = self._app
                 if not token or not hasattr(app, "validate_session") or not app.validate_session(token):
                     return JSONResponse(

@@ -10,12 +10,15 @@ Security headers added:
 - ``Content-Security-Policy`` — restricts resource loading sources
 - ``Strict-Transport-Security`` — enables HSTS on HTTPS connections
 - ``Permissions-Policy`` — restricts browser APIs (camera, mic, location, etc.)
-- ``X-XSS-Protection: 1; mode=block`` — legacy XSS protection for older browsers
+- ``Cross-Origin-Opener-Policy: same-origin`` — prevents cross-origin opener attacks
+- ``Cross-Origin-Embedder-Policy: require-corp`` — prevents cross-origin embedder attacks
+- ``X-Permitted-Cross-Domain-Policies: none`` — blocks cross-domain policy files
 """
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import secrets
+from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -53,15 +56,22 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._csp = content_security_policy
         self._hsts = strict_transport_security
+        self._nonce: str | None = None
 
     async def dispatch(self, request: Request, call_next):
+        self._nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = self._nonce
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
-        response.headers.setdefault("X-XSS-Protection", "1; mode=block")
-        if self._csp:
-            response.headers.setdefault("Content-Security-Policy", self._csp)
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+        if self._nonce:
+            csp = self._csp or ""
+            response.headers.setdefault("Content-Security-Policy", f"{csp} 'nonce-{self._nonce}'")
+        else:
+            if self._csp:
+                response.headers.setdefault("Content-Security-Policy", self._csp)
         if self._hsts:
             is_https = (
                 request.url.scheme == "https"
@@ -72,6 +82,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     "Strict-Transport-Security",
                     f"max-age={self._hsts}; includeSubDomains",
                 )
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Embedder-Policy", "require-corp")
         response.headers.setdefault(
             "Permissions-Policy",
             "geolocation=(), microphone=(), camera=(), payment=(), "

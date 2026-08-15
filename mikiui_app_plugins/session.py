@@ -229,6 +229,46 @@ class SessionPlugin(Plugin):
                 return True
             return False
 
+        def set_session_cookie(response: Any, token: str, *, secure: bool = True, httponly: bool = True, samesite: str = "lax", max_age: int | None = None) -> None:
+            """Set a session cookie with security attributes on a FastAPI/Starlette response.
+
+            Args:
+                response: The response object (JSONResponse, RedirectResponse, etc.).
+                token: The session token to store.
+                secure: If True, cookie is only sent over HTTPS.
+                httponly: If True, cookie is inaccessible to JavaScript (prevents XSS theft).
+                samesite: SameSite attribute: ``"lax"``, ``"strict"``, or ``"none"``.
+                max_age: Cookie max-age in seconds. Defaults to session_lifetime.
+            """
+            if max_age is None:
+                max_age = int(plugin_self.session_lifetime.total_seconds())
+            response.set_cookie(
+                key="mikiui_session",
+                value=token,
+                httponly=httponly,
+                secure=secure,
+                samesite=samesite,
+                max_age=max_age,
+            )
+
+        def delete_session_cookie(response: Any, *, secure: bool = True, httponly: bool = True, samesite: str = "lax") -> None:
+            """Delete the session cookie by setting it with max_age=0.
+
+            Args:
+                response: The response object.
+                secure: Must match the ``secure`` value used in :meth:`set_session_cookie`.
+                httponly: Must match the ``httponly`` value used in :meth:`set_session_cookie`.
+                samesite: Must match the ``samesite`` value used in :meth:`set_session_cookie`.
+            """
+            response.set_cookie(
+                key="mikiui_session",
+                value="",
+                max_age=0,
+                httponly=httponly,
+                secure=secure,
+                samesite=samesite,
+            )
+
         def get_session_data(token: str) -> dict[str, Any] | None:
             """Get all session data for a token.
 
@@ -343,6 +383,8 @@ class SessionPlugin(Plugin):
         app.create_session = create_session
         app.validate_session = validate_session
         app.destroy_session = destroy_session
+        app.set_session_cookie = set_session_cookie
+        app.delete_session_cookie = delete_session_cookie
         app.get_session_data = get_session_data
         app.rotate_session = rotate_session
         app.generate_csrf_token = generate_csrf_token

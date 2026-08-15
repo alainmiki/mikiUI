@@ -93,12 +93,24 @@ def create_app(
     if cors_origins:
         from starlette.middleware.cors import CORSMiddleware
 
+        safe_origins = [o for o in cors_origins if o != "*"]
+        if not safe_origins and cors_origins == ["*"]:
+            safe_origins = ["*"]
+
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=cors_origins,
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_origins=safe_origins,
+            allow_credentials=safe_origins != ["*"],
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=[
+                "Accept",
+                "Accept-Language",
+                "Content-Language",
+                "Content-Type",
+                "Authorization",
+                "X-CSRF-Token",
+            ],
+            max_age=600,
         )
 
     has_api_plugin = any(

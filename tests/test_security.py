@@ -223,7 +223,7 @@ def test_api_plugin_auth_with_valid_token():
     plugin.register_endpoints(fastapi_app)
 
     client = TestClient(fastapi_app)
-    resp = client.get("/api/secret", cookies={"session": token})
+    resp = client.get("/api/secret", cookies={"mikiui_session": token})
     assert resp.status_code == 200
 
 
@@ -265,3 +265,319 @@ def test_permissions_policy_present():
     resp = client.get("/test")
     assert "Permissions-Policy" in resp.headers
     assert "camera" in resp.headers["Permissions-Policy"]
+
+
+# ---------------------------------------------------------------------------
+# Cookie Security Attribute Tests
+# ---------------------------------------------------------------------------
+
+def test_session_set_session_cookie():
+    """set_session_cookie adds HttpOnly, Secure, SameSite attributes."""
+    from fastapi.responses import JSONResponse
+
+    app = MikiApp()
+    session = SessionPlugin(secret_key="a-very-long-secret-key")
+    app.use(session)
+
+    token = app.create_session("user1")
+    response = JSONResponse({"ok": True})
+    app.set_session_cookie(response, token)
+    cookie = response.headers.get("set-cookie", "")
+    assert "mikiui_session" in cookie
+    assert "HttpOnly" in cookie
+    assert "Secure" in cookie
+    assert "samesite=lax" in cookie.lower()
+
+
+def test_session_delete_session_cookie():
+    """delete_session_cookie expires the session cookie."""
+    from fastapi.responses import JSONResponse
+
+    app = MikiApp()
+    session = SessionPlugin(secret_key="a-very-long-secret-key")
+    app.use(session)
+
+    response = JSONResponse({"ok": True})
+    app.delete_session_cookie(response)
+    cookie_header = response.headers.get("set-cookie", "")
+    assert "mikiui_session=" in cookie_header
+    assert "Max-Age=0" in cookie_header
+
+
+# ---------------------------------------------------------------------------
+# CSRF Middleware Tests
+# ---------------------------------------------------------------------------
+
+def test_csrf_middleware_skips_safe_methods():
+    """GET/HEAD/OPTIONS bypass CSRF validation."""
+    from mikiui.router.csrf import CSRFMiddleware
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    fastapi_app.add_middleware(
+        CSRFMiddleware,
+        get_session_token=lambda r: "token123",
+        validate_csrf=lambda t, c: False,
+    )
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/test")
+    assert resp.status_code == 200
+
+
+def test_csrf_middleware_blocks_missing_token():
+    """POST without CSRF token returns 403."""
+    from mikiui.router.csrf import CSRFMiddleware
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.post("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    fastapi_app.add_middleware(
+        CSRFMiddleware,
+        get_session_token=lambda r: "token123",
+        validate_csrf=lambda t, c: True,
+    )
+
+    client = TestClient(fastapi_app)
+    resp = client.post("/test")
+    assert resp.status_code == 403
+
+
+def test_csrf_middleware_accepts_valid_header():
+    """POST with valid X-CSRF-Token header succeeds."""
+    from mikiui.router.csrf import CSRFMiddleware
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.post("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    fastapi_app.add_middleware(
+        CSRFMiddleware,
+        get_session_token=lambda r: "token123",
+        validate_csrf=lambda t, c: c == "valid-csrf-token",
+    )
+
+    client = TestClient(fastapi_app)
+    resp = client.post("/test", headers={"X-CSRF-Token": "valid-csrf-token"})
+    assert resp.status_code == 200
+
+
+def test_csrf_middleware_accepts_valid_form_field():
+    """POST with valid _csrf form field succeeds."""
+    from mikiui.router.csrf import CSRFMiddleware
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.post("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    fastapi_app.add_middleware(
+        CSRFMiddleware,
+        get_session_token=lambda r: "token123",
+        validate_csrf=lambda t, c: c == "valid-csrf-token",
+    )
+
+    client = TestClient(fastapi_app)
+    resp = client.post("/test", data={"_csrf": "valid-csrf-token"})
+    assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Rate Limiting Tests
+# ---------------------------------------------------------------------------
+
+def test_rate_limit_blocks_excess_requests():
+    """More than 5 requests from the same IP returns 429."""
+    from mikiui.router.rate_limit import RateLimitMiddleware
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    fastapi_app.add_middleware(
+        RateLimitMiddleware,
+        general_limit=5,
+        general_window=60,
+    )
+
+    client = TestClient(fastapi_app)
+    for _ in range(5):
+        resp = client.get("/test")
+        assert resp.status_code == 200
+    resp = client.get("/test")
+    assert resp.status_code == 429
+    assert "Retry-After" in resp.headers
+
+
+def test_rate_limit_auth_endpoints_stricter():
+    """Auth endpoints have stricter rate limits."""
+    from mikiui.router.rate_limit import RateLimitMiddleware
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.post("/login")
+    def login():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    fastapi_app.add_middleware(
+        RateLimitMiddleware,
+        general_limit=100,
+        general_window=60,
+        auth_limit=2,
+        auth_window=60,
+    )
+
+    client = TestClient(fastapi_app)
+    for _ in range(2):
+        resp = client.post("/login")
+        assert resp.status_code == 200
+    resp = client.post("/login")
+    assert resp.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Security Headers Improvement Tests
+# ---------------------------------------------------------------------------
+
+def test_security_headers_cross_origin_opener_policy():
+    """Cross-Origin-Opener-Policy header is set."""
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/test")
+    assert resp.headers.get("Cross-Origin-Opener-Policy") == "same-origin"
+
+
+def test_security_headers_cross_origin_embedder_policy():
+    """Cross-Origin-Embedder-Policy header is set."""
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/test")
+    assert resp.headers.get("Cross-Origin-Embedder-Policy") == "require-corp"
+
+
+def test_security_headers_permitted_cross_domain_policies():
+    """X-Permitted-Cross-Domain-Policies is none."""
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/test")
+    assert resp.headers.get("X-Permitted-Cross-Domain-Policies") == "none"
+
+
+def test_security_headers_no_deprecated_xss_protection():
+    """Deprecated X-XSS-Protection header is no longer set."""
+    app = MikiApp()
+    fastapi_app = create_app(app)
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/test")
+    assert "X-XSS-Protection" not in resp.headers
+
+
+def test_cors_rejects_wildcard_with_credentials():
+    """CORS middleware does not allow credentials with wildcard origins."""
+    app = MikiApp()
+    fastapi_app = create_app(app, cors_origins=["*"])
+
+    @fastapi_app.get("/test")
+    def test_route():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"ok": True})
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/test", headers={"Origin": "http://evil.example.com"})
+    assert resp.headers.get("access-control-allow-credentials") != "true"
+    assert resp.headers.get("access-control-allow-origin") == "*"
+
+
+# ---------------------------------------------------------------------------
+# WebSocket Security Tests
+# ---------------------------------------------------------------------------
+
+def test_websocket_origin_validation():
+    """WebSocket rejects connections from disallowed origins."""
+    from fastapi.testclient import TestClient
+    from mikiui.backend.websocket import ConnectionManager, mount_websocket
+    from fastapi import APIRouter
+
+    manager = ConnectionManager(allowed_origins=["http://localhost:3000"])
+
+    async def handler(ws, mgr):
+        try:
+            msg = await ws.receive_text()
+            await ws.send_text(msg)
+        except Exception:
+            mgr.disconnect(ws)
+
+    router = APIRouter()
+    mount_websocket(router, "/ws", handler, manager=manager)
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+    fastapi_app.include_router(router)
+
+    client = TestClient(fastapi_app)
+    with client.websocket_connect("/ws", headers={"origin": "http://localhost:3000"}) as ws:
+        ws.send_text("hello")
+        data = ws.receive_text()
+        assert data == "hello"
