@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import importlib
 import os
+import shutil
+import subprocess
+import time
+from pathlib import Path
+from typing import Any
 
 import typer
 
 from .app_discovery import resolve_app_spec
-from .scaffolding import UI_FRAMEWORKS, scaffold
+from .scaffolding import UI_FRAMEWORKS, scaffold, framework_readme_section, _prompt_framework
 
 cli = typer.Typer(
     help="[bold]MikiUI[/bold] — Python-first UI framework.\n\n"
@@ -34,13 +39,15 @@ def _print_banner() -> None:
             "  [cyan]mikiui dev[/cyan]          Start dev server (auto-discovers app.py)\n"
             "  [cyan]mikiui desktop[/cyan]      Open as native desktop window\n"
             "  [cyan]mikiui build[/cyan]        Build for production\n"
+            "  [cyan]mikiui tailwind[/cyan]     Tailwind CSS tooling (dev/build/watch)\n"
+            "  [cyan]mikiui install[/cyan]      Install styling dependencies\n"
             "  [cyan]mikiui new --help[/cyan]   Show full help for any command\n",
             title="[bold green]MIKIUI[/bold green]",
             border_style="cyan",
         ))
     except ImportError:
         typer.echo("MikiUI v0.1.0 — Python-first UI framework")
-        typer.echo("Commands: new, dev, desktop, build")
+        typer.echo("Commands: new, dev, desktop, build, tailwind, install")
         typer.echo("Run 'mikiui <command> --help' for help.")
 
 
@@ -57,18 +64,87 @@ def _print_ready(message: str) -> None:
 
 
 @cli.command()
+def install(
+    packages: list[str] = typer.Argument(
+        None,
+        help="Styling packages to install: tailwind, daisyui, bootstrap (default: tailwind daisyui)",
+    ),
+    dev: bool = typer.Option(False, "--dev", help="Install as dev dependencies"),
+) -> None:
+    """Install the local styling toolchain.
+
+    For Tailwind users:
+      mikiui install                 # tailwind + daisyui (writes config + npm install)
+      mikiui install tailwind daisyui
+      mikiui install tailwind --dev
+
+    For Bootstrap users:
+      mikiui install bootstrap        # registers Bootstrap CDN theme
+
+    Writes ``package.json`` (if missing), ``tailwind.config.js`` +
+    ``postcss.config.js``, and runs ``npm install`` when Node.js is available.
+    """
+    from ..styling.tailwind import install_deps, write_config, write_postcss_config
+
+    valid = {"tailwind", "daisyui", "bootstrap"}
+    pkgs = [p for p in (packages or ["tailwind", "daisyui"]) if p in valid]
+    if not pkgs:
+        pkgs = ["tailwind", "daisyui"]
+
+    use_tailwind = "tailwind" in pkgs
+    use_daisyui = "daisyui" in pkgs
+    use_bootstrap = "bootstrap" in pkgs
+    project_dir = Path.cwd()
+
+    if use_tailwind or use_daisyui:
+        from ..styling.tailwind import install_deps, write_config, write_postcss_config
+
+        write_config(
+            str(project_dir / "tailwind.config.js"),
+            theme="light",
+            daisyui=use_daisyui,
+        )
+        write_postcss_config(str(project_dir / "postcss.config.js"))
+
+        result = install_deps(project_dir=project_dir, daisyui=use_daisyui)
+        if result.get("status") == "node_required":
+            typer.echo(
+                "[yellow]Node.js is required for Tailwind CSS.[/yellow]\n"
+                "  Install it from https://nodejs.org/\n"
+                "  Then re-run: mikiui install tailwind daisyui",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        typer.echo(result.get("message", ""))
+
+    if use_bootstrap:
+        from ..styling.bootstrap import register_bootstrap_theme
+        register_bootstrap_theme(use_cdn=True)
+        typer.echo("[green]✓ Bootstrap theme registered (CDN mode).[/green]")
+        typer.echo(
+            "  To use local Bootstrap files, set the path in your app:\n"
+            "    app.add_head_link('/static/bootstrap.min.css', rel='stylesheet')"
+        )
+
+    if not (use_tailwind or use_daisyui or use_bootstrap):
+        typer.echo("Nothing to install. Choose from: tailwind, daisyui, bootstrap")
+
+    typer.echo("[green]✓ Styling setup complete.[/green]")
+
+
+@cli.command()
 def new(
     name: str = typer.Argument(
-        None,  # interactive if not provided
+        None,
         help="Project directory name",
     ),
     directory: str = typer.Option(
         None, "--dir", "-d", help="Parent directory (defaults to current directory)"
     ),
     framework: str = typer.Option(
-        "tailwind",
+        None,
         "--framework", "-f",
-        help=f"CSS framework: {', '.join(UI_FRAMEWORKS)}",
+        help=f"CSS framework: {', '.join(UI_FRAMEWORKS)} (default: tailwind)",
     ),
 ) -> None:
     """Scaffold a new MikiUI project.
@@ -76,22 +152,28 @@ def new(
     Creates a new directory with a starter app.py, README.md, and
     framework-specific config files.
 
+    If *framework* is not provided, you will be prompted to choose one.
+
     Examples:
       mikiui new myapp
       mikiui new myapp --framework bootstrap
       mikiui new myapp --framework plain --dir /tmp
     """
-    # Interactive mode: prompt for missing arguments.
-    if name is None:
-        name = typer.prompt("Project name", default="myapp")
-        name = name.strip() or "myapp"
-    if framework not in UI_FRAMEWORKS:
-        typer.echo(f"[red]Invalid framework:[/red] {framework}", err=True)
+    if framework is None:
+        framework = _prompt_framework()
+
+    fw = framework
+    if fw not in UI_FRAMEWORKS:
+        typer.echo(f"[red]Invalid framework:[/red] {fw}", err=True)
         typer.echo(f"Choose from: {', '.join(UI_FRAMEWORKS)}", err=True)
         raise typer.Exit(code=1)
 
+    if name is None:
+        name = typer.prompt("Project name", default="myapp")
+        name = name.strip() or "myapp"
+
     try:
-        path = scaffold(name, directory, framework=framework)
+        path = scaffold(name, directory, framework=fw)
     except FileExistsError as exc:
         typer.echo(f"[red]Error:[/red] {exc}", err=True)
         raise typer.Exit(code=1)
@@ -101,11 +183,26 @@ def new(
 
     _print_ready(
         f"[bold green]✓[/bold green] Created MikiUI project [bold]{path}[/bold]\n"
-        f"Framework: [cyan]{framework}[/cyan]\n"
-        f"\nNext steps:\n"
+        f"Framework: [cyan]{fw}[/cyan]\n\n"
+        f"Next steps:\n"
         f"  cd {name}\n"
-        f"  mikiui dev        # start dev server\n"
-        f"  mikiui desktop     # native desktop window\n"
+        f"  mikiui dev           # start dev server\n"
+        f"  mikiui desktop       # native desktop window\n"
+        + (
+            "  mikiui install       # install Node.js deps (Tailwind)\n"
+            "  mikiui tailwind dev  # watch & rebuild CSS (in another terminal)\n"
+            if fw == "tailwind"
+            else (
+                "  mikiui install tailwind daisyui  # enable DaisyUI\n"
+                "  mikiui tailwind dev               # watch CSS (in another terminal)\n"
+                if fw == "daisyui"
+                else (
+                    "  mikiui install bootstrap  # use local Bootstrap files\n"
+                    if fw == "bootstrap"
+                    else ""
+                )
+            )
+        )
     )
 
 
@@ -121,6 +218,9 @@ def dev(
     Launches a FastAPI + uvicorn server with hot-reloading enabled by default.
     Auto-discovers ``app.py`` / ``main.py`` / ``server.py`` in the current
     directory if ``--app`` is not given.
+
+    For Tailwind users: run ``mikiui tailwind dev`` in another terminal to
+    watch and rebuild CSS on change.
 
     Examples:
       mikiui dev
@@ -166,12 +266,23 @@ def build(
     mode: str = typer.Option("fullstack", "--mode", "-m", help="Build mode: fullstack | separate"),
     app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp (auto-discovered if omitted)"),
     out_dir: str = typer.Option("dist", "--out", "-o", help="Output directory"),
+    theme: str = typer.Option(None, "--theme", help="Styling theme to build: tailwind (scans + compiles CSS)"),
+    daisyui: bool = typer.Option(False, "--daisyui/--no-daisyui", help="Enable DaisyUI in the Tailwind build"),
+    optimize_css: bool = typer.Option(True, "--optimize/--no-optimize", help="Minify built CSS"),
+    watch: bool = typer.Option(False, "--watch", help="Watch mode (rebuild CSS on change) — for dev"),
 ) -> None:
     """Build the app for production.
 
     Creates an optimized build in the output directory. For web targets,
-    this produces static assets. For desktop targets, it generates a
-    PyInstaller specification and a launch script.
+    this produces static assets. For desktop targets, it generates a launch
+    script for a native window.
+
+    Styling is fully automated — no manual config needed:
+
+      mikiui build --theme tailwind            # scan + compile Tailwind CSS
+      mikiui build --theme tailwind --daisyui  # + DaisyUI component library
+      mikiui build --target web                # plain web build (miki.css)
+      mikiui build --target desktop            # desktop launcher
 
     Note: CSS framework assets (Tailwind, Bootstrap, DaisyUI) are bundled
     from the CDN by default; for offline use, set the theme runtime to ``local``.
@@ -180,6 +291,7 @@ def build(
       mikiui build --target web
       mikiui build --target desktop
       mikiui build --target web --mode separate --out dist/
+      mikiui build --theme tailwind --daisyui
     """
     from ..build import build_desktop, build_web, optimize
 
@@ -199,12 +311,35 @@ def build(
         typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
         raise typer.Exit(code=1)
 
+    # Tailwind/DaisyUI styling build (happens before/with the web build).
+    if theme == "tailwind" or (daisyui and theme is None):
+        from ..build.tailwind import build_css, register_built_theme
+
+        typer.echo("[cyan]Building Tailwind CSS[/cyan] (scanning components/widgets)...")
+        css_path = build_css(
+            theme=getattr(miki_app, "theme", "light"),
+            daisyui=daisyui,
+            out=os.path.join(out_dir, "_miki", "runtime", "themes", "tailwind.css"),
+            optimize=optimize_css,
+            watch=watch,
+        )
+        register_built_theme("built-tailwind", css_path, daisyui=daisyui)
+        typer.echo(f"[green]✓ Tailwind CSS built:[/green] {css_path}")
+        if watch:
+            typer.echo("[dim]Watching for changes (Ctrl-C to stop)...[/dim]")
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                pass
+            return
+
     typer.echo(f"[cyan]Building[/cyan] {target} ({mode}) from '{spec}'...")
 
     if target == "desktop":
         report = build_desktop(miki_app, out_dir=f"{out_dir}_desktop", app_spec=spec)
     else:
-        report = build_web(miki_app, mode=mode, out_dir=out_dir)
+        report = build_web(miki_app, mode=mode, out_dir=out_dir, theme=theme, daisyui=daisyui, optimize=optimize_css)
         asset_paths = [
             os.path.join(out_dir, "_miki", "runtime", a)
             for a in (
@@ -245,8 +380,7 @@ def desktop(
     directory if ``--app`` is not given.
 
     Use ``--reload`` during development to auto-refresh the window when source
-    files change. Requires the ``watchfiles`` package (installed automatically
-    with ``mikiui[dev]``).
+    files change. Requires the ``watchfiles`` package.
 
     Examples:
       mikiui desktop
@@ -277,6 +411,98 @@ def desktop(
         reload=reload,
         app_spec=spec,
     )
+
+
+@cli.command()
+def dev_css(
+    daisyui: bool = typer.Option(False, "--daisyui/--no-daisyui", help="Enable DaisyUI in the build"),
+    theme: str = typer.Option("light", "--theme", help="Active color theme for DaisyUI bridging"),
+) -> None:
+    """Start the Tailwind CSS watcher for development (alias of ``tailwind dev``).
+
+    Scans your components/widgets and rebuilds CSS on every change.  Pair this
+    with ``mikiui dev`` (in another terminal) for a full hot-reload experience.
+    """
+    from ..build.tailwind import build_css
+
+    typer.echo("[cyan]Tailwind dev watcher started[/cyan] (Ctrl-C to stop)")
+    try:
+        build_css(theme=theme, daisyui=daisyui, watch=True, optimize=False)
+    except KeyboardInterrupt:
+        typer.echo("[dim]Stopped.[/dim]")
+
+
+# --- Tailwind sub-command group ------------------------------------------------
+
+tailwind_cli = typer.Typer(help="Tailwind CSS build tooling (dev server + production build).", no_args_is_help=True)
+cli.add_typer(tailwind_cli, name="tailwind")
+
+
+@tailwind_cli.command("dev")
+def tailwind_dev(
+    daisyui: bool = typer.Option(False, "--daisyui/--no-daisyui", help="Enable DaisyUI in the build"),
+    theme: str = typer.Option("light", "--theme", help="Active color theme for DaisyUI bridging"),
+) -> None:
+    """Start the Tailwind CSS dev server (file watcher).
+
+    Scans ``mikiui/components``, ``mikiui/widgets``, and your project files,
+    then recompiles CSS whenever a class changes.  Use alongside ``mikiui dev``.
+
+    Examples:
+      mikiui tailwind dev
+      mikiui tailwind dev --daisyui
+    """
+    from ..build.tailwind import build_css
+
+    typer.echo("[cyan]Tailwind dev watcher started[/cyan] (Ctrl-C to stop)")
+    try:
+        build_css(theme=theme, daisyui=daisyui, watch=True, optimize=False)
+    except KeyboardInterrupt:
+        typer.echo("[dim]Stopped.[/dim]")
+
+
+@tailwind_cli.command("build")
+def tailwind_build(
+    daisyui: bool = typer.Option(False, "--daisyui/--no-daisyui", help="Enable DaisyUI in the build"),
+    theme: str = typer.Option("light", "--theme", help="Active color theme for DaisyUI bridging"),
+    optimize: bool = typer.Option(True, "--optimize/--no-optimize", help="Minify the output CSS"),
+    out: str = typer.Option(
+        os.path.join("mikiui", "runtime", "themes", "tailwind.css"),
+        "--out", "-o",
+        help="Output CSS path",
+    ),
+) -> None:
+    """Compile an optimized Tailwind (optionally DaisyUI) stylesheet.
+
+    This is the production Tailwind build.  It scans your components/widgets,
+    generates the config, and writes the minimized CSS — no manual copy-pasting.
+
+    Examples:
+      mikiui tailwind build
+      mikiui tailwind build --daisyui
+      mikiui tailwind build --out dist/site.css --optimize
+    """
+    from ..build.tailwind import build_css, register_built_theme
+
+    typer.echo("[cyan]Building Tailwind CSS[/cyan] (scanning components/widgets)...")
+    css_path = build_css(theme=theme, daisyui=daisyui, out=out, optimize=optimize)
+    register_built_theme("built-tailwind", css_path, daisyui=daisyui)
+    typer.echo(f"[green]✓ Tailwind CSS built:[/green] {css_path}")
+
+
+@tailwind_cli.command("watch")
+def tailwind_watch(
+    daisyui: bool = typer.Option(False, "--daisyui/--no-daisyui", help="Enable DaisyUI in the build"),
+    theme: str = typer.Option("light", "--theme", help="Active color theme for DaisyUI bridging"),
+) -> None:
+    """Alias for ``mikiui tailwind dev`` — watch and rebuild CSS on change."""
+    from ..build.tailwind import build_css
+
+    typer.echo("[cyan]Tailwind watch started[/cyan] (Ctrl-C to stop)")
+    try:
+        build_css(theme=theme, daisyui=daisyui, watch=True, optimize=False)
+    except KeyboardInterrupt:
+        typer.echo("[dim]Stopped.[/dim]")
 
 
 @cli.callback(invoke_without_command=False)

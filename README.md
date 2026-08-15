@@ -13,15 +13,87 @@ mikiui dev           # development server
 mikiui desktop        # native desktop window
 ```
 
+## Styling
+
+MikiUI supports three styling frameworks. Choose one during project creation:
+
+```bash
+mikiui new myapp
+# Follow the prompts to choose Tailwind, Bootstrap, or plain CSS
+```
+
+| Framework | Description | Node.js Required |
+|-----------|-------------|-----------------|
+| `tailwind` | Tailwind CSS + optional DaisyUI | Yes |
+| `bootstrap` | Bootstrap 5 (CDN or local) | No |
+| `plain` | Plain CSS, no framework | No |
+
+### Tailwind CSS
+
+```bash
+cd myapp
+npm install          # Install Node.js dependencies
+mikiui dev           # Start dev server
+mikiui tailwind dev  # Watch & rebuild CSS (second terminal)
+```
+
+Production build:
+
+```bash
+mikiui build --target web --theme tailwind
+```
+
+Add DaisyUI:
+
+```bash
+mikiui install tailwind daisyui
+```
+
+### Bootstrap
+
+```bash
+cd myapp
+mikiui dev           # Works out of the box (CDN)
+```
+
+Use local files:
+
+```bash
+mikiui install bootstrap
+```
+
+### Plain CSS
+
+```bash
+cd myapp
+mikiui dev           # No extra setup needed
+```
+
 ## What's Available
 
 - **Components** — all HTML elements as Python classes (Button, Input, Form, Table, Dialog, Tabs, etc.)
 - **Widgets** — high-level composite UI (DataGrid, MediaPlayer, DockablePanel, IDE Editor, etc.)
 - **Themes** — 4 built-in themes (light, dark, solarized-dark, dracula) with custom theme support
-- **Styling** — default `miki-*` classes + Tailwind CSS + DaisyUI integration
+- **Styling** — Tailwind CSS, Bootstrap, or plain CSS
 - **Plugins** — extend with custom themes, components, and widgets
 - **Desktop** — native pywebview window or system browser fallback
 - **Full-stack** — FastAPI backend with HTMX + Alpine.js runtime
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `mikiui new <name>` | Scaffold a new project (prompts for framework) |
+| `mikiui dev` | Development server (auto-discovers `app.py`) |
+| `mikiui desktop` | Native desktop window (pywebview) |
+| `mikiui desktop --reload` | Desktop with auto-reload |
+| `mikiui desktop --browser` | Force system browser |
+| `mikiui build --target web` | Static web build |
+| `mikiui build --target desktop` | Desktop package build |
+| `mikiui tailwind dev` | Watch and rebuild Tailwind CSS |
+| `mikiui tailwind build` | Production Tailwind build |
+| `mikiui install tailwind` | Install Tailwind + npm deps |
+| `mikiui install bootstrap` | Register Bootstrap theme |
 
 ## Running Your App
 
@@ -41,24 +113,14 @@ if __name__ == "__main__":
     # or: app.run(desktop=True)  for native window
 ```
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `mikiui new <name>` | Scaffold a new project |
-| `mikiui dev` | Development server (auto-discovers `app.py`) |
-| `mikiui desktop` | Native desktop window (pywebview) |
-| `mikiui desktop --reload` | Desktop with auto-reload |
-| `mikiui desktop --browser` | Force system browser |
-| `mikiui build --target web` | Static web build |
-| `mikiui build --target desktop` | Desktop package build |
-
 ## Documentation
 
+- [Getting Started](docs/getting-started.md)
+- [Styling Guide](docs/styling.md)
+- [Theme Reference](docs/theme-reference.md)
 - [Theming Guide](docs/themes.md)
 - [App Discovery & Running](docs/app-discovery.md)
 - [Plugin System](docs/plugins.md)
-- [Component Styling](docs/styling.md)
 - [Full Spec](context/plan.md)
 
 ## License
