@@ -15,10 +15,9 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from mikiui import MikiApp, Div
+from mikiui import Div, MikiApp
 from mikiui.backend import create_app
 from mikiui.router import Router, add_pwa_manifest
-
 
 # ---------------------------------------------------------------------------
 # Prefix joining logic

@@ -5,7 +5,7 @@ from via async generators producing Server-Sent Event (SSE) ready dicts.
 """
 
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 
 def sse_chunk(payload: dict) -> dict:
@@ -57,7 +57,7 @@ class StreamingManager:
             raise KeyError(f"Unknown stream id: {stream_id}")
         queue.put_nowait(chunk)
 
-    async def subscribe(self, stream_id: str) -> AsyncGenerator[dict, None]:
+    async def subscribe(self, stream_id: str) -> AsyncGenerator[dict]:
         """Subscribe to a stream, yielding chunks as SSE-ready dicts.
 
         Args:

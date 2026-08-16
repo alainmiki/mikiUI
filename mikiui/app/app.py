@@ -10,13 +10,16 @@ from __future__ import annotations
 
 import html as _html
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..engine.dom import normalize
-from ..themes import Theme, register_theme, get_theme, list_themes
-from .routes import Ctx, RouteDef, invoke_route
-from .state import AppState
+from ..themes import Theme
 from .plugins import Plugin
+from .routes import RouteDef, invoke_route
+from .state import AppState
+from .theme_registry import ThemeRegistry
+from .widget_registry import WidgetRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,21 @@ class MikiApp:
         self._head_meta: list[dict[str, str]] = []
         self._head_links: list[dict[str, str]] = []
         self._head_scripts: str = ""
+
+        # New registries
+        self.registry: WidgetRegistry = WidgetRegistry()
+        self.theme_registry: ThemeRegistry = ThemeRegistry()
+        self._backend_routes: list[dict[str, Any]] = []
+        self._middleware_classes: list[type] = []
+
+        # Initialize theme registry with builtin themes
+        from ..themes import get_theme as _get_theme
+        from ..themes import list_themes as _list_themes
+
+        for theme_name in _list_themes():
+            theme = _get_theme(theme_name)
+            if theme:
+                self.theme_registry.register(theme, override=True)
 
     # -- routing ---------------------------------------------------------------
     def route(
@@ -98,7 +116,7 @@ class MikiApp:
 
         return decorator
 
-    def mount(self, router: "Router", *, prefix: str | None = None) -> "MikiApp":
+    def mount(self, router: Router, *, prefix: str | None = None) -> MikiApp:
         """Mount a :class:`~mikiui.router.Router` onto this app.
 
         After mounting, the router's decorator methods (``router.get``,
@@ -141,10 +159,11 @@ class MikiApp:
         return self.route(path, ("POST",), name, title)
 
     # -- themes ---------------------------------------------------------------
-    def set_theme(self, name: str) -> "MikiApp":
+    def set_theme(self, name: str) -> MikiApp:
         """Activate a registered theme by name."""
-        if name not in list_themes():
-            raise ValueError(f"Unknown theme: {name!r}. Available: {', '.join(list_themes())}")
+        if name not in self.theme_registry.list_all():
+            available = ", ".join(self.theme_registry.list_all())
+            raise ValueError(f"Unknown theme: {name!r}. Available: {available}")
         self.theme = name
         return self
 
@@ -153,19 +172,19 @@ class MikiApp:
         favicon: str,
         sizes: tuple[int, int] | None = None,
         theme_color: str = "#0f172a",
-    ) -> "MikiApp":
+    ) -> MikiApp:
         """Set or change the favicon at runtime."""
         self.favicon = favicon
         self.palette_color = theme_color
         return self
 
-    def register_theme(self, theme: Theme) -> "MikiApp":
+    def register_theme(self, theme: Theme) -> MikiApp:
         """Register a custom or plugin theme and activate it."""
-        register_theme(theme)
+        self.theme_registry.register(theme)
         self.theme = theme.name
         return self
 
-    def set_head_meta(self, name: str, content: str, **extra: Any) -> "MikiApp":
+    def set_head_meta(self, name: str, content: str, **extra: Any) -> MikiApp:
         """Add a ``<meta>`` tag to the page head.
 
         Parameters
@@ -186,7 +205,7 @@ class MikiApp:
         self._head_meta.append(tag)
         return self
 
-    def add_head_link(self, href: str, rel: str = "stylesheet", **attrs: Any) -> "MikiApp":
+    def add_head_link(self, href: str, rel: str = "stylesheet", **attrs: Any) -> MikiApp:
         """Add a ``<link>`` tag to the page head.
 
         Parameters
@@ -207,14 +226,14 @@ class MikiApp:
         self._head_links.append(tag)
         return self
 
-    def add_head_script(self, src: str, **attrs: Any) -> "MikiApp":
+    def add_head_script(self, src: str, **attrs: Any) -> MikiApp:
         """Add a ``<script>`` tag to the page head.
 
         Parameters
         ----------
         src :
             URL or path to the JavaScript file.
-        **attrs : Additional HTML attributes (e.g., type="module", defer=True).
+        **attrs : Additional HTML attributes (e.g. type="module", defer=True).
 
         Example
         -------
@@ -242,7 +261,7 @@ class MikiApp:
 
     def theme_config(self) -> dict[str, Any]:
         """Return theme configuration for rendering (CSS links, variables, etc.)."""
-        t = get_theme(self.theme)
+        t = self.theme_registry.get_active()
         if t is None:
             return {}
         return {
@@ -256,7 +275,16 @@ class MikiApp:
         }
 
     # -- plugins ---------------------------------------------------------------
-    def use(self, plugin: Plugin) -> "MikiApp":
+    def use(self, plugin: Plugin, config: dict[str, Any] | None = None) -> MikiApp:
+        """Register a plugin.
+
+        Parameters
+        ----------
+        plugin:
+            The plugin instance to register.
+        config:
+            Optional configuration dict passed to ``plugin.configure()``.
+        """
         missing = [d for d in plugin.depends_on if not any(p.name == d for p in self.plugins)]
         if missing:
             raise RuntimeError(
@@ -264,9 +292,41 @@ class MikiApp:
                 "but those plugins are not registered yet. "
                 "Register dependencies before registering this plugin."
             )
+        if config:
+            plugin.configure(config)
         self.plugins.append(plugin)
         plugin.register(self)
+        # Collect backend routes and middleware from plugins
+        if hasattr(plugin, "backend_routes"):
+            self._backend_routes.extend(plugin.backend_routes())
+        if hasattr(plugin, "middleware_classes"):
+            self._middleware_classes.extend(plugin.middleware_classes())
         return self
+
+    # -- backend integration ---------------------------------------------------
+    def get_backend_routes(self) -> list[dict[str, Any]]:
+        """Return all backend route definitions from plugins."""
+        routes = list(self._backend_routes)
+        for plugin in self.plugins:
+            if hasattr(plugin, "backend_routes"):
+                routes.extend(plugin.backend_routes())
+        return routes
+
+    def get_middleware_classes(self) -> list[type]:
+        """Return all middleware classes from plugins."""
+        classes = list(self._middleware_classes)
+        for plugin in self.plugins:
+            if hasattr(plugin, "middleware_classes"):
+                classes.extend(plugin.middleware_classes())
+        return classes
+
+    def get_plugin_assets(self) -> list[str]:
+        """Return all static assets from plugins."""
+        assets = []
+        for plugin in self.plugins:
+            if hasattr(plugin, "assets"):
+                assets.extend(plugin.assets())
+        return assets
 
     # -- invocation ------------------------------------------------------------
     async def invoke(self, route: RouteDef, request: Any = None, path_params: dict[str, Any] | None = None) -> tuple[list[Any], Any]:
@@ -284,16 +344,24 @@ class MikiApp:
         path_params:
             Path parameters extracted from the URL (e.g. ``{"user_id": "42"}``).
         """
-        result, ctx = invoke_route(route, self, request, path_params)
-        if hasattr(result, "__await__"):
-            result = await result
-        tree = normalize(result)
-        for plugin in self.plugins:
-            try:
-                tree = plugin.on_render(tree)
-            except Exception:
-                logger.exception("Plugin %r on_render failed; skipping.", plugin.name)
-        return tree, ctx
+        try:
+            result, ctx = invoke_route(route, self, request, path_params)
+            if hasattr(result, "__await__"):
+                result = await result
+            tree = normalize(result)
+            for plugin in self.plugins:
+                try:
+                    tree = plugin.on_render(tree)
+                except Exception:
+                    logger.exception("Plugin %r on_render failed; skipping.", plugin.name)
+            return tree, ctx
+        except Exception as error:
+            for plugin in self.plugins:
+                try:
+                    plugin.on_error(error, request)
+                except Exception:
+                    logger.exception("Plugin %r on_error failed.", plugin.name)
+            raise
 
     def url_for(self, name: str, **path_params: Any) -> str:
         """Reverse-resolve a registered route name to its URL path.
@@ -376,3 +444,14 @@ class MikiApp:
             reload = kwargs.pop("reload", False)
             fastapi_app = create_app(self)
             uvicorn.run(fastapi_app, host=host, port=port, reload=reload)
+
+    def shutdown(self) -> None:
+        """Shut down the app, calling plugin shutdown hooks."""
+        for plugin in reversed(self.plugins):
+            try:
+                plugin.on_shutdown()
+            except Exception:
+                logger.exception("Plugin %r on_shutdown failed.", plugin.name)
+
+
+__all__ = ["MikiApp"]

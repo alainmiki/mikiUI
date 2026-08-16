@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import Component
+from .form import Label
 
 
 class Input(Component):
@@ -196,7 +197,8 @@ class Checkbox(Input):
 
         Returns a container with toggle switch styling.
         """
-        from .html import Label, Span
+        from .form import Label
+        from .html import Div, Span
         name = attrs.pop("name", "toggle")
         checked = attrs.pop("checked", False)
 
@@ -259,7 +261,8 @@ class Radio(Input):
 
         Returns a container with all radio buttons and labels.
         """
-        from .html import Div, Label
+        from .form import Label
+        from .html import Div
         radios = []
         for val, label in options:
             checked = attrs.pop("checked", value == val)
@@ -274,7 +277,10 @@ class Radio(Input):
 
 
 class Slider(Input):
-    """A styled range slider input.
+    """A styled range slider input with live value display.
+
+    Works **without** Alpine.js — ``miki_ui.js`` auto-initializes sliders
+    with ``data-miki-slider="true"`` and keeps the value display in sync.
 
     Parameters
     ----------
@@ -288,13 +294,18 @@ class Slider(Input):
     step : int | float
         Step increment (default: 1).
     **attrs : Additional HTML attributes.
+
+    Example
+    -------
+    >>> Slider(type="range", min=0, max=100, value=50)
+    >>> Slider.named("Volume", "volume", value=30, min=0, max=100)
     """
 
     tag = "input"
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("type", "range")
-        attrs.setdefault("class", "miki-slider")
+        attrs.setdefault("class", "miki-slider miki-slider-input")
 
         label = children[0] if children else ""
         super().__init__(label, **attrs)
@@ -309,7 +320,10 @@ class Slider(Input):
         max: int = 100,
         **attrs: Any,
     ) -> Any:
-        """Create a slider with a label.
+        """Create a slider with a label and live value display.
+
+        The wrapper ``<div>`` gets ``data-miki-slider="true"`` so
+        ``miki_ui.js`` auto-initializes the slider (value sync + fill styling).
 
         Parameters
         ----------
@@ -321,9 +335,10 @@ class Slider(Input):
             Slider configuration.
         **attrs : Additional attributes.
 
-        Returns a container with label and slider.
+        Returns a container with label, slider, and value display.
         """
-        from .html import Label, Span, Div
+        from .form import Label
+        from .html import Div, Span
 
         display_value = Span(str(value), class_="miki-slider-value")
 
@@ -343,6 +358,7 @@ class Slider(Input):
             ),
             display_value,
             class_="miki-slider-wrapper",
+            **{"data-miki-slider": "true"},
         )
 
 
@@ -381,7 +397,8 @@ class Switch(Input):
 
         Returns a container with switch and optional label.
         """
-        from .html import Label, Span, Div
+        from .form import Label
+        from .html import Span
 
         input_el = cls(type="checkbox", name=name, checked=checked, class_="miki-switch")
 
@@ -394,7 +411,12 @@ class Switch(Input):
                 class_="miki-switch-wrapper",
             )
 
-        return Label(input_el, Span(class_="miki-switch-track"), Span(class_="miki-switch-thumb"), class_="miki-switch-wrapper")
+        return Label(
+            input_el,
+            Span(class_="miki-switch-track"),
+            Span(class_="miki-switch-thumb"),
+            class_="miki-switch-wrapper",
+        )
 
 
 class Select(Component):
@@ -417,14 +439,16 @@ class Select(Component):
     def __init__(self, *options: Any, **attrs: Any) -> None:
         name = attrs.pop("name", "")
         searchable = attrs.pop("searchable", False)
-        multiple = attrs.pop("multiple", False)
+        attrs.pop("multiple", False)  # consumed to prevent it from reaching <select>
 
-        attrs.setdefault("class", "miki-select")
+        user_classes = attrs.pop("class_", "")
+        attrs["class_"] = f"miki-select {user_classes}".strip()
         attrs.setdefault("name", name)
 
         if searchable:
-            attrs["x_data"] = "{search:''}"
-            attrs["x_on:input"] = "updateOptions($el)"
+            attrs["data-miki-searchable"] = "true"
+            attrs["data-miki-filter-input"] = name
+            attrs["placeholder"] = "Type to filter..."
 
         super().__init__(*options, **attrs)
 
@@ -468,21 +492,24 @@ class Upload(Component):
         label: str = "Upload",
         **attrs: Any,
     ) -> None:
-        from .html import Input as HTMLInput
-
         attrs.setdefault("class", "miki-upload")
 
         input_id = f"miki-upload-{name}"
 
         elements = [
-            HTMLInput(
+            Input(
                 type="file",
                 name=name,
                 id=input_id,
                 accept=accept,
                 multiple=multiple,
                 class_="miki-upload-input",
-                **{"x_on:change": "handleFileUpload($event)"},
+                **{"data-miki-file-input": "true"},
+            ),
+            Label(
+                label,
+                for_=input_id,
+                class_="miki-upload-label",
             ),
         ]
 

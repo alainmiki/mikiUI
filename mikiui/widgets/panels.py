@@ -11,25 +11,20 @@ import uuid
 from typing import Any
 
 from ..components import (
+    H1,
     A,
     Button,
     Details,
-    Dialog,
     Div,
-    Fieldset,
-    Footer,
-    H1,
     Input,
     Label,
     Legend,
-    Nav,
+    Li,
     P,
     Progress,
-    Section,
     Span,
     Summary,
     Ul,
-    Li,
 )
 from ..components.base import Component
 from ..components.tabs import Tabs
@@ -98,8 +93,7 @@ class StackedPanel(Component):
                         "var ps=document.getElementById('" + group + "-pages').children;"
                         "for(var i=0;i<ps.length;i++){"
                         "ps[i].style.display=(i===" + str(i) + ")?'block':'none';"
-                        "this.parentNode.children[i].setAttribute('aria-selected',i==="
-                        + str(i) + ");}"
+                        "this.parentNode.children[i].setAttribute('aria-selected',i===" + str(i) + ");}"
                     ),
                 )
             )
@@ -194,10 +188,7 @@ class MenuBar(Component):
                         aria_haspopup="true",
                     ),
                     Ul(
-                        *[
-                            Li(A(sub_label, href=href), class_="miki-menu-item")
-                            for sub_label, href in sub_items
-                        ],
+                        *[Li(A(sub_label, href=href), class_="miki-menu-item") for sub_label, href in sub_items],
                         class_="miki-menu-dropdown",
                     ),
                     class_="miki-menu",
@@ -265,6 +256,7 @@ class MessageBox(Component):
         attrs.setdefault("role", "alertdialog")
         attrs.setdefault("aria_label", title)
         attrs.setdefault("aria_modal", "true")
+        attrs.setdefault("data-miki-messagebox", "true")
 
         icons = {
             "info": "ℹ️",
@@ -289,7 +281,10 @@ class MessageBox(Component):
                     class_=btn_class,
                     role="button",
                     aria_label=f"Button {text}",
-                    **{"onclick": "this.closest('.miki-messagebox').style.display='none';"},
+                    **{
+                        "data-miki-messagebox-close": "true",
+                        "onclick": "mikiMessageBox.close(this.closest('.miki-messagebox'));",
+                    },
                 )
             )
 
@@ -372,26 +367,64 @@ class DatePicker(Component):
 class ProgressDialog(Component):
     """A modal progress dialog (maps ``QProgressDialog``).
 
+    Auto-initialized by ``miki_ui.js`` — supports ESC-to-close, overlay click,
+    and live progress bar updates via ``mikiProgressDialog.setValue()``.
+
     :param title: dialog heading.
     :param message: descriptive message shown above the progress bar.
     :param value: current progress (0-100).
+    :param max: maximum value (default: 100).
+    :param closeable: show a close button (useful for non-modal progress).
     """
 
     tag = "dialog"
 
     def __init__(
-        self, title: str = "Please wait", message: str = "", value: int = 0, **attrs: Any
+        self,
+        title: str = "Please wait",
+        message: str = "",
+        value: int = 0,
+        max: int = 100,
+        closeable: bool = False,
+        **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-progressdialog")
-        attrs.setdefault("aria_label", title)
+        attrs.setdefault("class", "miki-progressdialog miki-dialog miki-dialog-md")
+        attrs.setdefault("role", "dialog")
+        attrs.setdefault("aria-modal", "true")
+        attrs.setdefault("aria-label", title)
+        attrs.setdefault("data-miki-progress-dialog", "true")
+        attrs.setdefault("data-miki-dialog", "true")
+        attrs.setdefault("data-miki-dialog-close-on-overlay", "false")
+        attrs.setdefault("data-miki-dialog-close-on-escape", "true")
+        attrs.setdefault("data-value", str(value))
+        attrs.setdefault("data-max", str(max))
+
         children = [
             Div(title, class_="miki-progressdialog-title"),
         ]
         if message:
             children.append(P(message, class_="miki-progressdialog-message"))
         children.append(
-            Progress(value=value, max=100, class_="miki-progressdialog-bar")
+            Progress(
+                value=value,
+                max=max,
+                variant="striped",
+                class_="miki-progressdialog-bar",
+            )
         )
+
+        if closeable:
+            children.append(
+                Button(
+                    "×",
+                    type="button",
+                    class_="miki-dialog-close-btn",
+                    role="button",
+                    aria_label="Close dialog",
+                    **{"data-miki-dialog-close": "true"},
+                )
+            )
+
         super().__init__(*children, **attrs)
 
 
@@ -415,7 +448,9 @@ class LCDNumber(Component):
 class Dial(Component):
     """A circular dial control (maps ``QDial``).
 
-    Renders a styled range input acting as the dial value.
+    Renders a styled range input acting as the dial value, with a visual
+    rotary knob and live value display.  ``miki_ui.js`` keeps the knob and
+    value in sync and adds keyboard support (arrows, Home/End).
 
     :param value: initial value.
     :param min: minimum value.
@@ -433,7 +468,13 @@ class Dial(Component):
     ) -> None:
         attrs.setdefault("class", "miki-dial")
         attrs.setdefault("role", "group")
-        attrs.setdefault("aria_label", _("dial_label", "Dial"))
+        attrs.setdefault("aria-label", _("dial_label", "Dial"))
+        attrs.setdefault("data-miki-dial", "true")
+
+        # Compute initial rotation for the knob (0 to 270 degrees)
+        percent = ((value - min) / (max - min)) * 100 if max > min else 0
+        rotation = (percent / 100) * 270 - 135
+
         super().__init__(
             Input(
                 type="range",
@@ -441,8 +482,17 @@ class Dial(Component):
                 max=max,
                 value=value,
                 class_="miki-dial-input",
+                **{"aria-label": _("dial_label", "Dial")},
             ),
-            Span(str(value), class_="miki-dial-value"),
+            Div(
+                Span(class_="miki-dial-knob", style=f"transform: rotate({rotation}deg)"),
+                class_="miki-dial-track",
+            ),
+            Div(
+                Span("●", class_="miki-dial-thumb"),
+                Span(str(value), class_="miki-dial-value"),
+                class_="miki-dial-display",
+            ),
             **attrs,
         )
 
@@ -466,6 +516,7 @@ class MdiSubWindow(Component):
                 class_="miki-mdi-close",
                 aria_label=_("mdi_close", "Close window"),
                 onclick="var w=this.closest('.miki-mdi-subwindow'); if(w) w.style.display='none';",
+                **{"data-miki-mdi-close": "true"},
             ),
             class_="miki-mdi-titlebar",
         )
@@ -518,9 +569,11 @@ class CollapsiblePanel(Component):
         **attrs: Any,
     ) -> None:
         state = "open" if open else "closed"
-        attrs.setdefault("class", f"miki-collapsible miki-collapsible-{state}")
+        attrs.setdefault("class_", f"miki-collapsible miki-collapsible-{state}")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria-label", f"{title} panel")
+        attrs.setdefault("data-miki-collapsible", "true")
+        attrs.setdefault("data-miki-state", state)
 
         summary_children: list[Any] = []
         if icon:
@@ -536,21 +589,14 @@ class CollapsiblePanel(Component):
         summary = Div(
             summary_inner,
             Span("▼" if open else "▶", class_="miki-collapsible-toggle"),
-            class_="miki-collapsible-summary miki-collapsible-summary-clickable",
+            class_="miki-collapsible-header miki-collapsible-summary-clickable",
             role="button",
             tabindex="0",
             aria_expanded=str(open).lower(),
-            onclick=(
-                "var panel=this.closest('.miki-collapsible');"
-                "var is_open=panel.classList.contains('miki-collapsible-open');"
-                "panel.classList.toggle('miki-collapsible-open',!is_open);"
-                "panel.classList.toggle('miki-collapsible-closed',is_open);"
-                "var toggle=panel.querySelector('.miki-collapsible-toggle');"
-                "if(toggle) toggle.textContent=is_open?'▶':'▼';"
-            ),
+            **{"data-miki-collapsible-header": "true"},
         )
 
-        body = Div(*content, class_=body_class, hidden=not open)
+        body = Div(*content, class_=body_class)
 
         super().__init__(summary, body, **attrs)
 
@@ -598,7 +644,18 @@ class SidePanel(Component):
         children: list[Any] = []
 
         if header:
-            children.append(H1(header, class_="miki-sidepanel-title"))
+            header_children: list[Any] = [H1(header, class_="miki-sidepanel-title")]
+            if collapsible:
+                header_children.append(
+                    Button(
+                        "×",
+                        type="button",
+                        class_="miki-sidepanel-close",
+                        aria_label="Close panel",
+                        onclick="this.closest('.miki-sidepanel').style.display='none';",
+                    )
+                )
+            children.append(Div(*header_children, class_="miki-sidepanel-header"))
 
         children.extend(content)
 
@@ -714,3 +771,54 @@ class ProfilerPanel(Component):
             Div(*rows, class_="miki-profiler-body"),
             **attrs,
         )
+
+
+class FilePicker(Component):
+    """A drag-drop file picker zone.
+
+    Renders a dashed dropzone area with a hidden file input.
+
+    Parameters
+    ----------
+    name : str
+        Form field name for the file input.
+    accept : str
+        Accepted file types (e.g. "image/*" or ".pdf,.doc").
+    multiple : bool
+        Allow multiple file selection.
+    label : str
+        Text shown inside the dropzone.
+    **attrs : Additional HTML attributes.
+    """
+
+    tag = "div"
+
+    def __init__(
+        self,
+        name: str = "file",
+        accept: str = "*",
+        multiple: bool = False,
+        label: str = "Drop files here or click to browse",
+        **attrs: Any,
+    ) -> None:
+        attrs.setdefault("class", "miki-dropzone")
+        attrs.setdefault("role", "button")
+        attrs.setdefault("tabindex", "0")
+        attrs.setdefault("data-miki-dropzone", "true")
+        attrs.setdefault("aria-label", "File picker dropzone")
+
+        input_id = f"miki-file-{name}"
+
+        file_input = Input(
+            type="file",
+            name=name,
+            id=input_id,
+            accept=accept,
+            multiple=multiple,
+            class_="miki-file-input",
+            **{"data-miki-file-input": "true"},
+        )
+
+        label_span = Span(label, class_="miki-dropzone-label")
+
+        super().__init__(file_input, label_span, **attrs)

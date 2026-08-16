@@ -7,7 +7,6 @@ import pytest
 from mikiui import render
 from mikiui.widgets import Avatar, Badge, Card, Carousel, Icon, IconSet, Pagination, Progress
 
-
 # --- Card -------------------------------------------------------------------
 
 def test_card_renders_content_and_title():

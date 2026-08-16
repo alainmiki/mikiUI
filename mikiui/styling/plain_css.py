@@ -37,7 +37,7 @@ def register_plain_theme(custom_css: list[str] | None = None) -> dict[str, Any]:
 def setup_plain_css(
     custom_css: list[str] | None = None,
     project_dir: str | Path = ".",
-) -> "PlainCssConfig":
+) -> PlainCssConfig:
     """Create and validate a :class:`PlainCssConfig`.
 
     Parameters
@@ -78,7 +78,7 @@ def runtime_html(custom_css: list[str] | None = None) -> str:
     return "\n    ".join(parts)
 
 
-def runtime_css(config: "PlainCssConfig | None", project_dir: Path | None = None) -> str:
+def runtime_css(config: PlainCssConfig | None, project_dir: Path | None = None) -> str:
     """Return ``<link>`` tags for plain-CSS mode.
 
     Parameters
@@ -100,7 +100,7 @@ def runtime_css(config: "PlainCssConfig | None", project_dir: Path | None = None
 
 
 def css_files_to_bundle(
-    config: "PlainCssConfig",
+    config: PlainCssConfig,
     project_dir: str | Path = ".",
 ) -> list[str]:
     """Return absolute paths of all CSS files to bundle for production.
@@ -129,7 +129,7 @@ def css_files_to_bundle(
 
 
 def validate_plain_css_paths(
-    config: "PlainCssConfig",
+    config: PlainCssConfig,
     project_dir: str | Path = ".",
 ) -> list[str]:
     """Validate all CSS paths in a :class:`PlainCssConfig`.

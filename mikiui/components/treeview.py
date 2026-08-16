@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from .base import Component
-from .html import Ul, Li, Span
 from .dialog import Details, Summary
+from .html import Li, Span, Ul
 
 
 class TreeView(Component):

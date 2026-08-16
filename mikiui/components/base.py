@@ -27,7 +27,7 @@ class Component(Element):
         super().__init__(*children, **attrs)
 
     @classmethod
-    def element(cls, *children: Any, **attrs: Any) -> "Component":
+    def element(cls, *children: Any, **attrs: Any) -> Component:
         return cls(*children, **attrs)
 
 

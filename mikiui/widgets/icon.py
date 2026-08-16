@@ -21,7 +21,6 @@ from typing import Any
 
 from ..components.base import Component
 
-
 # -- Icon definitions (SVG paths) ---------------------------------------------
 
 # Each icon is a dict with 'outline' and 'solid' path data for a 24x24 viewBox.

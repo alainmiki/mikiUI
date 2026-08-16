@@ -39,10 +39,10 @@ from __future__ import annotations
 import inspect
 import re
 from collections import defaultdict
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..engine.dom import normalize
-
 
 _PATH_PARAM_RE = re.compile(r"\{(\w+)\}")
 
@@ -63,7 +63,7 @@ class Ctx:
     * ``ctx.form()`` — async method to parse form / query / path params.
     """
 
-    def __init__(self, request: Any, app: "Any", path_params: dict[str, Any] | None = None) -> None:
+    def __init__(self, request: Any, app: Any, path_params: dict[str, Any] | None = None) -> None:
         self.request = request
         self.app = app
         self.state = app.state
@@ -175,7 +175,7 @@ class RouteDef:
         return bool(self.path_params)
 
 
-def invoke_route(route: RouteDef, app: "Any", request: Any = None, path_params: dict[str, Any] | None = None):
+def invoke_route(route: RouteDef, app: Any, request: Any = None, path_params: dict[str, Any] | None = None):
     """Call a route handler and return a ``(result, ctx)`` tuple.
 
     The ``result`` may be a sync return value or a coroutine (for async

@@ -21,24 +21,20 @@ from __future__ import annotations
 from pathlib import Path
 
 from .system import (
-    BootstrapConfig,
     Framework,
-    PlainCssConfig,
     StylingMode,
     StylingSystem,
-    TailwindConfig,
     _bootstrap_runtime_html,
     _plain_runtime_html,
     _tailwind_runtime_html,
 )
-
 
 # ---------------------------------------------------------------------------
 # Framework-aware CSS head block
 # ---------------------------------------------------------------------------
 
 def get_runtime_css(
-    styling_system: "StylingSystem | None" = None,
+    styling_system: StylingSystem | None = None,
     framework: str = "tailwind",
     mode: str = "dev",
     project_dir: str | Path = ".",
@@ -157,7 +153,7 @@ def css_head_block(
         else:
             tw = project_dir / "_miki" / "runtime" / "themes" / "tailwind.css"
             if tw.is_file():
-                parts.append(f'<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
+                parts.append('<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
 
     elif framework == "bootstrap":
         if runtime == "cdn" or mode == "dev":
@@ -166,7 +162,7 @@ def css_head_block(
         else:
             local_css = project_dir / "static" / "bootstrap.min.css"
             if local_css.is_file():
-                parts.append(f'<link rel="stylesheet" href="/static/bootstrap.min.css">')
+                parts.append('<link rel="stylesheet" href="/static/bootstrap.min.css">')
 
     for css_path in custom_css:
         parts.append(f'<link rel="stylesheet" href="{css_path}">')

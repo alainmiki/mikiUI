@@ -4,7 +4,6 @@ Tracks recording sessions with simple metadata, kept in memory only.
 """
 
 import datetime
-from typing import Optional
 
 
 class Recorder:
@@ -56,7 +55,7 @@ class Recorder:
         """Return a list of all recording metadata dicts."""
         return list(self._recordings.values())
 
-    def get(self, rec_id: str) -> Optional[dict]:
+    def get(self, rec_id: str) -> dict | None:
         """Return metadata for a recording id, or None if unknown.
 
         Args:

@@ -10,7 +10,7 @@ MikiUI's styling system has three layers:
    actual color palette via CSS variables.
 
 This guide covers choosing a framework, setting up Tailwind or Bootstrap,
-and using custom CSS.
+creating custom themes, and switching frameworks.
 
 ## Table of Contents
 
@@ -19,15 +19,18 @@ and using custom CSS.
   - [Setup](#setup)
   - [Development Workflow](#development-workflow)
   - [DaisyUI](#daisyui)
+  - [Custom Theme Creation](#custom-theme-creation)
   - [Production Build](#production-build)
 - [Bootstrap](#bootstrap)
-  - [Setup](#setup-1)
+  - [Setup](#setup)
   - [CDN vs Local Files](#cdn-vs-local-files)
   - [Custom CSS](#custom-css)
 - [Plain CSS](#plain-css)
 - [Custom CSS Files](#custom-css-files)
 - [Switching Frameworks](#switching-frameworks)
 - [Troubleshooting](#troubleshooting)
+
+---
 
 ## Choosing a Framework
 
@@ -60,6 +63,8 @@ mikiui new myapp --framework daisyui   # Tailwind + DaisyUI
 | Bootstrap | Quick prototypes, familiar component classes | No |
 | Plain CSS | Full control, no dependencies | No |
 
+---
+
 ## Tailwind CSS
 
 ### Setup
@@ -74,6 +79,12 @@ npm install
 This installs `tailwindcss`, `postcss`, `autoprefixer`, and optionally
 `daisyui`. If Node.js is not installed, `mikiui new` and `mikiui install`
 will tell you exactly what to do.
+
+To add Tailwind to an existing project:
+
+```bash
+mikiui install tailwind
+```
 
 ### Development Workflow
 
@@ -118,6 +129,43 @@ MikiUI theme and DaisyUI picks the matching palette:
 app.set_theme("dark")  # Uses mikiui-dark DaisyUI theme
 ```
 
+### Custom Theme Creation
+
+Create a custom Tailwind theme by editing `tailwind.config.js`:
+
+```javascript
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./mikiui/runtime/miki.css",
+    "./mikiui/components/**/*.py",
+    "./mikiui/widgets/**/*.py",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: "#0066cc",
+        secondary: "#64748b",
+      },
+    },
+  },
+  plugins: [require("daisyui")],
+  daisyui: {
+    themes: ["light", "dark", "my-custom"],
+  },
+};
+```
+
+Bridge the custom theme in your app:
+
+```python
+from mikiui import MikiApp
+
+app = MikiApp()
+app.set_theme("light")
+# DaisyUI will use "light" by default; customize via tailwind.config.js
+```
+
 ### Production Build
 
 ```bash
@@ -128,7 +176,7 @@ This:
 
 1. Scans your components and widgets for used classes
 2. Runs Tailwind JIT to generate optimized CSS
-3. Outputs to `dist/_miki/runtime/themes/tailwind.css`
+3. Outputs to `dist/_miki/runtime/mikiui.css`
 4. Copies runtime assets (HTMX, Alpine.js, miki.css)
 
 With DaisyUI:
@@ -172,6 +220,8 @@ def home():
         class_="flex items-center justify-center h-screen",
     )
 ```
+
+---
 
 ## Bootstrap
 
@@ -217,6 +267,8 @@ Add your own CSS files alongside Bootstrap:
 app.add_head_link("/static/custom.css", rel="stylesheet")
 ```
 
+---
+
 ## Plain CSS
 
 When you choose "plain" during `mikiui new`, no framework is loaded.
@@ -227,6 +279,8 @@ Add CSS files in `static/` and reference them:
 ```python
 app.add_head_link("/static/styles.css", rel="stylesheet")
 ```
+
+---
 
 ## Custom CSS Files
 
@@ -243,6 +297,8 @@ app.add_head_link("/static/overrides.css", rel="stylesheet")
 
 Order matters: framework CSS loads first, then custom CSS. This means your
 custom styles can override framework defaults.
+
+---
 
 ## Switching Frameworks
 
@@ -261,6 +317,8 @@ mikiui install bootstrap
 # Edit app.py: app.set_theme("light")
 # Remove tailwind.config.js and package.json if present
 ```
+
+---
 
 ## Troubleshooting
 

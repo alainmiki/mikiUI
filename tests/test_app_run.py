@@ -13,7 +13,7 @@ def test_app_run_method_exists():
 
 def test_app_run_web_server():
     """app.run() without desktop should use uvicorn to serve the app."""
-    from mikiui import MikiApp, Div
+    from mikiui import Div, MikiApp
     app = MikiApp(title="Test")
 
     @app.route("/")
@@ -27,7 +27,7 @@ def test_app_run_web_server():
 
 def test_app_run_desktop_calls_run_desktop():
     """app.run(desktop=True) should call mikiui.build.run_desktop."""
-    from mikiui import MikiApp, Div
+    from mikiui import Div, MikiApp
     app = MikiApp(title="Test")
 
     @app.route("/")
@@ -41,7 +41,7 @@ def test_app_run_desktop_calls_run_desktop():
 
 def test_app_run_desktop_with_browser():
     """app.run(desktop=True, browser=True) should pass native=False."""
-    from mikiui import MikiApp, Div
+    from mikiui import Div, MikiApp
     app = MikiApp(title="Test")
 
     @app.route("/")

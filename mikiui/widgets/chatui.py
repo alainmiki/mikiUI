@@ -20,6 +20,7 @@ class ChatUI(Component):
         attrs.setdefault("class", "miki-chat")
         attrs.setdefault("role", "log")
         attrs.setdefault("aria_live", "polite")
+        attrs.setdefault("data-miki-chat", "true")
 
         bubbles = []
         for msg in messages:
@@ -33,9 +34,12 @@ class ChatUI(Component):
             bubbles.append(Div(text, class_=cls, role="listitem"))
 
         log = Div(*bubbles, class_="miki-chat-log", role="list")
+        typing = Div(class_="miki-chat-typing", aria_label="Bot is typing")
         form = Form(
+            typing,
             Input(name="message", placeholder="Type a message..."),
             SubmitButton("Send"),
             class_="miki-chat-form",
+            **{"data-miki-chat-form": "true"}
         )
         super().__init__(log, form, **attrs)

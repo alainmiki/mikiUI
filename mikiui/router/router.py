@@ -47,7 +47,8 @@ handlers across files.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastapi.responses import JSONResponse
 
@@ -72,7 +73,7 @@ class Router:
     def __init__(self, prefix: str = "") -> None:
         self.prefix = prefix.rstrip("/")
         self._app: MikiApp | None = None
-        self._parent: "Router | None" = None
+        self._parent: Router | None = None
 
     def _join(self, path: str) -> str:
         """Join the router prefix with a route path."""
@@ -175,7 +176,7 @@ class Router:
         """Register a POST-only handler."""
         return self.add(path_or_app, path, ("POST",), name, title=title, requires_auth=requires_auth)
 
-    def mount(self, target: "MikiApp | Router") -> "Router":
+    def mount(self, target: MikiApp | Router) -> Router:
         """Bind this router to *target* for bare-decorator usage.
 
         *target* may be a :class:`MikiApp` (registers routes directly) or

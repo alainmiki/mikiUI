@@ -8,7 +8,9 @@ and the logic that turns them into safe HTML.
 from __future__ import annotations
 
 import html
-from typing import Any, Iterable, Mapping
+import re
+from collections.abc import Mapping
+from typing import Any
 
 # HTML void elements: they have no closing tag and no children.
 VOID_TAGS = {
@@ -28,6 +30,58 @@ VOID_TAGS = {
     "wbr",
 }
 
+_DANGEROUS_TAGS = re.compile(
+    r"</?(?:script|iframe|object|embed|form|input|button|style|link|meta|base|applet|svg|math|img|video|audio|source|track|frame|frameset|noscript)\b[^>]*>",
+    re.IGNORECASE,
+)
+_DANGEROUS_ATTRS = re.compile(
+    r'\s(?:on\w+|href|src|action|formaction|background|cite|codebase|data|dynsrc|lowsrc)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)',
+    re.IGNORECASE,
+)
+
+
+def sanitize_html(value: str, *, allow_tags: list[str] | None = None) -> str:
+    """Strip dangerous HTML tags and event-handler attributes from ``value``.
+
+    Parameters
+    ----------
+    value:
+        Raw HTML string.
+    allow_tags:
+        Optional whitelist of tag names to keep. When ``None``, all tags are
+        stripped (text-only output).
+
+    Returns
+    -------
+    str
+        Sanitized HTML.
+    """
+    if allow_tags is not None:
+        allowed = set(t.lower() for t in allow_tags)
+        tag_pattern = re.compile(r"</?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>")
+        def _filter(m: re.Match[str]) -> str:
+            tag = m.group(1).lower()
+            return m.group(0) if tag in allowed else ""
+        value = tag_pattern.sub(_filter, value)
+    else:
+        value = _DANGEROUS_TAGS.sub("", value)
+    value = _DANGEROUS_ATTRS.sub("", value)
+    return value
+
+
+def escape_attr(value: str) -> str:
+    """Escape a value for safe insertion into an HTML attribute."""
+    return html.escape(str(value), quote=True)
+
+
+def truncate(value: str, length: int = 100, suffix: str = "...") -> str:
+    """Truncate ``value`` to ``length`` characters and append ``suffix``."""
+    text = str(value)
+    if len(text) <= length:
+        return text
+    return text[: length - len(suffix)] + suffix
+
+
 # --- Internationalization hook ------------------------------------------------
 # Components mark translatable text with `_("key", "Default")`. A translator can
 # be registered globally; otherwise the default text is used and the key is
@@ -46,7 +100,7 @@ def get_translator():
     return _translator
 
 
-def _(key: str, default: str | None = None) -> "I18nText":
+def _(key: str, default: str | None = None) -> I18nText:
     """Mark ``default`` as translatable under ``key`` (i18n hook)."""
     if default is None:
         default = key
@@ -114,11 +168,11 @@ class Element:
         self.attrs: dict[str, Any] = attrs
 
     # -- tree manipulation -----------------------------------------------------
-    def append(self, *children: Any) -> "Element":
+    def append(self, *children: Any) -> Element:
         self.children.extend(children)
         return self
 
-    def with_id(self, id: str) -> "Element":
+    def with_id(self, id: str) -> Element:
         self.attrs["id"] = id
         return self
 
@@ -138,7 +192,7 @@ class Element:
                 value = " ".join(str(v) for v in value if v)
             elif isinstance(value, (list, tuple, set)) and name != "class":
                 value = " ".join(str(v) for v in value if v)
-            parts.append(f'{name}="{html.escape(str(value), True)}"')
+            parts.append(f'{name}="{escape_attr(str(value))}"')
         return " ".join(parts)
 
     def to_html(self) -> str:

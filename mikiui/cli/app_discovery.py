@@ -17,7 +17,6 @@ the CLI can pass it to uvicorn (with reload) or use it directly.
 from __future__ import annotations
 
 import importlib
-import inspect
 import os
 import sys
 from typing import Any
@@ -79,7 +78,6 @@ def discover_app() -> str | None:
             return spec
 
     # 2. Scan all .py files in the CWD root for a MikiApp instance.
-    from ..app import MikiApp
 
     cwd = os.getcwd()
     for fname in sorted(os.listdir(cwd)):

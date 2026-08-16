@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import A, Div, H1, P, Ul
+from ..components import H1, A, Div, P, Ul
 from ..components.base import Component
 
 

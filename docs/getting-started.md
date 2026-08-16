@@ -1,21 +1,37 @@
 # Getting Started with MikiUI
 
-This guide walks you through installing MikiUI, creating your first project,
-choosing a styling framework, and running your app in development or production.
+MikiUI is a Python-first UI framework that lets you build user interfaces as
+standalone desktop apps or websites. It uses FastAPI for the backend, HTMX +
+Alpine.js for the frontend runtime, and a Python component API that maps
+directly to HTML elements.
+
+## When to Use MikiUI
+
+- You want to build UIs **in Python** without touching JavaScript for logic.
+- You need **both web and desktop** deployment from the same codebase.
+- You prefer **server-side rendering** with optimistic client-side updates.
+- You want a **beginner-friendly API** that is still powerful enough for
+  advanced use cases (plugins, custom components, widgets).
 
 ## Prerequisites
 
 - **Python 3.14 or later**
-- **pip** (usually included with Python)
-- **Node.js 18+** (only required if you choose Tailwind CSS)
+- **pip** (included with Python)
+- **Node.js 18+** (only if you choose Tailwind CSS)
 
 ## Installation
 
-Install MikiUI from the project root:
+Install MikiUI from the project root in editable mode:
 
 ```bash
-cd /path/to/mikiUI
+cd C:\Users\Coder Miki\Desktop\mikiUI
 pip install -e .
+```
+
+For development dependencies (testing, linting, type-checking):
+
+```bash
+pip install -e .[dev]
 ```
 
 Verify the installation:
@@ -26,104 +42,90 @@ mikiui --help
 
 You should see the MikiUI banner with available commands.
 
-## Create Your First Project
+## Your First App in 5 Minutes
 
-Run `mikiui new` and follow the prompts:
+Create a file named `app.py`:
 
-```bash
-mikiui new myapp
+```python
+from mikiui import MikiApp, Div, H1, P, Button
+
+app = MikiApp(title="Hello MikiUI")
+
+@app.route("/")
+def home():
+    return Div(
+        H1("Hello, MikiUI!"),
+        P("A Python-first UI framework."),
+        Button("Click me", class_="miki-btn-primary", onclick="alert('Hello!')"),
+        class_="flex flex-col items-center justify-center h-screen gap-4",
+    )
+
+if __name__ == "__main__":
+    app.run()
 ```
 
-You will be asked:
+Run it:
 
-1. **Project name** — defaults to `myapp`
-2. **CSS framework** — choose one:
+```bash
+python app.py
+```
 
-   | Option | Description |
-   |--------|-------------|
-   | `1. tailwind` | Tailwind CSS + optional DaisyUI (requires Node.js) |
-   | `2. bootstrap` | Bootstrap 5 — CDN or local files + custom CSS |
-   | `3. plain` | Plain CSS — no framework, just your own styles |
+Open `http://127.0.0.1:8000` in your browser. You should see a centered heading,
+paragraph, and button.
 
-### What gets created
+## CLI Quick Reference
+
+MikiUI ships with a CLI for scaffolding, development, and building:
+
+| Command | Purpose |
+|---------|---------|
+| `mikiui new myapp` | Scaffold a new project |
+| `mikiui dev` | Start the dev server (hot-reload) |
+| `mikiui desktop` | Open a native desktop window |
+| `mikiui build --target web` | Build for web production |
+| `mikiui build --target desktop` | Build for desktop distribution |
+| `mikiui tailwind dev` | Watch and rebuild Tailwind CSS |
+| `mikiui install tailwind` | Install Tailwind + config files |
+
+## Project Structure
+
+A typical MikiUI project looks like this:
 
 ```
 myapp/
-  app.py              # Your MikiUI application
-  README.md           # Framework-specific instructions
-  requirements.txt    # Python dependencies
-  static/             # Custom CSS directory
-  .mikiui.json        # Project config (framework, theme)
+  app.py               # Your MikiUI application (routes + components)
+  requirements.txt     # Python dependencies
+  static/              # Custom CSS, images, fonts
+  .mikiui.json         # Project configuration
+  tailwind.config.js   # Tailwind config (if using Tailwind)
+  postcss.config.js    # PostCSS config (if using Tailwind)
+  package.json         # Node.js dependencies (if using Tailwind)
 ```
 
-For Tailwind projects, two additional files are created:
+For **Bootstrap** or **plain CSS** projects, the Tailwind files are omitted.
 
-```
-  tailwind.config.js  # Tailwind configuration
-  postcss.config.js   # PostCSS configuration (required by Tailwind)
-```
+### Framework Choice
 
-### Framework-specific setup
+When you run `mikiui new`, you choose a CSS framework:
 
-#### Tailwind CSS
+| Framework | Description | Requires Node.js |
+|-----------|-------------|-----------------|
+| `tailwind` | Tailwind CSS utility classes | Yes |
+| `bootstrap` | Bootstrap 5 components | No |
+| `plain` | Custom CSS only | No |
 
-Tailwind requires Node.js. If you don't have it installed:
-
-1. Download Node.js from https://nodejs.org/
-2. Re-run `mikiui new myapp --framework tailwind`
-
-Once Node.js is available, install dependencies:
-
-```bash
-cd myapp
-npm install
-```
-
-This installs `tailwindcss`, `postcss`, and `autoprefixer` (and `daisyui` if
-you selected it).
-
-To add DaisyUI later:
-
-```bash
-mikiui install tailwind daisyui
-```
-
-#### Bootstrap
-
-Bootstrap works out of the box — no Node.js required. By default, Bootstrap
-CSS and JS are loaded from the jsDelivr CDN.
-
-To use local Bootstrap files:
-
-1. Download `bootstrap.min.css` and `bootstrap.bundle.min.js`
-2. Place them in `static/`
-3. Add to your `app.py`:
-
-   ```python
-   app.add_head_link("/static/bootstrap.min.css", rel="stylesheet")
-   app.add_head_script("/static/bootstrap.bundle.min.js")
-   ```
-
-#### Plain CSS
-
-No setup required. Add your own CSS files in `static/` and reference them:
-
-```python
-app.add_head_link("/static/styles.css", rel="stylesheet")
-```
-
-## Run Your App
-
-### Development server
+## Running in Dev Mode
 
 ```bash
 mikiui dev
 ```
 
-This starts a FastAPI server with hot-reloading at `http://127.0.0.1:8000`.
+This starts a FastAPI + uvicorn server with hot-reloading at
+`http://127.0.0.1:8000`. Any change to `app.py` triggers a reload.
 
-**Tailwind users:** run `mikiui tailwind dev` in a second terminal to watch
-and rebuild CSS on every change.
+### Tailwind Projects
+
+If you selected Tailwind, run the CSS watcher in a second terminal:
 
 ```bash
 # Terminal 1
@@ -133,84 +135,35 @@ mikiui dev
 mikiui tailwind dev
 ```
 
-### Desktop window
+The watcher scans your Python files for Tailwind classes and rebuilds CSS
+automatically. In dev mode without the watcher, MikiUI falls back to the
+Tailwind CDN so styles load immediately.
+
+## Running in Desktop Mode
 
 ```bash
 mikiui desktop
 ```
 
-This opens a native window (requires `pywebview`). If `pywebview` is not
-installed, it falls back to your system browser.
+This launches a native window using **pywebview** (if installed). If pywebview
+is unavailable, it falls back to your system browser.
 
-## Build for Production
-
-### Web build
+Useful flags:
 
 ```bash
-mikiui build --target web
-```
-
-This copies runtime assets (HTMX, Alpine.js, miki.css) to `dist/`.
-
-For Tailwind projects, add `--theme tailwind` to compile CSS:
-
-```bash
-mikiui build --target web --theme tailwind
-```
-
-With DaisyUI:
-
-```bash
-mikiui build --target web --theme tailwind --daisyui
-```
-
-### Desktop build
-
-```bash
-mikiui build --target desktop
-```
-
-This produces a `dist_desktop/` directory with a web build plus a
-`launch.py` script. Package it with PyInstaller or similar tools.
-
-## Styling Workflow Summary
-
-```
-mikiui new myapp
-  → Choose framework (tailwind / bootstrap / plain)
-  → Config files written automatically
-
-cd myapp
-
-# Tailwind path:
-npm install              # Install Node.js deps
-mikiui dev               # Start server
-mikiui tailwind dev      # Watch CSS (second terminal)
-
-# Bootstrap / plain path:
-mikiui dev               # Start server (no extra steps)
-
-# Production:
-mikiui build --target web --theme tailwind   # Tailwind
-mikiui build --target web                     # Bootstrap / plain
-```
-
-## Switching Frameworks
-
-To change the styling framework of an existing project:
-
-```bash
-# Switch to Tailwind:
-mikiui install tailwind
-# Then edit app.py: app.set_theme("tailwind")
-
-# Switch to Bootstrap:
-mikiui install bootstrap
-# Then edit app.py: app.set_theme("bootstrap")
+mikiui desktop --reload      # Auto-refresh on file changes
+mikiui desktop --browser     # Force browser fallback
+mikiui desktop --width 1280 --height 800  # Window size
 ```
 
 ## Next Steps
 
-- Read the [Styling Guide](styling.md) for framework-specific details
-- Browse [Component Reference](components.md) for available widgets
-- See [Theme Reference](theme-reference.md) for color themes and variables
+- **Components**: Read [Component Reference](components.md) for all HTML
+  element mappings.
+- **Widgets**: Browse [Widget Catalog](widgets.md) for high-level composite
+  UI patterns.
+- **Styling**: See [Styling Guide](styling.md) for Tailwind, Bootstrap, and
+  theme customization.
+- **Plugins**: Learn about the plugin system in [Plugins Guide](plugins.md).
+- **API**: Consult [API Reference](api-reference.md) for full method signatures.
+- **Deployment**: Read [Deployment Guide](deployment.md) for production setups.

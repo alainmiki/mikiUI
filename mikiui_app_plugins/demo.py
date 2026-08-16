@@ -22,6 +22,7 @@ from mikiui.widgets import Card
 from mikiui.backend import create_app
 
 from .session import SessionPlugin
+from .notifications import NotificationPlugin
 
 
 app = MikiApp(title="MikiUI Plugin Demo", lang="en")
@@ -33,13 +34,18 @@ session = SessionPlugin(
 )
 app.use(session)
 
+# Setup notification plugin
+notifications = NotificationPlugin()
+app.use(notifications)
+
 
 @app.route("/")
 def home():
+    notifications.broadcast("Welcome to MikiUI Plugin Demo!", type="info")
     return Div(
         Card(
             H1("MikiUI Plugin Demo"),
-            P("Demonstrates session management and API generation."),
+            P("Demonstrates session management, API generation, and notifications."),
             A("API Users →", href="/api/users"),
             class_="max-w-2xl mx-auto mt-10 p-6",
             style="border: 1px solid #ccc; border-radius: 8px",

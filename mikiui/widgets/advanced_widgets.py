@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import Div, Img, P, Span, A, Ul, Li, Button, Progress as ProgressBar
+from ..components import A, Button, Div, Img, Li, P, Span, Ul
+from ..components import Progress as ProgressBar
 from ..components.base import Component
 
 
@@ -95,6 +96,7 @@ class Carousel(Component):
         attrs.setdefault("class", classes)
         attrs.setdefault("role", "region")
         attrs.setdefault("aria_label", "Image carousel")
+        attrs.setdefault("data-miki-carousel", "true")
         attrs.setdefault("data-autoplay", str(autoplay).lower())
         attrs.setdefault("data-interval", str(interval))
 
@@ -127,6 +129,7 @@ class Carousel(Component):
                 class_="miki-carousel-prev",
                 aria_label="Previous slide",
                 type="button",
+                **{"data-miki-carousel-prev": "true"}
             )
         )
         children.append(
@@ -135,6 +138,7 @@ class Carousel(Component):
                 class_="miki-carousel-next",
                 aria_label="Next slide",
                 type="button",
+                **{"data-miki-carousel-next": "true"}
             )
         )
 

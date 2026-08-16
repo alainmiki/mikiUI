@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import Div, Span, A, Ul, Button
+from ..components import A, Button, Div, Span, Ul
 from ..components.base import Component
 
 
@@ -40,21 +40,12 @@ class Drawer(Component):
     closable : bool
         Show a close button in the header.
     open : bool
-        Initial open state. External toggles control visibility via Alpine.
+        Initial open state.
     **attrs : Additional HTML attributes.
 
     Example
     -------
-    >>> # Inside an Alpine.js container
     >>> Drawer("Content", title="Quick Panel", side="left", open=True)
-
-    >>> # Nested content
-    >>> Drawer(
-    ...     Div("Body content"),
-    ...     title="Settings",
-    ...     side="right",
-    ...     size="lg"
-    ... )
     """
 
     tag = "div"
@@ -76,30 +67,23 @@ class Drawer(Component):
             raise ValueError(f"size must be 'sm', 'md', or 'lg', got {size!r}")
 
         classes = f"miki-drawer miki-drawer-{side} miki-drawer-{size}"
-        attrs.setdefault("class", classes)
+        if open:
+            classes += " miki-drawer-open"
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria-modal", "true")
+        attrs.setdefault("aria-hidden", "true" if not open else "false")
+        attrs.setdefault("data-miki-drawer", "true")
+        attrs.setdefault("data-miki-drawer-esc-close", "true")
 
         if title:
             attrs.setdefault("aria-labelledby", f"{title}-title")
-
-        attrs.setdefault("x_data", f"{{show:{str(open).lower()},side:'{side}',size:'{size}'}}")
-
-        attrs["x_init"] = """
-        if (data.show) {
-            if (data.side === 'left') $el.style.transform = 'translateX(0)';
-            else if (data.side === 'right') $el.style.transform = 'translateX(0)';
-            else if (data.side === 'top') $el.style.transform = 'translateY(0)';
-            else if (data.side === 'bottom') $el.style.transform = 'translateY(0)';
-        }
-        """
 
         children: list[Any] = []
 
         overlay = Div(
             class_="miki-drawer-overlay",
-            x_show="show",
-            **{"x_on:click": "show = false"},
+            **{"data-miki-drawer-overlay": "true"},
         )
 
         panel_children: list[Any] = []
@@ -107,9 +91,7 @@ class Drawer(Component):
         if title or closable:
             header_children: list[Any] = []
             if title:
-                header_children.append(
-                    Span(title, class_="miki-drawer-title", id=f"{title}-title")
-                )
+                header_children.append(Span(title, class_="miki-drawer-title", id=f"{title}-title"))
             if closable:
                 header_children.append(
                     Button(
@@ -118,23 +100,17 @@ class Drawer(Component):
                         type="button",
                         role="button",
                         aria_label="Close drawer",
-                        x_on_click="show = false",
+                        **{"data-miki-drawer-close": "true"},
                     )
                 )
-            panel_children.append(
-                Div(*header_children, class_="miki-drawer-header")
-            )
+            panel_children.append(Div(*header_children, class_="miki-drawer-header"))
 
         if content:
-            panel_children.append(
-                Div(*content, class_="miki-drawer-body")
-            )
+            panel_children.append(Div(*content, class_="miki-drawer-body"))
 
         panel = Div(
             *panel_children,
             class_="miki-drawer-panel",
-            x_show="show",
-            x_transition="enter: ease-out duration-200; leave: ease-in duration-150",
         )
 
         children.append(overlay)
@@ -200,6 +176,7 @@ class Rail(Component):
             if isinstance(item, tuple) and len(item) == 3:
                 label, href, icon_name = item
                 from .icon import Icon
+
                 icon = Icon(icon_name, size=20)
                 link = A(
                     Div(icon, Span(label, class_="miki-rail-label")),
@@ -239,7 +216,6 @@ class ContextWindow(Component):
 
     Example
     -------
-    >>> # With trigger button
     >>> ContextWindow(
     ...     ("Open", "/open"),
     ...     ("Close", "/close"),
@@ -269,14 +245,25 @@ class ContextWindow(Component):
         if class_:
             classes += f" {class_}"
 
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "menu")
+        attrs.setdefault("data-miki-context-window", "true")
         attrs.setdefault("style", f"min-width: {width};")
 
         children: list[Any] = []
 
         if trigger is not None:
-            children.append(trigger)
+            if isinstance(trigger, str):
+                trigger = Button(trigger, class_="miki-context-trigger", role="button", aria_haspopup="true")
+            if isinstance(trigger, Component):
+                cls = trigger.attrs.get("class", trigger.attrs.get("class_", "")) or ""
+                if "miki-context-trigger" not in cls:
+                    trigger.attrs["class_"] = (cls + " miki-context-trigger").strip()
+                else:
+                    trigger.attrs["class_"] = cls
+                trigger.attrs.setdefault("role", "button")
+                trigger.attrs.setdefault("aria-haspopup", "true")
+                children.append(trigger)
 
         menu_items: list[Any] = []
         for item in content:
@@ -288,14 +275,12 @@ class ContextWindow(Component):
                         href="#",
                         role="menuitem",
                         class_="miki-context-item",
-                        **{"x_on:click": f"{action}();"},
+                        **{"x-on:click": f"{action}();"},
                     )
                 )
             elif isinstance(item, tuple) and len(item) == 2:
                 label, href = item
-                menu_items.append(
-                    A(label, href=href, role="menuitem", class_="miki-context-item")
-                )
+                menu_items.append(A(label, href=href, role="menuitem", class_="miki-context-item"))
             else:
                 menu_items.append(item)
 
@@ -308,3 +293,31 @@ class ContextWindow(Component):
         )
 
         super().__init__(*children, **attrs)
+
+
+class DrawerToggle(Button):
+    """A button that toggles a Drawer via data-miki-drawer-toggle.
+
+    Set ``target`` to a CSS selector (e.g. ``"#my-drawer"``) or to ``""`` to
+    toggle the first ``.miki-drawer`` on the page.
+
+    :param label: button text.
+    :param target: CSS selector for the drawer to toggle.
+    :param attrs: extra HTML attributes.
+    """
+
+    tag = "button"
+
+    def __init__(
+        self,
+        label: str = "Menu",
+        target: str = "",
+        **attrs: Any,
+    ) -> None:
+        attrs.setdefault("type", "button")
+        attrs.setdefault("class_", "miki-drawer-toggle-btn")
+        attrs.setdefault("data-miki-drawer-toggle", "true")
+        attrs.setdefault("aria_label", f"Toggle drawer: {target or 'menu'}")
+        if target:
+            attrs["data-miki-drawer-target"] = target
+        super().__init__(label, **attrs)

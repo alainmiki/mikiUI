@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import html as _html
 import os
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .dom import Element, I18nText, Text, normalize, render
 
@@ -84,7 +85,7 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     - body_attrs: additional body attributes (classes/data attributes)
     - variables: CSS :root style block with --miki-* variables
     """
-    from ..themes import get_theme, THEME_DIR, _RUNTIME_DIR
+    from ..themes import _RUNTIME_DIR, get_theme
 
     theme = get_theme(theme_name)
     result: dict[str, Any] = {

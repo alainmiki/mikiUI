@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .base import Component
-from .html import Span
 from ..engine import _
+from .base import Component
 
 
 class Tooltip(Component):

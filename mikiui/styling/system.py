@@ -15,7 +15,6 @@ or written by this module.
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import sys
@@ -23,7 +22,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -205,7 +203,7 @@ class StylingSystem:
         framework: str = "tailwind",
         project_dir: str | Path = ".",
         **kwargs: Any,
-    ) -> "StylingSystem":
+    ) -> StylingSystem:
         """Create a StylingSystem from CLI-style arguments and run setup.
 
         This is the recommended constructor for CLI commands. It normalizes
@@ -232,7 +230,7 @@ class StylingSystem:
         return ss
 
     @classmethod
-    def detect(cls, project_dir: str | Path = ".") -> "StylingSystem":
+    def detect(cls, project_dir: str | Path = ".") -> StylingSystem:
         """Auto-detect the styling framework from project files.
 
         Looks for ``tailwind.config.js``, ``package.json`` with Tailwind
@@ -590,10 +588,10 @@ def _tailwind_runtime_html(
     else:
         tailwind_css = project_dir / "mikiui" / "runtime" / "themes" / "tailwind.css"
         if tailwind_css.is_file():
-            parts.append(f'<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
+            parts.append('<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
         built_css = project_dir / "_miki" / "runtime" / "themes" / "tailwind.css"
         if built_css.is_file() and not tailwind_css.is_file():
-            parts.append(f'<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
+            parts.append('<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
 
     for css_path in config.custom_css_paths:
         parts.append(f'<link rel="stylesheet" href="{css_path}">')

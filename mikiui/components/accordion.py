@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..engine import _
 from .base import Component
 from .dialog import Details, Summary
-from .html import Div, Span
-from ..engine import _
+from .html import Div
 
 
 class Accordion(Component):

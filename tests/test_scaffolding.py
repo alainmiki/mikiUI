@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tempfile
 
-from mikiui.cli.scaffolding import UI_FRAMEWORKS, scaffold, framework_config
+from mikiui.cli.scaffolding import UI_FRAMEWORKS, framework_config, scaffold
 
 
 def _scaffold_in_temp(framework: str = "tailwind") -> str:

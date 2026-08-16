@@ -9,7 +9,7 @@ Design Principles (from VS Code, IntelliJ, three.js):
 
 Example::
 
-    # Standard split view
+    # Standard split view (drag splitter left/right to resize panes)
     SplitView(
         CodeEditor(content="print('hello')"),
         OutputPanel(lines=["Hello, world!"]),
@@ -17,13 +17,18 @@ Example::
         min_size=200,
     )
 
-    # Dockable tabs with split view
+    # Vertical split (drag splitter up/down to resize panes)
     SplitView(
-        TabbedPanel([
-            ("Files", FileExplorer()),
-            ("Search", SearchPanel()),
-        ]),
-        MonacoEditor(),
+        TopPane(),
+        BottomPane(),
+        resize_mode="vertical",
+    )
+
+    # Bidirectional split — drag in any direction
+    SplitView(
+        TopLeftPane(),
+        TopRightPane(),
+        resize_mode="both",
     )
 """
 
@@ -31,12 +36,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import Div, Span
+from ..components import Div
 from ..components.base import Component
 
 
 class SplitView(Component):
-    """A sophisticated split view with multiple resize modes.
+    """A sophisticated split view with dynamic, directional resizing.
 
     Inspired by:
     - VS Code's editor groups (drag tab to dock)
@@ -47,26 +52,30 @@ class SplitView(Component):
     Parameters
     ----------
     left : Any
-        Content for the first pane
+        Content for the first pane.
     right : Any
-        Content for the second pane
+        Content for the second pane.
     orientation : str
-        'horizontal' for side-by-side, 'vertical' for stacked
+        'horizontal' for side-by-side (splitter resizes in X axis),
+        'vertical' for stacked (splitter resizes in Y axis).
     min_size : int
-        Minimum pixel size for each pane
+        Minimum pixel size for each pane.
     separator_width : int
-        Visual separator thickness
+        Visual separator thickness.
     resize_mode : str
-        'drag' (default), 'stretch', or 'fixed'
+        Controls which directions the splitter responds to:
+        - 'horizontal' (default): Drag left/right to resize panes.
+        - 'vertical': Drag up/down to resize panes.
+        - 'both': Drag in any direction (all 4 sides) to resize panes.
     collapsible : bool
-        Whether panes can be collapsed to separator
-    attrs : Any
-        Additional HTML attributes
+        Whether panes can be collapsed to separator.
+    **attrs : Additional HTML attributes.
 
     Example
     -------
     >>> sv = SplitView(Div("Left"), Div("Right"))
-    >>> sv.to_html()  # renders with Alpine.js reactivity
+    >>> sv = SplitView(Div("Top"), Div("Bottom"), resize_mode="vertical")
+    >>> sv = SplitView(Div("A"), Div("B"), resize_mode="both")
     """
 
     tag = "div"
@@ -78,19 +87,25 @@ class SplitView(Component):
         orientation: str = "horizontal",
         min_size: int = 200,
         separator_width: int = 8,
-        resize_mode: str = "drag",
+        resize_mode: str = "horizontal",
         collapsible: bool = True,
         hover_class: str = "hover:ring-2 hover:ring-offset-2 hover:ring-accent",
         **attrs: Any,
     ) -> None:
         is_horizontal = orientation == "horizontal"
 
-        attrs.setdefault("class", "miki-splitview miki-splitview-{}-{}".format(orientation, str(id(self))[:6]))
-        attrs.setdefault("role", "group")
+        valid_resize_modes = ("horizontal", "vertical", "both")
+        if resize_mode not in valid_resize_modes:
+            raise ValueError(
+                f"resize_mode must be one of {valid_resize_modes}, got {resize_mode!r}"
+            )
 
-        attrs.setdefault("x_data", "{{horizontal:true,minSize:{},separator:{},resizing:false,dragX:0,dragY:0,startX:0,startY:0,startSize:0}}".format(
-            min_size, separator_width
-        ))
+        attrs.setdefault("class", f"miki-splitview miki-splitview-{orientation}-{str(id(self))[:6]}")
+        attrs.setdefault("role", "group")
+        attrs.setdefault("data-miki-splitview", "true")
+        attrs.setdefault("data-orientation", orientation)
+        attrs.setdefault("data-min-size", str(min_size))
+        attrs.setdefault("data-resize-mode", resize_mode)
 
         container_class = "miki-splitview-container"
         if is_horizontal:
@@ -100,38 +115,22 @@ class SplitView(Component):
 
         attrs.setdefault("class", attrs.get("class", "") + " " + container_class)
 
-        # Left pane with data binding for dynamic sizing
-        left_attrs = {
-            "class_": "miki-split-pane miki-split-left",
-            "style": "overflow:auto;min-width:{};min-height:0".format(min_size),
+        first_attrs = {
+            "class_": "miki-split-pane miki-split-first",
+            "style": f"overflow:auto;min-width:{min_size};min-height:0",
             "role": "region",
-            "x_bind_style": "horizontal ? `width:${{startSize}}px` : `height:${{startSize}}px`" if is_horizontal else "",
+            "data-miki-split-pane": "first",
         }
 
-        right_attrs = {
-            "class_": "miki-split-pane miki-split-right",
-            "style": "overflow:auto;min-width:{};min-height:0".format(min_size),
+        second_attrs = {
+            "class_": "miki-split-pane miki-split-second",
+            "style": f"overflow:auto;min-width:{min_size};min-height:0",
             "role": "region",
+            "data-miki-split-pane": "second",
         }
 
-        left_pane = Div(left, **left_attrs)
-        right_pane = Div(right, **right_attrs)
-
-        # Interactive separator with all behaviors
-        separator_js = """
-        // Mouse events
-        @mousedown="startDrag($event)"
-        @mouseup="stopDrag()"
-        
-        // Double-click behavior (maximize toggle)
-        @dblclick="toggleMaximize()"
-        
-        // Keyboard support
-        @keydown.escape="stopDrag()"
-        """
-
-        if not is_horizontal:
-            separator_js = separator_js.replace("startDrag($event)", "startDrag($event, 'vertical')")
+        first_pane = Div(left, **first_attrs)
+        second_pane = Div(right, **second_attrs)
 
         splitter = Div(
             "",
@@ -139,9 +138,7 @@ class SplitView(Component):
             role="separator",
             aria_orientation="horizontal" if is_horizontal else "vertical",
             tabindex="0",
-            x_on_mouseenter="cursor='ew-resize'" if is_horizontal else "cursor='ns-resize'",
-            x_on_mouseleave="cursor='default'",
-            **{"x_on:": separator_js},
+            **{"data-miki-splitter": "true"},
         )
 
-        super().__init__(left_pane, splitter, right_pane, **attrs)
+        super().__init__(first_pane, splitter, second_pane, **attrs)

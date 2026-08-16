@@ -7,25 +7,26 @@ described in ``context/components.md``.
 
 from __future__ import annotations
 
-from .advanced import FormWizard, SearchPanel, StreamingPanel, NotificationPanel
+from .advanced import FormWizard, NotificationPanel, SearchPanel, StreamingPanel
 from .advanced_widgets import Avatar, Badge, Card, Carousel, Pagination, Progress
 from .auth import LoginForm, SignupForm
 from .chatui import ChatUI
 from .dashboard import Dashboard
 from .datagrid import DataGrid
 from .dockable_panel import DockablePanel
-from .ide_editor import IDEEditor
 from .icon import Icon, IconSet
+from .ide_editor import IDEEditor
 from .inspector_panel import InspectorPanel
 from .kanbanboard import KanbanBoard
 from .layout_widgets import Footer, Hero, Sidebar
 from .mediaplayer import MediaPlayer
-from .navigation_widgets import ContextWindow, Drawer, Rail
+from .navigation_widgets import ContextWindow, Drawer, DrawerToggle, Rail
 from .panels import (
-    ColorPicker,
     CollapsiblePanel,
+    ColorPicker,
     DatePicker,
     Dial,
+    FilePicker,
     GroupBox,
     LCDNumber,
     LogViewer,
@@ -63,6 +64,8 @@ __all__ = [
     "Dial",
     "DockablePanel",
     "Drawer",
+    "DrawerToggle",
+    "FilePicker",
     "Footer",
     "FormWizard",
     "GroupBox",

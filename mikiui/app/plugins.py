@@ -9,6 +9,9 @@ Plugins are registered via ``app.use(plugin)``.  A plugin can:
 * **Transform output** — :meth:`on_render` post-processes a route's component
   tree before it is sent to the client (e.g. wrapping in a layout, injecting
   scripts, or applying global styles).
+* **Extend backend** — return FastAPI route definitions via :meth:`backend_routes`,
+  middleware classes via :meth:`middleware_classes`, and static assets via :meth:`assets`.
+* **Handle errors** — :meth:`on_error` is called when a route handler raises.
 
 Security-first: plugins run inside the app process, so only trusted, validated
 plugins should be installed.  See ``context/PRD.md`` for sandboxing guidance.
@@ -17,7 +20,7 @@ plugins should be installed.  See ``context/PRD.md`` for sandboxing guidance.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from typing import Any
 
 from ..themes import Theme
 
@@ -30,14 +33,15 @@ class Plugin:
     Override any of the following hooks:
 
     * :meth:`register` — called once when ``app.use(plugin)`` is invoked.
+    * :meth:`configure` — called with plugin configuration dict before register.
     * :meth:`on_render` — called for every rendered route; can mutate the
       component tree.
     * :meth:`on_request` — called with each incoming request (for analytics,
       auth, etc.).
     * :meth:`on_route_add` — called when a route is registered via
-      ``app.route`` / ``app.get`` / ``app.post``.  Receives the path, method,
-      and handler.  Used by :class:`~mikiui_app_plugins.api.APIPlugin` to
-      collect ``/api/`` routes.
+      ``app.route`` / ``app.get`` / ``app.post``.
+    * :meth:`on_error` — called when a route handler raises an exception.
+    * :meth:`on_shutdown` — called when the app is shutting down.
 
     Lifecycle hooks are called in insertion order.  Plugins can declare
     ``depends_on`` to control ordering: a plugin's ``depends_on`` list names
@@ -47,6 +51,19 @@ class Plugin:
 
     name: str = "plugin"
     depends_on: list[str] = []
+    _config: dict[str, Any] | None = None
+
+    def configure(self, config: dict[str, Any]) -> None:
+        """Optional configuration hook.
+
+        Called before :meth:`register` with a dict of configuration values.
+
+        Parameters
+        ----------
+        config:
+            Configuration key-value pairs.
+        """
+        self._config = config
 
     def register(self, app: Any) -> None:
         """Called by ``app.use``. Override to extend the app (routes, themes, etc.)."""
@@ -70,6 +87,52 @@ class Plugin:
         handler:
             The raw handler function.
         """
+
+    def on_error(self, error: Exception, request: Any) -> None:
+        """Optional hook called when a route handler raises an exception.
+
+        Parameters
+        ----------
+        error:
+            The exception that was raised.
+        request:
+            The incoming request (may be ``None`` in tests).
+        """
+
+    def on_shutdown(self) -> None:
+        """Optional hook called when the app is shutting down."""
+
+    def assets(self) -> list[str]:
+        """Optional: return list of asset paths to bundle with the app.
+
+        Returns
+        -------
+        list[str]
+            Paths to static assets (CSS, JS, images) that should be
+            included in the build.
+        """
+        return []
+
+    def backend_routes(self) -> list[dict[str, Any]]:
+        """Optional: return FastAPI route definitions to mount.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Route definitions with keys: ``path``, ``methods``, ``endpoint``,
+            and optional ``include_in_schema``, ``name``, ``tags``.
+        """
+        return []
+
+    def middleware_classes(self) -> list[type]:
+        """Optional: return list of FastAPI/Starlette middleware classes.
+
+        Returns
+        -------
+        list[type]
+            Middleware classes to add to the app.
+        """
+        return []
 
 
 class ThemePlugin(Plugin):
@@ -98,23 +161,32 @@ class ThemePlugin(Plugin):
 
     def register(self, app: Any) -> None:
         t = self.theme()
-        from ..themes import register_theme as _register, get_theme
+        registry = getattr(app, "theme_registry", None)
+        if registry is not None:
+            registry.register(t)
+        else:
+            from ..themes import get_theme
+            from ..themes import register_theme as _register
 
-        existing = get_theme(t.name)
-        if existing and existing.source != "builtin-color":
-            raise ValueError(
-                f"Theme {t.name!r} is already registered by {existing.source!r}. "
-                "Use a different theme name."
-            )
-        _register(t)
-        app.theme = t.name
+            existing = get_theme(t.name)
+            if existing and existing.source != "builtin-color":
+                raise ValueError(
+                    f"Theme {t.name!r} is already registered by {existing.source!r}. "
+                    "Use a different theme name."
+                )
+            _register(t)
+        if hasattr(app, "set_theme"):
+            try:
+                app.set_theme(t.name)
+            except ValueError:
+                pass
 
 
 class ComponentPlugin(Plugin):
     """Plugin that registers custom component or widget classes.
 
     Override :meth:`components` to return a dict mapping names to classes.
-    They become accessible as ``app.components["MyWidget"]``.
+    They become accessible via ``app.registry``.
     """
 
     name: str = "component"
@@ -125,6 +197,11 @@ class ComponentPlugin(Plugin):
 
     def register(self, app: Any) -> None:
         comps = self.components()
+        registry = getattr(app, "registry", None)
+        if registry is not None:
+            for name, cls in comps.items():
+                registry.register(name, cls, namespace=self.name)
+        # Backward compatibility: maintain _component_registry
         if not hasattr(app, "_component_registry"):
             app._component_registry = {}
         for name, cls in comps.items():
@@ -137,7 +214,7 @@ class WidgetPlugin(Plugin):
     """Plugin that registers custom widget classes.
 
     Override :meth:`widgets` to return a dict mapping names to classes.
-    They become accessible as ``app.widgets["MyCustomWidget"]``.
+    They become accessible via ``app.registry``.
     """
 
     name: str = "widget"
@@ -148,6 +225,11 @@ class WidgetPlugin(Plugin):
 
     def register(self, app: Any) -> None:
         widgets = self.widgets()
+        registry = getattr(app, "registry", None)
+        if registry is not None:
+            for name, cls in widgets.items():
+                registry.register(name, cls, namespace=self.name)
+        # Backward compatibility: maintain _widget_registry
         if not hasattr(app, "_widget_registry"):
             app._widget_registry = {}
         for name, cls in widgets.items():

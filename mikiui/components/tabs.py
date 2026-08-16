@@ -1,13 +1,18 @@
 """Tabs component (composite of nav + sections).
 
 Tabs provide accessible tabbed interfaces with:
-- Keyboard navigation (Arrow keys, Home/End)
+- Keyboard navigation (Arrow keys, Home/End, Enter/Space)
 - ARIA roles and selected state
 - Smooth transitions
 - Icon support
 - Vertical orientation
 - Scrollable tab lists
 - Closeable tabs
+
+Works **without** Alpine.js — all interactivity is handled by ``miki_ui.js``
+via ``data-miki-*`` attributes and inline ``onclick`` handlers.  Alpine
+``x_on_*`` directives are omitted entirely so the component works in the
+offline desktop runtime.
 
 Parameters
 ----------
@@ -42,12 +47,24 @@ import uuid
 from typing import Any
 
 from .base import Component
-from .html import Nav, Section, Div, Span, P
 from .button import Button
-from .input import Input
+from .html import Div, P, Section, Span
 
 
 class Tabs(Component):
+    """Accessible tabbed interface — no Alpine.js required.
+
+    Each tab button receives:
+    - ``onclick`` calling ``mikiTabs.show('<group>', <index>)``
+    - ``data-miki-tab-group`` and ``data-miki-tab-index`` for keyboard routing
+    - Standard ARIA attributes (``role="tab"``, ``aria-selected``, ``tabindex``)
+
+    The JS runtime (``miki_ui.js``) handles click + keyboard navigation
+    (arrows, Home/End, Enter/Space).  Keyboard navigation is implemented
+    in ``mikiTabs.init`` which binds a single ``keydown`` listener to
+    the tablist container and focuses/moves between sibling tabs.
+    """
+
     tag = "div"
 
     def __init__(
@@ -61,53 +78,42 @@ class Tabs(Component):
         user_class = attrs.pop("class_", "")
         attrs["class_"] = f"miki-tabs miki-tabs-{orientation} {user_class}".strip()
         attrs.setdefault("role", "tablist")
+        attrs.setdefault("data-miki-tabs", "true")
 
         if orientation not in ("horizontal", "vertical"):
             raise ValueError("orientation must be 'horizontal' or 'vertical'")
 
         group = "miki-tabs-" + uuid.uuid4().hex[:8]
-        buttons = []
-        panels = []
+        attrs["data-miki-tab-group"] = group
+
+        buttons: list[Any] = []
+        panels: list[Any] = []
 
         for i, tab in enumerate(tabs):
             label, content = tab[:2]
             icon = tab[2] if len(tab) > 2 else None
 
-            tab_class = "miki-tab" + (" miki-tab-active" if i == 0 else "")
+            is_active = i == 0
+            tab_class = "miki-tab" + (" miki-tab-active" if is_active else "")
             if scrollable:
                 tab_class += " miki-tab-scrollable"
-
-            aria_selected = "true" if i == 0 else "false"
 
             tab_attrs = {
                 "type": "button",
                 "role": "tab",
                 "id": f"{group}-tab-{i}",
-                "aria_selected": aria_selected,
+                "aria_selected": str(is_active).lower(),
                 "aria_controls": f"{group}-panel-{i}",
-                "tabindex": "0" if i == 0 else "-1",
+                "tabindex": "0" if is_active else "-1",
                 "class_": tab_class,
+                "data-miki-tab-group": group,
+                "data-miki-tab-index": str(i),
+                "onclick": f"mikiTabs.show('{group}', {i});",
             }
 
             if orientation == "vertical":
                 tab_attrs["class_"] += " miki-tab-vertical"
 
-            tab_attrs["x_on_click"] = f"mikiTabs.show('{group}', {i})"
-
-            tab_attrs["x_on_keydown.enter"] = f"mikiTabs.show('{group}', {i})"
-            tab_attrs["x_on_keydown.space"] = f"mikiTabs.show('{group}', {i}); $event.preventDefault()"
-
-            if i > 0 and orientation == "horizontal":
-                tab_attrs["x_on_keydown.arrowleft"] = f"mikiTabs.show('{group}', {max(0, i-1)})"
-                tab_attrs["x_on_keydown.arrowright"] = f"mikiTabs.show('{group}', {min(len(tabs)-1, i+1)})"
-            elif i > 0 and orientation == "vertical":
-                tab_attrs["x_on_keydown.arrowup"] = f"mikiTabs.show('{group}', {max(0, i-1)})"
-                tab_attrs["x_on_keydown.arrowdown"] = f"mikiTabs.show('{group}', {min(len(tabs)-1, i+1)})"
-
-            tab_attrs["x_on_keydown.home"] = f"mikiTabs.show('{group}', 0)"
-            tab_attrs["x_on_keydown.end"] = f"mikiTabs.show('{group}', {len(tabs)-1})"
-
-            close_btn = None
             if closeable:
                 close_btn = Button(
                     "×",
@@ -115,8 +121,10 @@ class Tabs(Component):
                     class_="miki-tab-close",
                     role="button",
                     aria_label="Close tab",
-                    **{"x_on:click": f"event.stopPropagation(); mikiTabs.close('{group}', {i})"},
+                    **{"data-miki-tab-close": "true", "onclick": f"mikiTabs.close('{group}', {i});"},
                 )
+            else:
+                close_btn = None
 
             if icon:
                 tab_content = (
@@ -126,25 +134,34 @@ class Tabs(Component):
                 if closeable:
                     tab_content = tab_content + (close_btn,)
                 buttons.append(Div(*tab_content, **tab_attrs))
+            elif closeable:
+                buttons.append(Div(label, close_btn, **tab_attrs))
             else:
-                if closeable:
-                    buttons.append(Div(label, close_btn, **tab_attrs))
-                else:
-                    buttons.append(Button(label, **tab_attrs))
+                buttons.append(Button(label, **tab_attrs))
 
             panel_attrs = {
                 "role": "tabpanel",
                 "id": f"{group}-panel-{i}",
                 "aria_labeledby": f"{group}-tab-{i}",
-                "class_": "miki-tab-panel miki-tab-panel-content" + (" miki-tab-panel-active" if i == 0 else ""),
+                "class_": "miki-tab-panel miki-tab-panel-content" + (" miki-tab-panel-active" if is_active else ""),
             }
-            if i > 0:
+            if not is_active:
                 panel_attrs["hidden"] = True
 
             panels.append(Section(content, **panel_attrs))
 
         tablist_class = "miki-tablist" + (f" miki-tablist-{orientation}" if orientation == "vertical" else "")
-        super().__init__(Div(*buttons, class_=tablist_class, role="tablist"), *panels, **attrs)
+        super().__init__(
+            Div(*buttons, class_=tablist_class, role="tablist", **{
+                "data-miki-tablist": "true",
+                "id": f"{group}-tablist",
+            }),
+            Div(*panels, **{
+                "data-miki-tabpanel-list": "true",
+                "id": f"{group}-pages",
+            }),
+            **attrs,
+        )
 
     @property
     def active_tab(self) -> int:

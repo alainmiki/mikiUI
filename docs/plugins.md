@@ -1,140 +1,147 @@
-# MikiUI Plugin System
+# Plugin Development Guide
 
-Plugins extend MikiUI apps with custom themes, components, widgets, and render-time transformations. Register plugins via `app.use(plugin)`.
+Plugins extend MikiUI apps with custom themes, components, widgets,
+backend routes, middleware, and render-time transformations. This guide covers
+the plugin architecture, creation workflow, distribution, and security.
 
-## Base Plugin
+## Table of Contents
 
-The `Plugin` base class provides three hooks:
+- [Architecture Overview](#architecture-overview)
+- [Creating a Plugin](#creating-a-plugin)
+- [Plugin Types](#plugin-types)
+- [Plugin Hooks Reference](#plugin-hooks-reference)
+- [Distribution and Discovery](#distribution-and-discovery)
+- [Security Considerations](#security-considerations)
+
+---
+
+## Architecture Overview
+
+MikiUI plugins are Python classes registered via `app.use(plugin)`. They run
+in-process and participate in the full app lifecycle:
+
+```
+Plugin Registration
+  └─ app.use(plugin)
+       └─ plugin.configure(config)        # optional config
+       └─ plugin.register(app)            # initialize
+
+Per-Request Lifecycle
+  └─ plugin.on_request(request)           # every incoming request
+  └─ route handler executes
+  └─ plugin.on_render(tree)               # transform output
+  └─ HTTP response sent
+
+Shutdown
+  └─ plugin.on_shutdown()                 # cleanup
+```
+
+### Dependency Ordering
+
+Plugins can declare `depends_on` to control registration order:
 
 ```python
-from mikiui.app import Plugin
+class AnalyticsPlugin(Plugin):
+    depends_on = ["auth"]   # auth plugin must be registered first
+```
+
+Missing dependencies raise `RuntimeError` at registration time.
+
+### Plugin Registry
+
+MikiUI maintains three registries accessible from `app`:
+
+| Registry | Access | Purpose |
+|----------|--------|---------|
+| `app.plugins` | `list[Plugin]` | All registered plugins |
+| `app.registry` | `WidgetRegistry` | Components and widgets |
+| `app.theme_registry` | `ThemeRegistry` | Available themes |
+
+---
+
+## Creating a Plugin
+
+### Step 1: Subclass `Plugin`
+
+```python
+from mikiui import Plugin
 
 class MyPlugin(Plugin):
     name = "my-plugin"
 
     def register(self, app):
-        """Called once when app.use(plugin) is invoked."""
-        pass
+        print(f"{self.name} registered")
+```
 
-    def on_render(self, tree):
-        """Modify the component tree before it is rendered to HTML."""
-        return tree
+### Step 2: Register with the App
 
-    def on_request(self, request):
-        """Called for every incoming request (e.g. analytics, auth, metrics)."""
-        # Modify request state, add headers, etc.
-        return request
+```python
+from mikiui import MikiApp
 
+app = MikiApp()
 app.use(MyPlugin())
 ```
 
-**Parameters:**
+### Step 3: Add Functionality
 
-| Hook | Description |
-|------|-------------|
-| `register(app)` | Initialize plugin with the app. Access `app.state` for shared data. |
-| `on_render(tree)` | Transform the component tree. Return a modified list of nodes. |
-| `on_request(request)` | Middleware-style hook for requests. Modify request headers or app state. |
+Override hooks to add behavior:
+
+```python
+class AnalyticsPlugin(Plugin):
+    name = "analytics"
+
+    def on_request(self, request):
+        request.state.request_id = generate_id()
+        return request
+
+    def on_render(self, tree):
+        tree.append(P("<!-- Analytics -->", class_="sr-only"))
+        return tree
+
+    def on_error(self, error, request):
+        log_error(error, request.state.request_id)
+```
 
 ---
 
-## Theme Plugins
+## Plugin Types
 
-### Color Theme Plugin
+### Theme Plugins
 
-Register a color theme that sets CSS variables:
+Register a custom color theme:
 
 ```python
-from mikiui.app import Plugin, Theme, ThemePlugin
+from mikiui import ThemePlugin, Theme
 
-class CorporateTheme(ThemePlugin):
-    """Theme plugin that provides a custom color scheme."""
+class DarkMod(ThemePlugin):
+    name = "dark-mod"
 
-    def theme(self):
+    def theme(self) -> Theme:
         return Theme(
-            name="corporate",
+            name="dark-mod",
             source="plugin",
-            css_path="/_miki/runtime/corporate.css",  # Path relative to runtime
-            extra_classes=["data-theme-corporate"],    # Body classes
+            css_path="/_miki/runtime/dark-mod.css",
+            extra_classes=["data-theme-dark-mod"],
             variables={
-                "--miki-primary": "#0066cc",
-                "--miki-bg": "#ffffff",
+                "--miki-primary": "#8b5cf6",
+                "--miki-bg": "#0f172a",
+                "--miki-text": "#f8fafc",
             },
         )
 
-class MyPlugin(Plugin):
-    def register(self, app):
-        corporate = CorporateTheme()
-        app.register_theme(corporate.theme())
-        app.set_theme("corporate")
+app.use(DarkMod())
+app.set_theme("dark-mod")
 ```
 
-### Framework Theme Plugin (Tailwind/Bootstrap)
+### Component Plugins
 
-Provide a framework-based theme:
-
-```python
-from mikiui.app import Plugin, Theme
-
-class TailwindPlugin(Plugin):
-    """Plugin that provides Tailwind CSS with DaisyUI."""
-
-    def register(self, app):
-        theme = Theme(
-            name="tailwind-da",
-            framework="tailwind",
-            cdn_url="https://unpkg.com/tailwindcss@3/dist/tailwind.min.css",
-            css_path="/_miki/runtime/themes/light.css",  # Color theme
-            extra_classes=["data-theme=mikiui-light"],
-            tailwind_config={
-                "daisyui": {
-                    "themes": ["mikiui-light", "mikiui-dark"],
-                }
-            },
-        )
-        app.register_theme(theme)
-
-app.use(TailwindPlugin())
-app.set_theme("tailwind-da")
-```
-
-### Plugin-Supplied Theme (Simple Pattern)
-
-The `ThemePlugin` base class simplifies theme registration:
+Register reusable components:
 
 ```python
-from mikiui.app import ThemePlugin, Theme
+from mikiui import ComponentPlugin
+from mikiui.components import Component, Span
 
-class MyThemePlugin(ThemePlugin):
-    """Simplest theme plugin pattern."""
-
-    def theme(self):
-        return Theme(
-            name="dark-theme",
-            source="plugin",
-            framework="tailwind",  # or "bootstrap", None
-            cdn_url="https://cdn.example.com/tailwind.css",
-            css_path="/_miki/runtime/themes/dark.css",
-            variables={"--miki-primary": "#8b5cf6"},
-        )
-
-# The plugin auto-registers when used
-app.use(MyThemePlugin())
-```
-
----
-
-## Component Plugins
-
-Register custom component classes for use in your app:
-
-```python
-from mikiui.app import ComponentPlugin
-from mikiui.components.base import Component
-
-class Rating(Component):
-    """A star rating component."""
-
+class StarRating(Component):
     tag = "span"
 
     def __init__(self, value, max_value=5, **attrs):
@@ -142,37 +149,23 @@ class Rating(Component):
         super().__init__(stars, **attrs)
 
 class MyComponents(ComponentPlugin):
-    def components(self):
-        return {"Rating": Rating}
+    name = "my-components"
+
+    def components(self) -> dict[str, type]:
+        return {"StarRating": StarRating}
 
 app.use(MyComponents())
-
-# Now you can use Rating as a regular component
-@app.route("/")
-def home():
-    return Rating(4, max_value=5, class_="text-2xl")
 ```
 
-**Accessing registered components:**
+### Widget Plugins
+
+Register composite widgets:
 
 ```python
-# After app.use(MyComponents())
-ratings = app._component_registry["Rating"]
-```
-
----
-
-## Widget Plugins
-
-Register composite widgets built from components:
-
-```python
-from mikiui.app import WidgetPlugin
-from mikiui.components import Div, Button, Input
+from mikiui import WidgetPlugin
+from mikiui.components import Div, Input
 
 class SearchWidget:
-    """A composite search widget with input and suggestions."""
-
     def __init__(self, placeholder="Search...", suggestions=None):
         self.placeholder = placeholder
         self.suggestions = suggestions or []
@@ -186,175 +179,231 @@ class SearchWidget:
         )
 
 class MyWidgets(WidgetPlugin):
-    def widgets(self):
+    name = "my-widgets"
+
+    def widgets(self) -> dict[str, type]:
         return {"Search": SearchWidget}
 
 app.use(MyWidgets())
 ```
 
-**Accessing registered widgets:**
+### Backend Plugins
+
+Add FastAPI routes and middleware:
 
 ```python
-widgets = app._widget_registry["Search"]
-search = widgets.Search(placeholder="Enter name...", suggestions=["Alice", "Bob"])
-```
+from mikiui import Plugin
+from fastapi import APIRouter
 
----
-
-## Render-Time Transformations
-
-Modify the component tree or request processing:
-
-```python
-from mikiui.app import Plugin
-from mikiui.components import Div, Span
-
-class AnalyticsPlugin(Plugin):
-    """Inject analytics and modify HTML output."""
-
-    def on_render(self, tree):
-        """Add a tracking pixel or modify elements."""
-        from mikiui import P
-        tree.append(P("<!-- Analytics tracking -->", class_="sr-only"))
-        return tree
-
-    def on_request(self, request):
-        """Add request metadata to app state."""
-        request.state.analytics_id = self._generate_id()
-        return request
-
-    def _generate_id(self):
-        import uuid
-        return str(uuid.uuid4())[:8]
-
-app.use(AnalyticsPlugin())
-```
-
----
-
-## Accessing Plugin Data
-
-Plugins can store data on the app:
-
-```python
-from mikiui.app import Plugin
-
-class ConfigMap(Plugin):
-    name = "config"
+class ApiPlugin(Plugin):
+    name = "api"
 
     def register(self, app):
-        self.config = {
-            "api_endpoint": "https://api.example.com",
-            "feature_flags": {"new_ui": True},
-        }
-        app.state.config = self.config
-        app.state.feature_flags = self.config["feature_flags"]
+        self.router = APIRouter()
 
-app.use(ConfigMap())
+        @self.router.get("/api/health")
+        async def health():
+            return {"status": "ok"}
 
-# Access anywhere
-@app.post("/action")
-def handle_action(ctx):
-    api = ctx.app.state.config["api_endpoint"]
-    if ctx.app.state.feature_flags.get("new_ui"):
-        # ...
+    def backend_routes(self) -> list[dict]:
+        return [
+            {
+                "path": "/api/health",
+                "methods": ["GET"],
+                "endpoint": self.router.routes[0].endpoint,
+                "include_in_schema": True,
+                "name": "health",
+                "tags": ["health"],
+            }
+        ]
+
+    def middleware_classes(self) -> list[type]:
+        return [CustomMiddleware]
 ```
 
----
+### Notification Plugins
 
-## Multiple Plugins
-
-Use multiple plugins in any order:
+Handle global notifications and alerts:
 
 ```python
-from mikiui import MikiApp, Theme, ThemePlugin
+from mikiui import Plugin
+from mikiui.widgets import NotificationPanel
 
-app = MikiApp(title="Multi-Plugin App")
-
-# Each plugin can add its own functionality
-app.use(AnalyticsPlugin())
-app.use(ThemePlugin())  # Custom theme
-app.use(MyComponentPlugin())
-app.use(MyWidgetPlugin())
-
-# Plugins are applied in order on_render
-for plugin in app.plugins:
-    tree = plugin.on_render(tree)
-```
-
----
-
-## Plugin Template
-
-Start a new plugin with this template:
-
-```python
-from mikiui.app import Plugin, Theme, ThemePlugin
-
-class MyFeaturePlugin(Plugin):
-    """Brief description of what this plugin does."""
-
-    name = "my-feature"
+class NotificationPlugin(Plugin):
+    name = "notifications"
 
     def register(self, app):
-        """Initialize everything needed for this plugin."""
-        # Register themes, components, widgets
-        # Modify app state
-        # Set up routes if needed
-        pass
-
-    def on_render(self, tree):
-        """Transform the component tree before rendering."""
-        # Add elements, modify existing ones
-        # Return the modified tree
-        return tree
+        app.state.notifications = []
 
     def on_request(self, request):
-        """Process each request."""
-        # Add authentication, logging, etc.
+        if "X-Notification" in request.headers:
+            app.state.notifications.append(request.headers["X-Notification"])
         return request
 
-# Usage
-app = MikiApp()
-app.use(MyFeaturePlugin())
+    def on_render(self, tree):
+        if app.state.notifications:
+            tree.append(NotificationPanel(app.state.notifications))
+            app.state.notifications.clear()
+        return tree
 ```
 
 ---
 
-## Security Notes
+## Plugin Hooks Reference
 
-- **Isolation**: Plugins run in the same process as the application. Only install trusted plugins.
-- **Performance**: `on_render` and `on_request` hooks are called for every request. Keep them fast.
-- **Async I/O**: Use `await` in `on_request` for database/network operations.
-- **State sharing**: Use `app.state` to share data between plugins and handlers.
+| Hook | When Called | Use Case |
+|------|-------------|----------|
+| `configure(config)` | Before `register`, if config passed to `app.use` | Set plugin options |
+| `register(app)` | Once, when `app.use(plugin)` is called | Register themes, routes, state |
+| `on_request(request)` | Every incoming request | Auth, logging, analytics |
+| `on_route_add(path, methods, handler)` | When a route is registered | Route introspection, protection |
+| `on_render(tree)` | After handler returns, before HTML | Wrap layouts, inject scripts |
+| `on_error(error, request)` | When handler raises | Error logging, fallback UI |
+| `on_shutdown()` | App shutdown | Cleanup, close connections |
+| `assets()` | Build time | Return static asset paths |
+| `backend_routes()` | Backend setup | Return FastAPI route defs |
+| `middleware_classes()` | Backend setup | Return middleware classes |
 
 ---
 
-## Distribution
+## Distribution and Discovery
 
-Publish a plugin package:
+### Package Structure
 
-**pyproject.toml:**
+```
+mikiui-theme-dark-mod/
+  pyproject.toml
+  mikiui_theme_dark_mod/
+    __init__.py
+    plugin.py
+```
+
+### pyproject.toml
+
 ```toml
 [project]
 name = "mikiui-theme-dark-mod"
 version = "1.0.0"
+description = "Dark mode theme for MikiUI"
 dependencies = ["mikiui"]
 
 [project.entry-points."mikiui.plugins"]
 dark_mod = "mikiui_theme_dark_mod.plugin:DarkModPlugin"
 ```
 
-**Installation:**
+### Installation
+
 ```bash
 pip install mikiui-theme-dark-mod
 ```
 
-**Usage:**
+### Auto-Discovery
+
+When installed, the plugin is automatically available:
+
 ```python
-from mikiui import MikiApp
-from mikiui_theme_dark_mod import DarkModPlugin  # Registered via entry-point
+from mikiui_theme_dark_mod import DarkModPlugin
 
 app = MikiApp()
 app.use(DarkModPlugin())
+```
+
+Or use the entry-point name if using a plugin loader:
+
+```python
+from mikiui import load_plugin
+
+plugin = load_plugin("dark_mod")
+app.use(plugin)
+```
+
+---
+
+## Security Considerations
+
+### Trust Boundary
+
+Plugins run in the same process as your application. Only install plugins
+from trusted sources.
+
+### Input Validation
+
+Validate all external input in `on_request` and `on_render`:
+
+```python
+def on_request(self, request):
+    if not is_valid(request.headers.get("X-Api-Key")):
+        raise HTTPException(status_code=403)
+    return request
+```
+
+### Resource Limits
+
+Keep `on_render` and `on_request` fast. Heavy work should be deferred or
+cached:
+
+```python
+import functools
+
+@functools.lru_cache(maxsize=128)
+def expensive_lookup(key):
+    return compute(key)
+```
+
+### Sandboxing (Future)
+
+MikiUI plans to support sandboxed plugin execution (see PRD). For now,
+plugins share the full Python runtime.
+
+### Async Hooks
+
+Use `await` in `on_request` for async I/O:
+
+```python
+async def on_request(self, request):
+    data = await fetch_external_data()
+    request.state.data = data
+    return request
+```
+
+---
+
+## Plugin Template
+
+Copy this template to start a new plugin:
+
+```python
+from mikiui import Plugin, Theme, ThemePlugin, ComponentPlugin, WidgetPlugin
+
+class MyFeaturePlugin(Plugin):
+    """Brief description."""
+
+    name = "my-feature"
+    depends_on: list[str] = []
+
+    def configure(self, config: dict) -> None:
+        self.config = config
+
+    def register(self, app) -> None:
+        # Initialize themes, components, widgets
+        pass
+
+    def on_render(self, tree) -> Any:
+        return tree
+
+    def on_request(self, request) -> None:
+        pass
+
+    def on_route_add(self, path, methods, handler) -> None:
+        pass
+
+    def on_error(self, error, request) -> None:
+        pass
+
+    def on_shutdown(self) -> None:
+        pass
+
+# Usage
+app = MikiApp()
+app.use(MyFeaturePlugin(), config={"option": True})
 ```

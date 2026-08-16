@@ -9,12 +9,25 @@ Usage:
 
 from __future__ import annotations
 
-from mikiui import MikiApp, Div, H1, H2, Button
-from mikiui.components import Navbar, Form, Label, Input, SubmitButton, Calendar, ListView
+from mikiui import H1, H2, Button, Div, MikiApp
+from mikiui.components import Calendar, Form, Input, Label, ListView, Navbar
 from mikiui.widgets import (
-    DataGrid, TabbedPanel, CollapsiblePanel, MessageBox, ProgressDialog,
-    DockablePanel, SplitView, ScrollPanel, GroupBox,
-    ColorPicker, DatePicker, Dial, LCDNumber,
+    Carousel,
+    ChatUI,
+    CollapsiblePanel,
+    ColorPicker,
+    DataGrid,
+    DatePicker,
+    Dial,
+    DockablePanel,
+    Drawer,
+    FilePicker,
+    KanbanBoard,
+    LCDNumber,
+    MessageBox,
+    ProgressDialog,
+    ScrollPanel,
+    SplitView,
 )
 
 app = MikiApp(title="MikiUI Widgets")
@@ -52,12 +65,19 @@ def home():
                     filterable=True,
                 ),
             ),
+            Group("Chat Widget",
+                ChatUI([
+                    {"role": "bot", "text": "Hello! How can I help?"},
+                    {"role": "user", "text": "Show me a demo"},
+                    {"role": "bot", "text": "Here is the MikiUI demo."},
+                ]),
+            ),
             Group("Layout Widgets",
                 SplitView(
                     Div("Left Pane - Content", class_="border-r pr-4"),
                     Div("Right Pane - Editor"),
                 ),
-                CollapsiblePanel("Collapsible", "Toggle me!"),
+                CollapsiblePanel("Collapsible", "Toggle me!", animate=True),
                 DockablePanel("Properties", "Panel content here."),
             ),
             Group("Dialog Widgets",
@@ -87,6 +107,8 @@ def forms():
                     Input(type="email", name="email", class_="w-full"),
                     Label("Color:"),
                     ColorPicker(label="Color:", name="color"),
+                    Label("File:"),
+                    FilePicker(name="upload", label="Drop files here or click to browse"),
                     Button("Submit", variant="primary"),
                     class_="space-y-3 w-full max-w-sm",
                 ),
@@ -111,6 +133,29 @@ def data():
                     ["David", "david@example.com", "Moderator"],
                 ],
                 sortable=True,
+            ),
+        ),
+        Group("Kanban Board",
+            KanbanBoard({
+                "Todo": ["Task A", "Task B"],
+                "In Progress": ["Task C"],
+                "Done": ["Task D"],
+            }),
+        ),
+        Group("Carousel",
+            Carousel(
+                "https://via.placeholder.com/800x400/2563eb/ffffff?text=Slide+1",
+                "https://via.placeholder.com/800x400/16a34a/ffffff?text=Slide+2",
+                "https://via.placeholder.com/800x400/dc2626/ffffff?text=Slide+3",
+            ),
+        ),
+        Group("Drawer Example",
+            Button("Open Drawer", onclick="document.querySelector('.miki-drawer').classList.add('miki-drawer-open')"),
+            Drawer(
+                Div("This is the drawer content."),
+                title="Drawer",
+                side="left",
+                open=False,
             ),
         ),
         Group("List View",

@@ -57,7 +57,6 @@ def install_deps(
     """
     import json
     import subprocess
-    import sys
 
     from ..styling.system import detect_node
 

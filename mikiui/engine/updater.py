@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .dom import Element, normalize, render
-from .renderer import render_fragment
 from .diff import diff
+from .renderer import render_fragment
 
 
 class OptimisticUpdater:

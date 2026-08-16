@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
 from datetime import date
+from typing import Any
 
 from .base import Component
 from .html import Div
-from .table import Table, Tr, Thead, Tbody, Th, Td, Caption
+from .table import Caption, Table, Tbody, Td, Th, Thead, Tr
 
 
 class Calendar(Component):

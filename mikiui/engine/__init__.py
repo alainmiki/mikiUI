@@ -8,15 +8,15 @@ from __future__ import annotations
 
 from .dom import (
     Element,
-    Text,
     I18nText,
+    Text,
     _,
-    render,
-    normalize,
-    set_translator,
     get_translator,
+    normalize,
+    render,
+    set_translator,
 )
-from .renderer import render_page, render_fragment
+from .renderer import render_fragment, render_page
 
 __all__ = [
     "Element",

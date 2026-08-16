@@ -18,11 +18,9 @@ Security headers added:
 from __future__ import annotations
 
 import secrets
-from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-
 
 _CSP_DEFAULT = (
     "default-src 'self'; "
@@ -50,8 +48,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: Any,
-        content_security_policy: Optional[str] = _CSP_DEFAULT,
-        strict_transport_security: Optional[int] = 31536000,
+        content_security_policy: str | None = _CSP_DEFAULT,
+        strict_transport_security: int | None = 31536000,
     ) -> None:
         super().__init__(app)
         self._csp = content_security_policy
@@ -94,8 +92,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 def apply_default_middleware(
     app: Any,
-    content_security_policy: Optional[str] = _CSP_DEFAULT,
-    strict_transport_security: Optional[int] = 31536000,
+    content_security_policy: str | None = _CSP_DEFAULT,
+    strict_transport_security: int | None = 31536000,
 ) -> None:
     """Attach MikiUI's default middleware stack to a FastAPI app.
 

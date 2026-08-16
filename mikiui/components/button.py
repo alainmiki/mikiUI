@@ -125,9 +125,10 @@ class Button(Component):
         return base
 
     @classmethod
-    def _make_icon(cls, name: str, position: str) -> Span:
+    def _make_icon(cls, name: str, position: str) -> Any:
+        from ..widgets.icon import Icon
         classes = f"miki-btn-icon miki-btn-icon-{position}"
-        return Span(class_=classes, **{"x-data": f"{{name:'{name}'}}"})
+        return Icon(name, class_=classes)
 
     @classmethod
     def icon_button(
@@ -176,6 +177,49 @@ class Button(Component):
         attrs.setdefault("class", f"miki-btn-group miki-btn-group-{direction}")
         return Div(*buttons, **attrs)
 
+    @classmethod
+    def toggle(
+        cls,
+        icon_on: str,
+        icon_off: str,
+        aria_label_on: str,
+        aria_label_off: str,
+        **attrs: Any,
+    ) -> Any:
+        """Create a toggle button (click to switch between two icon states).
+
+        Works **without** Alpine.js — ``miki_ui.js`` auto-initializes the
+        toggle via ``data-miki-toggle`` and handles click events.
+
+        Parameters
+        ----------
+        icon_on, icon_off : str
+            Icon names for each state.
+        aria_label_on, aria_label_off : str
+            Accessible labels for each state.
+        **attrs : Additional attributes.
+
+        Returns a toggle button (wrapped in a ``<span class="miki-toggle-btn">``).
+        """
+        btn_attrs = {
+            "data-miki-toggle": "true",
+            "data-miki-icon-on": icon_on,
+            "data-miki-icon-off": icon_off,
+            "data-miki-aria-label-on": aria_label_on,
+            "data-miki-aria-label-off": aria_label_off,
+            "aria-pressed": "true",
+            "data-miki-state": "on",
+        }
+        user_classes = attrs.pop("class_", "")
+        user_classes = f"miki-toggle-btn {user_classes}".strip()
+        btn_attrs["class_"] = user_classes
+        btn_attrs.update(attrs)
+
+        return Span(
+            cls(icon_on, aria_label=aria_label_on, **btn_attrs),
+            class_="miki-toggle-btn-wrapper",
+        )
+
 
 class SubmitButton(Button):
     """A submit button — defaults to ``type="submit"`` and ``variant="primary"``."""
@@ -197,36 +241,3 @@ class IconButton(Button):
 
         icon_span = Span(icon, class_="miki-btn-icon-content")
         super().__init__(icon_span, **attrs)
-
-    @classmethod
-    def toggle(
-        cls,
-        icon_on: str,
-        icon_off: str,
-        aria_label_on: str,
-        aria_label_off: str,
-        **attrs: Any,
-    ) -> Any:
-        """Create a toggle button (click to switch between two icons).
-
-        Parameters
-        ----------
-        icon_on, icon_off : str
-            Icon names for each state.
-        aria_label_on, aria_label_off : str
-            Accessible labels for each state.
-        **attrs : Additional attributes.
-
-        Returns a toggle button.
-        """
-        return Span(
-            cls(
-                icon_on,
-                aria_label=aria_label_on,
-                **{
-                    "x_on:click": f"data.icon = icon == '{icon_on}' ? '{icon_off}' : '{icon_on}'; data.ariaLabel = data.icon === '{icon_off}' ? '{aria_label_off}' : '{aria_label_on}'",
-                    "x_data": f"{{icon:'{icon_on}',ariaLabel:'{aria_label_on}'}}",
-                },
-            ),
-            class_="miki-toggle-btn",
-        )

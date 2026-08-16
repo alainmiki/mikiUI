@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import importlib
 import os
-import shutil
-import subprocess
 import time
 from pathlib import Path
-from typing import Any
 
 import typer
 
 from .app_discovery import resolve_app_spec
-from .scaffolding import UI_FRAMEWORKS, scaffold, framework_readme_section, _prompt_framework
+from .scaffolding import UI_FRAMEWORKS, _prompt_framework, scaffold
 
 cli = typer.Typer(
     help="[bold]MikiUI[/bold] — Python-first UI framework.\n\n"

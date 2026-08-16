@@ -11,6 +11,7 @@ app's global ``title``.
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
@@ -21,12 +22,48 @@ from fastapi.staticfiles import StaticFiles
 from ..app import MikiApp, RouteDef
 from ..app.routes import resolve_title
 from ..engine.renderer import render_fragment, render_page
-from ..runtime.runtime_loader import runtime_scripts
-from .api_routes import add_api_routes
+from ..middleware.error_handler import ErrorHandlerMiddleware, register_exception_handlers
 from ..router.middleware import apply_default_middleware
 from ..router.router import add_pwa_manifest
+from ..runtime.runtime_loader import runtime_scripts
+from .api_routes import add_api_routes
+
+logger = logging.getLogger(__name__)
 
 _RUNTIME_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "runtime"))
+
+
+class RequestLoggingMiddleware:
+    """Logs each request with method, path, status, and duration."""
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        import time
+
+        request = Request(scope, receive)
+        start = time.perf_counter()
+        status_code = 500
+
+        async def wrapped_send(message: Any) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 500)
+            await send(message)
+
+        await self.app(scope, receive, wrapped_send)
+        duration = time.perf_counter() - start
+        logger.info(
+            "%s %s -> %d (%.3fs)",
+            request.method,
+            request.url.path,
+            status_code,
+            duration,
+        )
 
 
 def _make_endpoint(miki_app: MikiApp, route: RouteDef):
@@ -134,7 +171,41 @@ def create_app(
         icon=miki_app.favicon,
         theme_color=miki_app.palette_color,
     )
+
+    # Add plugin-provided backend routes
+    plugin_routes = getattr(miki_app, "get_backend_routes", lambda: [])()
+    if plugin_routes:
+        plugin_router = APIRouter()
+        for route_def in plugin_routes:
+            path = route_def.get("path", "/")
+            methods = [m.upper() for m in route_def.get("methods", ["GET"])]
+            endpoint = route_def.get("endpoint")
+            include_in_schema = route_def.get("include_in_schema", True)
+            name = route_def.get("name")
+            tags = route_def.get("tags", [])
+            if endpoint is not None:
+                plugin_router.add_api_route(
+                    path=path,
+                    endpoint=endpoint,
+                    methods=methods,
+                    include_in_schema=include_in_schema,
+                    name=name,
+                    tags=tags,
+                )
+        app.include_router(plugin_router)
+
+    # Add plugin-provided middleware
+    middleware_classes = getattr(miki_app, "get_middleware_classes", lambda: [])()
+    for middleware_cls in middleware_classes:
+        try:
+            app.add_middleware(middleware_cls)
+        except Exception:
+            logger.exception("Failed to add plugin middleware: %s", middleware_cls)
+
     apply_default_middleware(app)
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(ErrorHandlerMiddleware)
+    register_exception_handlers(app)
     app.state.miki_app = miki_app
     app.state.runtime_scripts = runtime_scripts(runtime)
     return app

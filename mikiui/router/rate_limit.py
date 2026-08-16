@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-
 
 _DEFAULT_GENERAL_LIMIT = 100
 _DEFAULT_GENERAL_WINDOW = 60

@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-
+from mikiui import Div, Span
 from mikiui.engine import (
     Element,
-    Text,
     I18nText,
+    Text,
     _,
-    render,
     normalize,
-    set_translator,
+    render,
     render_page,
+    set_translator,
 )
-from mikiui import Div, Span
 
 
 def test_element_renders_tag_and_children():

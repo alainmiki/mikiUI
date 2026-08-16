@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import Component
-from .html import Ul, Li
+from .html import Li, Ul
 
 
 class ListView(Component):

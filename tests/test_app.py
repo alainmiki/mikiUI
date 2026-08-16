@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
 from mikiui import Div, MikiApp
-from mikiui.backend import create_app
 from mikiui.app.plugins import Plugin
+from mikiui.backend import create_app
 
 
 class MarkerPlugin(Plugin):

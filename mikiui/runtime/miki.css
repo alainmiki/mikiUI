@@ -218,6 +218,18 @@ tr { display: table-row; }
 .miki-filepicker-name { color: var(--miki-text-muted, #64748b); font-size: 0.875rem; }
 .miki-file-label { font-weight: 500; cursor: pointer; color: var(--miki-accent, #2563eb); }
 .miki-file-input { display: none; }
+.miki-dropzone {
+  border: 2px dashed var(--miki-border);
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  border-radius: var(--miki-radius, 0.5rem);
+  transition: var(--miki-transition, border-color 0.15s ease, background 0.15s ease);
+}
+.miki-dropzone.dragover {
+  border-color: var(--miki-accent);
+  background: var(--miki-surface-hover, #f1f5f9);
+}
 
 /* ---- Chart ---- */
 .miki-chart { margin: 1rem 0; }
@@ -414,10 +426,30 @@ tr { display: table-row; }
   border-right: 1px solid var(--miki-border);
   padding: 1rem;
   overflow-y: auto;
+  z-index: 999;
 }
 .miki-side-left { left: 0; }
 .miki-side-right { right: 0; transform: translateX(100%); }
 .miki-side-right.open { transform: translateX(0); }
+.miki-sidepanel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.miki-sidepanel-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--miki-text-muted, #64748b);
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: var(--miki-radius, 0.25rem);
+}
+.miki-sidepanel-close:hover {
+  color: var(--miki-accent);
+  background: var(--miki-surface-hover, #f1f5f9);
+}
 
 /* ---- Dockable Panel ---- */
 .miki-dockable {
@@ -429,6 +461,58 @@ tr { display: table-row; }
   border-radius: var(--miki-radius, 0.5rem);
   background: var(--miki-surface, #fff);
 }
+.miki-dockable-panel[data-miki-dockable="true"].miki-dock-collapsed .miki-dock-body {
+  display: none;
+}
+.miki-dockable-panel.miki-dock-floating {
+  position: fixed;
+  z-index: 1000;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 90vw;
+  max-height: 90vh;
+  width: var(--miki-float-width, 40vw);
+  height: var(--miki-float-height, 50vh);
+  box-shadow: var(--miki-shadow-xl, 0 20px 25px rgba(0, 0, 0, 0.3));
+  border-radius: var(--miki-radius, 0.5rem);
+}
+.miki-dockable-panel.miki-dock-left {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: var(--miki-dock-width, 300px);
+  z-index: 1000;
+  box-shadow: var(--miki-shadow-lg, 0 0 15px rgba(0, 0, 0, 0.15));
+}
+.miki-dockable-panel.miki-dock-right {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: var(--miki-dock-width, 300px);
+  z-index: 1000;
+  box-shadow: var(--miki-shadow-lg, 0 0 15px rgba(0, 0, 0, 0.15));
+}
+.miki-dockable-panel.miki-dock-bottom {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  height: var(--miki-dock-height, 300px);
+  z-index: 1000;
+  box-shadow: var(--miki-shadow-xl, 0 0 25px rgba(0, 0, 0, 0.2));
+}
+.miki-dockable-panel.miki-dock-top {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: var(--miki-dock-height, 300px);
+  z-index: 1000;
+  box-shadow: var(--miki-shadow-xl, 0 0 25px rgba(0, 0, 0, 0.2));
+}
 .miki-dock-header {
   display: flex;
   justify-content: space-between;
@@ -437,11 +521,77 @@ tr { display: table-row; }
   border-bottom: 1px solid var(--miki-border);
   background: var(--miki-surface-hover, #f1f5f9);
   flex-shrink: 0;
+  cursor: grab;
+}
+.miki-dock-header.miki-dock-dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+}
+.miki-dock-toggle-icon {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.miki-dock-collapsed .miki-dock-toggle-icon {
+  transform: rotate(-90deg);
+}
+.miki-snap-zone {
+  position: fixed !important;
+  z-index: 9999 !important;
+  padding: 12px 24px !important;
+  background: rgba(79, 70, 229, 0.92) !important;
+  color: white !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.15s ease, visibility 0.15s !important;
+}
+.miki-snap-zone.active {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 .miki-dock-title {
   font-size: 1rem;
   font-weight: 600;
   color: var(--miki-fg);
+  margin: 0;
+}
+.miki-dock-toggle {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--miki-text-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.miki-dock-toggle:hover {
+  color: var(--miki-accent);
+}
+.miki-dock-handle {
+  cursor: move;
+  color: var(--miki-text-muted);
+  font-family: monospace;
+  font-size: 1rem;
+  opacity: 0.6;
+}
+.miki-dock-handle:hover {
+  opacity: 1;
+  color: var(--miki-accent);
+}
+.miki-dock-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0.75rem;
+}
+
+/* ---- Collapsible Panel ---- */
   margin: 0;
 }
 .miki-dock-toggle {
@@ -616,6 +766,10 @@ nav {
   opacity: 0;
   transition: opacity 0.2s ease, visibility 0.2s;
 }
+.miki-drawer[data-miki-drawer="true"].miki-drawer-open {
+  visibility: visible;
+  opacity: 1;
+}
 .miki-drawer-overlay {
   position: absolute;
   inset: 0;
@@ -720,97 +874,159 @@ nav {
   gap: 0.5rem;
   user-select: none;
 }
+.miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
+  flex-direction: row;
+}
+.miki-splitview[data-miki-splitview][data-orientation="vertical"] {
+  flex-direction: column;
+}
 .miki-split-pane {
-  flex: 1;
+  flex: 1 1 0;
   overflow: auto;
   min-width: 150px;
   min-height: 0;
   background: var(--miki-surface, #fff);
+  transition: flex-basis 0.05s ease-out;
 }
-.miki-split-pane.miki-split-left {
-  order: 1;
-}
-.miki-split-pane.miki-split-right {
-  order: 2;
-}
+.miki-split-pane.miki-split-first { order: 1; }
+.miki-split-pane.miki-split-second { order: 2; }
+.miki-split-pane.miki-split-left { order: 1; }
+.miki-split-pane.miki-split-right { order: 2; }
+.miki-split-pane.miki-split-top { order: 1; }
+.miki-split-pane.miki-split-bottom { order: 2; }
 .miki-splitter {
-  cursor: col-resize;
-  width: 8px;
-  min-width: 8px;
+  flex-shrink: 0;
   background: var(--miki-border);
   border-radius: 4px;
   touch-action: none;
   user-select: none;
   transition: background 0.2s ease;
   z-index: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .miki-splitter:hover {
   background: var(--miki-accent);
 }
+/* Horizontal orientation: vertical splitter bar */
+.miki-splitview[data-orientation="horizontal"] .miki-splitter {
+  width: 8px;
+  min-width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
+/* Vertical orientation: horizontal splitter bar */
+.miki-splitview[data-orientation="vertical"] .miki-splitter {
+  width: 100%;
+  height: 8px;
+  min-height: 8px;
+  cursor: row-resize;
+}
+/* resize_mode overrides cursor */
+.miki-splitview[data-orientation="horizontal"][data-resize-mode="horizontal"] .miki-splitter,
+.miki-splitview[data-orientation="horizontal"][data-resize-mode="both"] .miki-splitter {
+  cursor: col-resize;
+}
+.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter,
+.miki-splitview[data-orientation="vertical"][data-resize-mode="both"] .miki-splitter {
+  cursor: row-resize;
+}
+/* For 'both' mode with horizontal orientation, allow diagonal cursor */
+.miki-splitview[data-resize-mode="both"] .miki-splitter {
+  cursor: nwse-resize;
+}
+.miki-splitview[data-orientation="horizontal"][data-resize-mode="horizontal"] .miki-splitter,
+.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter {
+  /* Override the 'both' cursor for single-axis modes */
+  cursor: col-resize;
+}
+.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter {
+  cursor: row-resize;
+}
 .miki-splitter::before {
   content: "";
   display: block;
-  height: 100%;
-  width: 2px;
   background: var(--miki-accent);
-  margin: auto;
   border-radius: 2px;
 }
-.miki-splitview[aria-orientation="vertical"] {
-  flex-direction: column;
+/* Vertical splitter (horizontal orientation): thin vertical line */
+.miki-splitview[data-orientation="horizontal"] .miki-splitter::before {
+  height: 100%;
+  width: 2px;
+  margin: auto;
 }
-.miki-splitview[aria-orientation="vertical"] .miki-splitter {
-  width: 100%;
-  height: 8px;
-  cursor: row-resize;
-}
-.miki-splitview[aria-orientation="vertical"] .miki-splitter::before {
+/* Horizontal splitter (vertical orientation): thin horizontal line */
+.miki-splitview[data-orientation="vertical"] .miki-splitter::before {
   height: 2px;
   width: 100%;
+  margin: auto;
 }
-.miki-splitview[aria-orientation="vertical"] .miki-split-pane {
-  min-height: 150px;
+.miki-splitter::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 2px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.miki-splitter:hover::after {
+  opacity: 0.8;
+}
+/* Horizontal mode: vertical dots (left/right drag) */
+.miki-splitview[data-orientation="horizontal"][data-resize-mode="horizontal"] .miki-splitter::after,
+.miki-splitview[data-resize-mode="both"] .miki-splitter::after {
+  content: "● ● ●";
+  flex-direction: column;
+  align-items: center;
+  font-size: 4px;
+  letter-spacing: 1px;
+}
+/* Vertical mode: horizontal dots (up/down drag) */
+.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter::after {
+  content: "● ● ●";
+  flex-direction: row;
+  align-items: center;
+  font-size: 6px;
+  letter-spacing: 1px;
+}
+.miki-splitview[data-orientation="vertical"][data-resize-mode="both"] .miki-splitter::after {
+  content: "● ● ●";
+  flex-direction: row;
+  align-items: center;
+  font-size: 6px;
+  letter-spacing: 1px;
+}
+.miki-splitter.miki-splitter-dragging {
+  background: var(--miki-accent);
+  opacity: 0.8;
+}
+.miki-split-maximized .miki-split-pane.miki-split-second {
+  display: none;
 }
 
-/* ---- Dockable Panel ---- */
-.miki-dockable {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-width: 200px;
-}
-.miki-dock-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--miki-border);
-  background: var(--miki-surface-hover, #f1f5f9);
-  flex-shrink: 0;
-}
-.miki-dock-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--miki-fg);
-}
-.miki-dock-handle {
-  cursor: move;
-  color: var(--miki-text-muted);
-  font-size: 1.25rem;
-  background: none;
-  border: none;
-  padding: 0 0.25rem;
-  opacity: 0.6;
-}
-.miki-dock-handle:hover {
-  opacity: 1;
-  color: var(--miki-accent);
-}
-.miki-dock-body {
-  flex: 1;
-  overflow: auto;
-  padding: 0.75rem;
+@media (max-width: 640px) {
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
+    flex-direction: column;
+  }
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter {
+    width: 100%;
+    height: 8px;
+    min-height: 8px;
+    cursor: row-resize;
+  }
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter::before {
+    height: 2px;
+    width: 100%;
+  }
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-split-pane {
+    min-height: 150px;
+  }
 }
 
 /* ---- Collapsible Panel ---- */
@@ -821,24 +1037,36 @@ nav {
   margin-bottom: 0.75rem;
   overflow: hidden;
 }
+.miki-collapsible[data-miki-collapsible] {
+  border: 1px solid var(--miki-border);
+}
+.miki-collapsible[data-miki-collapsible].miki-collapsible-open .miki-collapsible-body:not(.miki-collapsible-body-animated) {
+  display: block;
+}
+.miki-collapsible[data-miki-collapsible].miki-collapsible-closed .miki-collapsible-body:not(.miki-collapsible-body-animated) {
+  display: none;
+}
+.miki-collapsible.miki-collapsible-closed .miki-collapsible-body:not(.miki-collapsible-body-animated) {
+  display: none;
+}
 .miki-collapsible details {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
-.miki-collapsible-summary {
+.miki-collapsible-header {
   cursor: pointer;
   padding: 0.75rem 1rem;
   font-weight: 500;
   position: relative;
   user-select: none;
 }
-.miki-collapsible-summary::after {
+.miki-collapsible-header::after {
   content: "▸";
   float: right;
   transition: transform 0.2s ease;
 }
-.miki-collapsible[open] .miki-collapsible-summary::after {
+.miki-collapsible-open .miki-collapsible-header::after {
   transform: rotate(90deg);
 }
 .miki-collapsible .miki-collapsible-body {
@@ -1382,7 +1610,8 @@ nav {
   cursor: pointer;
   padding: 0;
 }
-.miki-carousel-dot.active {
+.miki-carousel-dot.active,
+.miki-carousel-dot-active {
   background: #fff;
 }
 .miki-carousel-prev,
@@ -1453,6 +1682,15 @@ nav {
 .miki-datagrid-scrollable {
   overflow-x: auto;
 }
+.miki-datagrid-search {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--miki-border);
+  background: var(--miki-surface, #fff);
+}
+.miki-datagrid-search input {
+  width: 100%;
+  box-sizing: border-box;
+}
 .miki-datagrid-head th {
   background: var(--miki-surface, #f1f5f9);
   font-weight: 600;
@@ -1468,10 +1706,53 @@ nav {
 .miki-th-sortable:hover {
   background: var(--miki-surface-hover, #f1f5f9);
 }
+.miki-sort-indicator {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--miki-text-muted, #64748b);
+}
+.miki-th-filter {
+  position: relative;
+}
+.miki-th-filter input {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  box-sizing: border-box;
+}
 .miki-th-number {
   text-align: right;
 }
 .miki-th-width-auto { width: auto; }
+.miki-datagrid-pagination {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--miki-border);
+}
+.miki-datagrid-pagination button {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius, 0.5rem);
+  background: var(--miki-surface, #fff);
+  color: var(--miki-fg);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.miki-datagrid-pagination button:hover {
+  border-color: var(--miki-accent);
+  color: var(--miki-accent);
+}
+.miki-datagrid-pagination span[data-miki-page-info] {
+  font-size: 0.875rem;
+  color: var(--miki-text-muted, #64748b);
+  margin: 0 0.25rem;
+}
 
 /* ---- Pagination ---- */
 .miki-pagination {
@@ -1768,6 +2049,30 @@ textarea {
   background: var(--miki-surface-hover, #f1f5f9);
   border-color: var(--miki-accent);
 }
+.miki-toggle-btn[aria-pressed="true"] .miki-toggle-icon {
+  color: var(--miki-accent);
+}
+.miki-toggle-icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+.miki-searchable-filter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius, 0.25rem);
+  background: var(--miki-surface, #fff);
+  font: inherit;
+  z-index: 1;
+}
+.miki-searchable-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
 .miki-upload-input {
   display: block;
   width: 100%;
@@ -2024,10 +2329,14 @@ textarea {
   margin-left: auto;
   font-size: 0.75rem;
   color: var(--miki-text-muted, #64748b);
+  transition: transform 0.2s ease;
 }
 .miki-collapsible-summary-clickable {
   cursor: pointer;
   user-select: none;
+}
+.miki-collapsible-open .miki-collapsible-toggle {
+  transform: rotate(90deg);
 }
 .miki-collapsible-body-animated {
   transition: max-height 0.2s ease, padding 0.2s ease;
@@ -2318,6 +2627,16 @@ textarea {
   font-weight: 600;
   color: var(--miki-fg);
   margin: 0 0 0.25rem;
+}
+.miki-kanban-item[draggable="true"] {
+  cursor: grab;
+}
+.miki-kanban-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+.miki-kanban-column.miki-drag-over {
+  border-style: dashed;
+  background: var(--miki-surface-hover, #f1f5f9);
 }
 
 /* ---- IDE-like Editor ---- */
@@ -2638,4 +2957,429 @@ textarea {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* ---- DataGrid Sort Indicators ---- */
+.miki-datagrid th[data-miki-sort-field] {
+  cursor: pointer;
+}
+.miki-sort-indicator[data-dir="asc"] {
+  opacity: 1;
+  color: var(--miki-accent);
+}
+.miki-sort-indicator[data-dir="desc"] {
+  opacity: 0.5;
+}
+
+/* ---- ChatUI ---- */
+.miki-chat-typing {
+  color: var(--miki-text-muted, #64748b);
+  font-style: italic;
+  padding: 0.25rem 0.75rem;
+}
+.miki-chat-typing::after {
+  content: '...';
+  animation: miki-chat-typing 1.5s infinite;
+}
+@keyframes miki-chat-typing {
+  0%, 20% { content: '.'; }
+  33%, 40% { content: '..'; }
+  50%, 60% { content: '...'; }
+}
+.miki-chat-msg.miki-chat-bot {
+  align-self: flex-start;
+}
+.miki-chat-msg.miki-chat-user {
+  align-self: flex-end;
+  background: var(--miki-accent);
+  color: #fff;
+}
+
+/* ---- CollapsiblePanel Smooth Transition ---- */
+.miki-collapsible-body.miki-collapsible-body-animated {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+.miki-collapsible-open .miki-collapsible-body.miki-collapsible-body-animated {
+  max-height: 1000px;
+}
+.miki-collapsible-body:not(.miki-collapsible-body-animated) {
+  max-height: none;
+  overflow: visible;
+  transition: none;
+}
+
+/* ---- FilePicker drag-over ---- */
+.miki-dropzone.miki-drag-over {
+  border-color: var(--miki-accent);
+  background: var(--miki-surface-hover, #f1f5f9);
+}
+
+/* ---- Dropzone with selected files ---- */
+.miki-dropzone.miki-has-files {
+  border-color: var(--miki-success, #22c55e);
+  background: var(--miki-success-bg, #dcfce7);
+}
+.miki-dropzone.miki-has-files .miki-dropzone-label {
+  color: var(--miki-success-text, #166534);
+  font-weight: 500;
+}
+
+/* ---- Carousel autoplay indicator ---- */
+.miki-carousel.paused .miki-carousel-play-indicator {
+  opacity: 0.5;
+}
+
+/* ---- Drawer overlay close cursor ---- */
+.miki-drawer-overlay {
+  cursor: pointer;
+}
+
+/* ================================================================
+   JS-DRIVEN WIDGET STYLES (added for miki_ui.js auto-init)
+   ================================================================ */
+
+/* ---- Dialog close button ---- */
+.miki-dialog-close-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--miki-text-muted, #64748b);
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: var(--miki-radius, 0.25rem);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.miki-dialog-close-btn:hover {
+  color: var(--miki-accent);
+  background: var(--miki-surface-hover, #f1f5f9);
+}
+
+/* ---- Modal close button ---- */
+.miki-modal-close-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--miki-text-muted, #64748b);
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: var(--miki-radius, 0.25rem);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.miki-modal-close-btn:hover {
+  color: var(--miki-accent);
+  background: var(--miki-surface-hover, #f1f5f9);
+}
+
+/* ---- Modal hidden state ---- */
+.miki-modal[data-miki-modal-open="false"] {
+  display: none;
+}
+.miki-modal[data-miki-modal-open="true"] {
+  display: flex;
+}
+
+/* ---- Slider value display (filled track) ---- */
+.miki-slider-input {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: transparent;
+  outline: none;
+  -webkit-appearance: none;
+}
+.miki-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--miki-accent);
+  cursor: pointer;
+  border: 2px solid var(--miki-bg);
+  box-shadow: 0 0 0 2px var(--miki-accent);
+  transition: box-shadow 0.15s ease;
+}
+.miki-slider-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--miki-accent);
+  cursor: pointer;
+  border: 2px solid var(--miki-bg);
+  box-shadow: 0 0 0 2px var(--miki-accent);
+  transition: box-shadow 0.15s ease;
+}
+.miki-slider-input:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--miki-accent) 30%, transparent);
+}
+.miki-slider-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.miki-slider-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--miki-accent);
+  text-align: center;
+}
+
+/* ---- Dial (circular knob) ---- */
+.miki-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.miki-dial-input {
+  width: 140px;
+  height: 140px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+.miki-dial-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+.miki-dial-input::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+.miki-dial-track {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 4px solid var(--miki-border);
+  background: conic-gradient(
+    var(--miki-accent) 0% 0%,
+    var(--miki-surface-hover, #f1f5f9) 0% 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.miki-dial-knob {
+  position: absolute;
+  width: 16px;
+  height: 56px;
+  background: var(--miki-accent);
+  border-radius: 8px;
+  transform-origin: center bottom;
+  transition: transform 0.15s ease;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.miki-dial-knob::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--miki-bg);
+  border: 2px solid var(--miki-accent);
+}
+.miki-dial-display {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, "Courier New", monospace;
+}
+.miki-dial-thumb {
+  font-size: 1.25rem;
+  color: var(--miki-accent);
+}
+.miki-dial-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--miki-fg);
+}
+
+/* ---- Progress bar (custom) ---- */
+.miki-progress-bar {
+  position: relative;
+  height: 0.75rem;
+  border-radius: var(--miki-radius, 0.5rem);
+  background: var(--miki-border, #e2e8f0);
+  overflow: hidden;
+}
+.miki-progress-value {
+  height: 100%;
+  background: var(--miki-accent);
+  border-radius: var(--miki-radius, 0.5rem);
+  transition: width 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.miki-progress-striped .miki-progress-value {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--miki-accent, #2563eb),
+    var(--miki-accent, #2563eb) 4px,
+    var(--miki-accent-hover, #1d4ed8) 4px,
+    var(--miki-accent-hover) 8px
+  );
+  animation: miki-progress-stripe 1s linear infinite;
+}
+
+/* ---- Progress Dialog ---- */
+.miki-progressdialog {
+  max-width: 400px;
+  padding: 1.5rem;
+  position: relative;
+}
+.miki-progressdialog .miki-dialog-close-btn {
+  display: none;
+}
+.miki-progressdialog .miki-dialog-close-btn {
+  display: block;
+}
+
+/* ---- Collapsible smooth transition ---- */
+.miki-collapsible-body.miki-collapsible-body-animated {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.miki-collapsible-open .miki-collapsible-body.miki-collapsible-body-animated {
+  max-height: 1000px;
+}
+
+/* ---- Message Box ---- */
+.miki-messagebox {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 9999;
+}
+.miki-messagebox[data-miki-messagebox-close="true"] {
+  cursor: pointer;
+}
+
+/* ---- Context Window (now JS-managed) ---- */
+.miki-context-window {
+  position: absolute;
+  z-index: 1000;
+  min-width: 180px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease-out, visibility 0.15s, transform 0.15s ease;
+  background: var(--miki-surface, #fff);
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius, 0.5rem);
+  box-shadow: var(--miki-shadow-lg, 0 4px 6px rgba(0, 0, 0, 0.1));
+}
+.miki-context-show .miki-context-window,
+.miki-context-window[data-miki-context-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.miki-context-trigger {
+  cursor: pointer;
+}
+
+/* ---- Menu Bar dropdowns (now JS-managed) ---- */
+.miki-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  background: var(--miki-surface, #fff);
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius, 0.5rem);
+  box-shadow: var(--miki-shadow-lg, 0 4px 6px rgba(0, 0, 0, 0.1));
+  padding: 0.25rem 0;
+  min-width: 160px;
+}
+.miki-menu.show {
+  display: block;
+}
+
+/* ---- Dockable Panel: obvious hover hints ---- */
+.miki-dockable-panel:hover .miki-dock-toggle::after {
+  content: " ▼";
+  font-size: 0.75rem;
+}
+.miki-dockable-panel:hover .miki-dock-close::after {
+  content: " ✕";
+}
+.miki-dockable-panel:hover .miki-dock-detach::after {
+  content: " ⇋";
+}
+.miki-dock-spacer {
+  flex: 1;
+}
+
+/* ---- Tabs: visual affordance ---- */
+.miki-tab[role="tab"] {
+  cursor: pointer;
+}
+.miki-tab[role="tab"]:hover {
+  color: var(--miki-accent);
+  background: var(--miki-surface-hover, #f1f5f9);
+}
+.miki-tab[role="tab"][aria-selected="true"] {
+  color: var(--miki-accent);
+  font-weight: 600;
+}
+
+/* ---- Drawer: slide animations ---- */
+.miki-drawer {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease, visibility 0.2s;
+}
+.miki-drawer.miki-drawer-open {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ---- Responsive improvements ---- */
+@media (max-width: 640px) {
+  .miki-dialog {
+    width: 95vw;
+    max-width: none;
+    margin: 0.5rem;
+  }
+  .miki-modal-panel {
+    max-width: 95vw;
+    margin: 0.5rem;
+  }
+  .miki-dial-input {
+    width: 120px;
+    height: 120px;
+  }
 }

@@ -6,12 +6,13 @@ for streaming updates (media progress, logs, notifications) to the browser.
 
 from __future__ import annotations
 
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from fastapi.responses import StreamingResponse
 
 
-def sse_response(generator: AsyncGenerator[Any, None]) -> StreamingResponse:
+def sse_response(generator: AsyncGenerator[Any]) -> StreamingResponse:
     async def event_stream():
         async for message in generator:
             if isinstance(message, dict):

@@ -27,11 +27,22 @@ filterable : bool
 pagination : bool
     Enable pagination
 search : bool
-    Enable global search input
+    Enable global search input.
+search_fields : list[str] | None
+    Field names to include in the search-field dropdown. When provided,
+    a ``<select>`` appears before the search box so users can limit the
+    search scope to specific columns.
 page : int
     Current page (0-indexed)
 page_size : int
     Rows per page
+height : int | None
+    Fixed height in pixels for scrollable container.
+htmx_get : str | None
+    URL for HTMX-based pagination. When set, page navigation triggers
+    an AJAX GET instead of dispatching a custom event.
+htmx_target : str | None
+    CSS selector for the HTMX response target element.
 editable : bool
     Allow inline cell editing
 editable_renderer : callable | None
@@ -68,9 +79,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import Td, Th, Tr, Tbody, Thead, Div, Input, Button
+from ..components import Button, Div, Input, Option, Select, Span, Table, Tbody, Td, Th, Thead, Tr
 from ..components.base import Component
-from ..engine import _
 
 
 class DataGrid(Component):
@@ -87,7 +97,7 @@ class DataGrid(Component):
         ]
     """
 
-    tag = "table"
+    tag = "div"
 
     def __init__(
         self,
@@ -98,36 +108,73 @@ class DataGrid(Component):
         filterable: bool = False,
         pagination: bool = True,
         search: bool = True,
+        search_fields: list[str] | None = None,
         page: int = 0,
         page_size: int = 10,
         height: int | None = None,
+        htmx_get: str | None = None,
+        htmx_target: str | None = None,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("role", "grid")
         attrs.setdefault("class", "miki-datagrid")
+        attrs.setdefault("role", "grid")
+        attrs.setdefault("data-miki-datagrid", "true")
+
+        if htmx_get:
+            attrs.setdefault("data-miki-htmx-get", htmx_get)
+        if htmx_target:
+            attrs.setdefault("data-miki-htmx-target", htmx_target)
+
         self.columns = columns
         self.rows = rows
         self.sortable = sortable
         self.filterable = filterable
         self.pagination = pagination
         self.search = search
+        self.search_fields = search_fields
         self.page = page
         self.page_size = page_size
         self.height = height
 
-        parent_class = attrs.get("class", "")
-        if height:
-            attrs["class_"] = f"{parent_class} miki-datagrid-scrollable"
-            attrs.setdefault("style", f"max-height: {height}px;")
+        children: list[Any] = []
+
+        if search:
+            search_children: list[Any] = []
+            if search_fields:
+                options: list[Any] = []
+                for f in search_fields:
+                    options.append(Option(f, value=f))
+                select = Select(*options, name="search_field", class_="miki-search-field-select")
+                search_children.append(select)
+            search_input = Input(type="search", placeholder="Search...", **{"data-miki-search": "true"})
+            search_children.append(search_input)
+            search_div = Div(*search_children, class_="miki-datagrid-search")
+            children.append(search_div)
 
         thead_children = self._build_column_headers()
         thead = Thead(*thead_children, class_="miki-datagrid-head")
         tbody_children = self._build_body_rows()
         tbody = Tbody(*tbody_children)
 
-        super().__init__(thead, tbody, **attrs)
+        table_attrs: dict[str, Any] = {}
+        if height:
+            table_attrs["class"] = "miki-datagrid-scrollable"
+            table_attrs.setdefault("style", f"max-height: {height}px;")
 
-        self._add_alpine_init()
+        table = Table(thead, tbody, **table_attrs)
+        children.append(table)
+
+        if pagination:
+            total_pages = max(1, (len(self.rows) + self.page_size - 1) // self.page_size)
+            prev_btn = Button("Previous", **{"data-miki-page": "prev"})
+            page_info = Span(f"Page {page + 1} of {total_pages}", **{"data-miki-page-info": "true"})
+            next_btn = Button("Next", **{"data-miki-page": "next"})
+            pagination_div = Div(
+                prev_btn, page_info, next_btn, class_="miki-datagrid-pagination", **{"data-miki-pagination": "true"}
+            )
+            children.append(pagination_div)
+
+        super().__init__(*children, **attrs)
 
     def _parse_column(self, col: str | tuple) -> tuple[str, str, dict]:
         if isinstance(col, str):
@@ -147,18 +194,36 @@ class DataGrid(Component):
             if opts.get("align"):
                 th_classes.append(f"miki-th-{opts['align']}")
 
-            th_attrs = {"class_": " ".join(th_classes)}
+            th_attrs: dict[str, Any] = {"class_": " ".join(th_classes)}
             if opts.get("type") == "number":
                 th_attrs["class_"] += " miki-th-number"
             if opts.get("align"):
                 th_attrs["class_"] += f" miki-text-{opts['align']}"
 
             if not opts.get("sortable", False):
-                headers.append(Th(label, **th_attrs))
+                if opts.get("filterable", False):
+                    th_attrs["class_"] += " miki-th-filter"
+                    filter_input = Input(
+                        type="search", placeholder=f"Filter {label}...", **{"data-miki-filter": "true"}
+                    )
+                    headers.append(Th(label, filter_input, **th_attrs))
+                else:
+                    headers.append(Th(label, **th_attrs))
             else:
-                th_attrs["x_on_click"] = f"datagrid.sortField='{field}'; datagrid.sortDir=datagrid.sortDir==='asc'?'desc':'asc'"
+                th_attrs["data-miki-sort-field"] = field
+                th_attrs.setdefault("role", "button")
+                th_attrs.setdefault("tabindex", "0")
+                th_attrs.setdefault("aria-sort", "none")
                 th_attrs["class_"] += " miki-th-sortable"
-                headers.append(Th(label, **th_attrs))
+                sort_indicator = Span("▲", class_="miki-sort-indicator", **{"data-miki-sort-indicator": "true"})
+                if opts.get("filterable", False):
+                    th_attrs["class_"] += " miki-th-filter"
+                    filter_input = Input(
+                        type="search", placeholder=f"Filter {label}...", **{"data-miki-filter": "true"}
+                    )
+                    headers.append(Th(label, sort_indicator, filter_input, **th_attrs))
+                else:
+                    headers.append(Th(label, sort_indicator, **th_attrs))
         return headers
 
     def _build_body_rows(self) -> list[Tr]:
@@ -177,14 +242,3 @@ class DataGrid(Component):
         start = self.page * self.page_size
         end = start + self.page_size
         return data[start:end]
-
-    def _add_alpine_init(self) -> None:
-        x_data = {
-            "sortField": "",
-            "sortDir": "asc",
-            "currentPage": self.page,
-            "pageSize": self.page_size,
-            "totalPages": max(1, (len(self.rows) + self.page_size - 1) // self.page_size),
-        }
-        if "x_data" not in self.attrs:
-            self.attrs["x_data"] = f"{{sortField:'',sortDir:'asc',currentPage:{self.page},pageSize:{self.page_size},totalPages:{x_data['totalPages']}}}"

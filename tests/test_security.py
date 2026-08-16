@@ -5,11 +5,10 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from mikiui import MikiApp, Div
+from mikiui import MikiApp
 from mikiui.backend import create_app
 from mikiui_app_plugins import SessionPlugin
 from mikiui_app_plugins.api import APIPlugin
-
 
 # ---------------------------------------------------------------------------
 # Session Plugin Security Tests
@@ -556,9 +555,10 @@ def test_cors_rejects_wildcard_with_credentials():
 
 def test_websocket_origin_validation():
     """WebSocket rejects connections from disallowed origins."""
-    from fastapi.testclient import TestClient
-    from mikiui.backend.websocket import ConnectionManager, mount_websocket
     from fastapi import APIRouter
+    from fastapi.testclient import TestClient
+
+    from mikiui.backend.websocket import ConnectionManager, mount_websocket
 
     manager = ConnectionManager(allowed_origins=["http://localhost:3000"])
 

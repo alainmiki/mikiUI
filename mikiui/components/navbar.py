@@ -24,9 +24,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components.html import A, Div, H1, Li, Ul
-from ..components.button import Button
 from ..components.base import Component
+from ..components.button import Button
+from ..components.html import A, Div, Li, Ul
 
 
 class Navbar(Component):

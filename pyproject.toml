@@ -12,11 +12,33 @@ dependencies = [
     "jinja2>=3.1",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.24",
+    "mypy>=1.13",
+    "ruff>=0.8",
+]
+build = [
+    "setuptools>=68",
+    "wheel>=0.42",
+    "build>=1.2",
+]
+desktop = [
+    "pywebview>=5.0",
+    "pyinstaller>=6.0",
+    "watchfiles>=0.21",
+]
+tailwind = [
+    "watchfiles>=0.21",
+]
+
 [project.scripts]
 mikiui = "mikiui.cli:app"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "wheel>=0.42"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -28,3 +50,58 @@ mikiui = ["runtime/*.js", "runtime/*.css"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+addopts = "-ra -q --cov=mikiui --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["mikiui"]
+branch = true
+omit = [
+    "*/__main__.py",
+    "*/__pycache__/*",
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+ignore_missing_imports = true
+show_error_codes = true
+pretty = true
+exclude = [
+    "build/",
+    "dist/",
+    "tests/",
+    "mikiui_app_plugins/",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+exclude = [
+    ".git",
+    "__pycache__",
+    "build/",
+    "dist/",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mikiui", "mikiui_app_plugins"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist"]
+skips = ["B101", "B104"]

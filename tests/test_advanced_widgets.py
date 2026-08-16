@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import pytest
-
 from mikiui.widgets import (
-    ColorPicker,
+    Carousel,
     CollapsiblePanel,
+    ColorPicker,
     DatePicker,
     Dial,
+    DockablePanel,
+    Drawer,
+    FilePicker,
     FormWizard,
     GroupBox,
     LCDNumber,
@@ -208,3 +210,139 @@ def test_log_viewer_severity():
     assert "boom" in html
     assert "miki-log-info" in html
     assert "plain" in html
+
+
+def test_collapsible_panel_data_attrs():
+    html = CollapsiblePanel("More", "detail", open=True).to_html()
+    assert "data-miki-collapsible" in html
+    assert "data-miki-collapsible-header" in html
+
+
+def test_drawer_data_attrs():
+    html = Drawer("content", title="Drawer", side="left").to_html()
+    assert "data-miki-drawer" in html
+
+
+def test_filepicker_has_dropzone():
+    html = FilePicker(name="file", label="Drop files").to_html()
+    assert "data-miki-dropzone" in html
+    assert "miki-file-input" in html
+
+
+def test_carousel_has_data_attrs():
+    html = Carousel("img1.jpg", "img2.jpg").to_html()
+    assert "data-miki-carousel" in html
+
+
+def test_carousel_autoplay():
+    html = Carousel("img1.jpg", autoplay=True).to_html()
+    assert 'data-autoplay="true"' in html
+
+
+def test_collapsible_panel_smooth_transition():
+    html = CollapsiblePanel("More", "detail", animate=True).to_html()
+    assert "miki-collapsible-body-animated" in html
+
+
+def test_drawer_open_class():
+    html = Drawer("content", title="Drawer", side="left", open=True).to_html()
+    assert "miki-drawer-open" in html
+
+
+def test_drawer_close_has_data_attr():
+    html = Drawer("content", title="Drawer", side="left").to_html()
+    assert 'data-miki-drawer-close="true"' in html
+
+
+def test_filepicker_has_file_input_attr():
+    html = FilePicker(name="file", label="Drop files").to_html()
+    assert 'data-miki-file-input="true"' in html
+
+
+def test_collapsible_panel_no_hidden_attr():
+    html = CollapsiblePanel("More", "detail", open=True).to_html()
+    assert "hidden" not in html
+
+
+def test_dockable_panel_no_x_init():
+    panel = DockablePanel("My Panel", "body")
+    html = panel.to_html()
+    assert "x_init" not in html
+
+
+def test_dockable_panel_draggable_header():
+    panel = DockablePanel("My Panel", "body")
+    html = panel.to_html()
+    assert 'draggable="true"' in html
+
+
+def test_dockable_panel_position_attr():
+    panel = DockablePanel("P", "body", dock="left")
+    html = panel.to_html()
+    assert 'data-miki-dock-position="left"' in html
+
+
+def test_dockable_panel_floating_close_on_escape():
+    panel = DockablePanel("P", "body", dock="floating")
+    html = panel.to_html()
+    assert 'data-miki-close-on-escape="true"' in html
+
+
+def test_dockable_panel_collapsed_class():
+    panel = DockablePanel("P", "body", open=False)
+    html = panel.to_html()
+    assert "miki-dock-collapsed" in html
+    assert 'data-miki-dock-state="collapsed"' in html
+
+
+def test_datagrid_search_fields_select():
+    from mikiui.widgets import DataGrid
+
+    dg = DataGrid(
+        columns=["Name", "Email"],
+        rows=[{"Name": "Alice", "Email": "a@b.c"}],
+        search_fields=["Name", "Email"],
+    )
+    html = dg.to_html()
+    assert "search_field" in html
+    assert "<select" in html
+    assert "Name" in html and "Email" in html
+
+
+def test_datagrid_htmx_attrs():
+    from mikiui.widgets import DataGrid
+
+    dg = DataGrid(
+        columns=["A"],
+        rows=[["x"]],
+        htmx_get="/api/data",
+        htmx_target="#grid",
+    )
+    html = dg.to_html()
+    assert "data-miki-htmx-get" in html
+    assert "data-miki-htmx-target" in html
+
+
+def test_drawer_toggle_component():
+    from mikiui.widgets import DrawerToggle
+
+    html = DrawerToggle("Open", target="#my-drawer").to_html()
+    assert "data-miki-drawer-toggle" in html
+    assert "data-miki-drawer-target" in html
+
+
+def test_context_window_x_on_click():
+    from mikiui.widgets import ContextWindow
+
+    def action():
+        pass
+
+    html = ContextWindow(("Item", action)).to_html()
+    assert "x-on:click" in html
+
+
+def test_progress_dialog_uses_progress_element():
+    pd = ProgressDialog("Wait", "working", value=40)
+    html = pd.to_html()
+    assert "<dialog" in html
+    assert "<progress" in html

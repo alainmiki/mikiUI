@@ -9,17 +9,46 @@ Usage:
 
 from __future__ import annotations
 
-from mikiui import MikiApp, Div, H1, H2, P, A, Button
+from mikiui import H1, H2, Button, Div, MikiApp
 from mikiui.components import (
+    H1,
+    H2,
+    H3,
+    Caption,
+    Code,
+    Dialog,
+    Em,
+    Figcaption,
+    Figure,
+    Form,
+    Img,
+    Input,
+    Label,
+    Li,
+    Mark,
+    Meter,
     Navbar,
-    H1, H2, H3, P as PComp, A as AComp, Span, Button as ButtonComp, SubmitButton,
-    Input, Textarea, Checkbox, Radio, Select, Option, Label, Form,
-    Table, Thead, Tbody, Tr, Th, Td, Caption,
-    Dialog, Details, Summary,
-    Ul, Ol, Li,
-    Img, Figure, Figcaption,
-    Code, Blockquote, Mark, Small, Em, Strong,
-    Progress, Meter,
+    Ol,
+    Progress,
+    Small,
+    Span,
+    Strong,
+    Table,
+    Tbody,
+    Td,
+    Th,
+    Thead,
+    Tr,
+    Ul,
+)
+from mikiui.components import (
+    A as AComp,
+)
+from mikiui.components import (
+    Button as ButtonComp,
+)
+from mikiui.components import (
+    P as PComp,
 )
 
 app = MikiApp(title="MikiUI Components")
@@ -132,8 +161,7 @@ def dialogs():
 @app.route("/media")
 def media():
     """Media components like date picker, file picker, chart."""
-    from mikiui.widgets import Calendar, FilePicker, Chart
-    from mikiui.widgets import ColorPicker, DatePicker
+    from mikiui.widgets import Calendar, ColorPicker, DatePicker, FilePicker
     
     return Div(
         Navbar(

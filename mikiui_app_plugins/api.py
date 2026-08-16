@@ -31,9 +31,8 @@ Usage:
     def home():
         return H1("Welcome")
 
-    # Create FastAPI app and register API endpoints
+    # Create FastAPI app - APIPlugin backend routes are auto-mounted
     fastapi_app = create_app(app)
-    api.register_endpoints(fastapi_app)
 """
 
 from __future__ import annotations
@@ -98,7 +97,7 @@ class APIPlugin(Plugin):
         Args:
             path: Route path (should start with /api/)
             handler: Route handler function
-            methods: HTTP methods for the route (lowercase not affected)
+            methods: HTTP methods for the route
             requires_auth: If True, require a valid session token
         """
         if not path.startswith("/api/"):
@@ -110,38 +109,59 @@ class APIPlugin(Plugin):
             "requires_auth": requires_auth,
         }
 
-    def register_endpoints(self, fastapi_app: Any) -> None:
-        """Register API endpoints on a FastAPI app.
+    def backend_routes(self) -> list[dict[str, Any]]:
+        """Return FastAPI route definitions for API endpoints.
 
-        Scans ``app.routes`` for ``/api/`` paths and registers them as JSON
-        endpoints.  Routes added via :meth:`collect_route` are also included.
+        Scans ``app.routes`` for ``/api/`` paths and returns route definitions
+        that the backend server will mount automatically.
         """
+        route_defs = []
         router = APIRouter()
 
         if hasattr(self, "_app") and hasattr(self._app, "routes"):
             for path, route_def in self._app.routes.items():
                 if path.startswith("/api/"):
-                    self._add_route_to_router(router, path, route_def)
+                    route_defs.append(self._make_route_def(router, path, route_def))
 
         for path, route_data in self._routes.items():
-            existing_paths = {getattr(r, "path", None) for r in router.routes}
+            existing_paths = {r.get("path") for r in route_defs}
             if path not in existing_paths:
-                self._add_route_to_router(router, path, route_data)
+                route_defs.append(self._make_route_def(router, path, route_data))
 
-        self._add_docs_routes(router)
-        fastapi_app.include_router(router)
+        # Add docs routes
+        docs_route = {
+            "path": self.openapi_path,
+            "methods": ["GET"],
+            "endpoint": self._make_openapi_endpoint(router),
+            "include_in_schema": False,
+            "tags": ["docs"],
+        }
+        route_defs.append(docs_route)
 
-    def _add_route_to_router(
-        self,
-        router: APIRouter,
-        path: str,
-        route_info: dict[str, Any] | RouteDef,
-    ) -> None:
-        """Add a single route to the API router.
+        docs_route2 = {
+            "path": self.docs_path,
+            "methods": ["GET"],
+            "endpoint": self._make_swagger_endpoint(router),
+            "include_in_schema": False,
+            "tags": ["docs"],
+        }
+        route_defs.append(docs_route2)
 
-        ``route_info`` can be a dict (from :meth:`collect_route`) or a
-        :class:`~mikiui.app.routes.RouteDef` (from ``app.routes``).
-        """
+        docs_route3 = {
+            "path": "/redoc",
+            "methods": ["GET"],
+            "endpoint": self._make_redoc_endpoint(router),
+            "include_in_schema": False,
+            "tags": ["docs"],
+        }
+        route_defs.append(docs_route3)
+
+        return route_defs
+
+    def _make_route_def(
+        self, router: APIRouter, path: str, route_info: dict[str, Any] | RouteDef
+    ) -> dict[str, Any]:
+        """Create a route definition dict for a single API route."""
         if isinstance(route_info, RouteDef):
             handler = route_info.handler
             methods = route_info.methods
@@ -153,9 +173,17 @@ class APIPlugin(Plugin):
 
         async def endpoint(request: Request) -> Any:
             if requires_auth and self.session_plugin:
-                token = request.cookies.get("mikiui_session") or request.headers.get("Authorization", "").replace("Bearer ", "")
+                auth_header = request.headers.get("Authorization", "")
+                token = (
+                    request.cookies.get("mikiui_session")
+                    or auth_header.replace("Bearer ", "")
+                )
                 app = self._app
-                if not token or not hasattr(app, "validate_session") or not app.validate_session(token):
+                if (
+                    not token
+                    or not hasattr(app, "validate_session")
+                    or not app.validate_session(token)
+                ):
                     return JSONResponse(
                         {"error": "Unauthorized", "code": 401},
                         status_code=401,
@@ -185,10 +213,16 @@ class APIPlugin(Plugin):
             include_in_schema=True,
         )
 
-    def _add_docs_routes(self, router: APIRouter) -> None:
-        """Add OpenAPI and Swagger UI documentation routes."""
+        return {
+            "path": path,
+            "methods": [m.capitalize() for m in methods],
+            "endpoint": endpoint,
+            "include_in_schema": True,
+            "name": endpoint.__name__,
+            "tags": ["api"],
+        }
 
-        @router.get(self.openapi_path, include_in_schema=False)
+    def _make_openapi_endpoint(self, router: APIRouter):
         async def openapi_json():
             from fastapi.openapi.utils import get_openapi
 
@@ -198,19 +232,53 @@ class APIPlugin(Plugin):
                 routes=router.routes,
             )
 
-        @router.get(self.docs_path, include_in_schema=False)
+        openapi_json.__name__ = "openapi_json"
+        return openapi_json
+
+    def _make_swagger_endpoint(self, router: APIRouter):
         async def swagger_ui():
             return get_swagger_ui_html(
                 openapi_url=self.openapi_path,
                 title=f"{self.title} - Swagger UI",
             )
 
-        @router.get("/redoc", include_in_schema=False)
+        swagger_ui.__name__ = "swagger_ui"
+        return swagger_ui
+
+    def _make_redoc_endpoint(self, router: APIRouter):
         async def redoc_html():
             return get_redoc_html(
                 openapi_url=self.openapi_path,
                 title=f"{self.title} - ReDoc",
             )
+
+        redoc_html.__name__ = "redoc_html"
+        return redoc_html
+
+    def register_endpoints(self, fastapi_app: Any) -> None:
+        """Backward-compatible: register API endpoints on a FastAPI app.
+
+        .. deprecated::
+            Use :meth:`backend_routes` instead. The backend server
+            auto-mounts routes returned by this method.
+        """
+        routes = self.backend_routes()
+        for route_def in routes:
+            path = route_def.get("path", "/")
+            methods = route_def.get("methods", ["GET"])
+            endpoint = route_def.get("endpoint")
+            include_in_schema = route_def.get("include_in_schema", True)
+            name = route_def.get("name")
+            tags = route_def.get("tags", [])
+            if endpoint is not None:
+                fastapi_app.add_api_route(
+                    path=path,
+                    endpoint=endpoint,
+                    methods=methods,
+                    include_in_schema=include_in_schema,
+                    name=name,
+                    tags=tags,
+                )
 
 
 __all__ = ["APIPlugin", "SessionPlugin"]

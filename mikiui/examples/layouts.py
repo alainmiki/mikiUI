@@ -5,16 +5,16 @@ Shows layout widgets including SplitView, DockablePanel, TabbedPanel, and SidePa
 
 from __future__ import annotations
 
-from mikiui import MikiApp, Div, H1, H3, Button, P
-from mikiui.components import Dialog, Tabs
+from mikiui import H1, H3, Button, Div, MikiApp, P
+from mikiui.components import Dialog
 from mikiui.widgets import (
-    SplitView,
-    DockablePanel,
-    TabbedPanel,
-    SidePanel,
     CollapsiblePanel,
-    ScrollPanel,
+    DockablePanel,
     GroupBox,
+    ScrollPanel,
+    SidePanel,
+    SplitView,
+    TabbedPanel,
 )
 
 app = MikiApp(title="MikiUI Layouts Demo")
@@ -159,7 +159,7 @@ def scroll_demo():
 
 
 def FormControls():
-    from mikiui.components import Form, Input, Select, Option, SubmitButton, Label
+    from mikiui.components import Form, Input, Label, SubmitButton
     return Form(
         Div(
             Label("Name:", for_="name"),

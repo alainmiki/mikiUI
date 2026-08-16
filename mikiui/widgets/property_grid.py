@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import Input, Td, Tr, Tbody, Thead
+from ..components import Input, Tbody, Td, Thead, Tr
 from ..components.base import Component
 
 

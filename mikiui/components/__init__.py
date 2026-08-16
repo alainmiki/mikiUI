@@ -7,8 +7,22 @@ is re-exported here for convenience.
 
 from __future__ import annotations
 
+from .accordion import Accordion
 from .base import Component, component
+from .breadcrumbs import Breadcrumbs
+from .button import Button, IconButton, SubmitButton
+from .calendar import Calendar
+from .chart import Chart
+from .dialog import Details, Dialog, DialogBody, DialogFooter, DialogTitle, Summary
+from .filepicker import FilePicker
+from .form import Fieldset, Form, Label, Legend, Optgroup, Option, Select
 from .html import (
+    H1,
+    H2,
+    H3,
+    H4,
+    H5,
+    H6,
     A,
     Abbr,
     Address,
@@ -19,29 +33,25 @@ from .html import (
     Body,
     Br,
     Canvas,
+    Cite,
     Code,
+    Dd,
     Div,
     Dl,
-    Dd,
     Dt,
     Em,
-    Strong,
-    H1,
-    H2,
-    H3,
-    H4,
-    H5,
-    H6,
-    Head,
-    Heading,
-    Header,
+    Figcaption,
+    Figure,
     Footer,
+    Head,
+    Header,
+    Heading,
     Hr,
     Html,
     Img,
     Kbd,
-    Link,
     Li,
+    Link,
     Main,
     Mark,
     Menu,
@@ -50,42 +60,32 @@ from .html import (
     Ol,
     P,
     Pre,
+    Samp,
     Script,
     Section,
     Small,
     Source,
     Span,
+    Strong,
     Style,
     Svg,
     Time,
     Title,
     Ul,
-    Video,
-    Figure,
-    Figcaption,
-    Cite,
     Var,
-    Samp,
+    Video,
 )
-from .button import Button, SubmitButton, IconButton
-from .picture import Picture
-from .accordion import Accordion
-from .tooltip import Tooltip
-from .breadcrumbs import Breadcrumbs
-from .menuitem import MenuItem
-from .navbar import Navbar
-from .input import Input, Textarea, Checkbox, Radio, Slider, Switch, Select, Option, Upload
-from .form import Form, Label, Select, Option, Optgroup, Fieldset, Legend
-from .table import Table, Caption, Thead, Tbody, Tfoot, Tr, Th, Td
-from .dialog import Dialog, Details, Summary, DialogTitle, DialogBody, DialogFooter
-from .modal import Modal
-from .tabs import Tabs
-from .progressbar import Progress, Meter, Output
-from .treeview import TreeView
+from .input import Checkbox, Input, Option, Radio, Select, Slider, Switch, Textarea, Upload
 from .listview import ListView
-from .calendar import Calendar
-from .filepicker import FilePicker
-from .chart import Chart
+from .menuitem import MenuItem
+from .modal import Modal
+from .navbar import Navbar
+from .picture import Picture
+from .progressbar import Meter, Output, Progress
+from .table import Caption, Table, Tbody, Td, Tfoot, Th, Thead, Tr
+from .tabs import Tabs
+from .tooltip import Tooltip
+from .treeview import TreeView
 
 __all__ = [
     "Component",

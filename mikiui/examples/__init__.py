@@ -16,7 +16,7 @@ app = MikiApp(title="MikiUI Examples")
 
 @app.route("/")
 def home():
-    from mikiui import Div, H1, P, A
+    from mikiui import H1, A, Div, P
     return Div(
         H1("MikiUI Examples"),
         P("Choose an example app:"),

@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from .base import Component
-from .input import Input
-from .html import Div, Span
 from .form import Label
+from .html import Span
+from .input import Input
 
 
 class FilePicker(Component):

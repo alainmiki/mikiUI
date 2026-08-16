@@ -9,10 +9,8 @@ upgrades to the same libraries from unpkg when internet is available.
 
 from __future__ import annotations
 
-from typing import List
 
-
-def runtime_scripts(mode: str = "local") -> List[str]:
+def runtime_scripts(mode: str = "local") -> list[str]:
     if mode == "cdn":
         return [
             "https://unpkg.com/htmx.org@2.0.3",

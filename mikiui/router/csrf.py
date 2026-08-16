@@ -6,12 +6,12 @@ GET/HEAD/OPTIONS requests are exempt.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 _CSRF_HEADER = "X-CSRF-Token"

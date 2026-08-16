@@ -7,16 +7,15 @@ import sys
 
 import pytest
 
-from mikiui import MikiApp, Div, Button, Input, Table, Tr, Th, Td
+from mikiui import Button, Div, Input, MikiApp, Table, Td, Th, Tr
+from mikiui.app.plugins import ComponentPlugin, Plugin, ThemePlugin, WidgetPlugin
+from mikiui.engine.renderer import render_page
 from mikiui.themes import (
     Theme,
-    register_theme,
     get_theme,
     list_themes,
+    register_theme,
 )
-from mikiui.app.plugins import Plugin, ThemePlugin, ComponentPlugin, WidgetPlugin
-from mikiui.engine.renderer import render_page
-
 
 # --- Theme registry -----------------------------------------------------------
 
@@ -362,8 +361,7 @@ def test_resolve_title_uses_route_title():
 
 def test_resolve_title_uses_ctx_meta():
     """resolve_title should prefer ctx.meta['title'] over route.title."""
-    import asyncio
-    from mikiui.app.routes import resolve_title, invoke_route
+    from mikiui.app.routes import invoke_route, resolve_title
 
     app = MikiApp(title="Global")
 
@@ -474,8 +472,9 @@ def hello(): pass
 def test_cli_dev_auto_discovers_app(tmp_path):
     """`mikiui dev` without --app should auto-discover app.py."""
     pytest.importorskip("typer.testing")
-    from typer.testing import CliRunner
     from unittest import mock
+
+    from typer.testing import CliRunner
 
     from mikiui.cli import cli
 
@@ -491,8 +490,9 @@ def test_cli_dev_auto_discovers_app(tmp_path):
 def test_cli_desktop_auto_discovers_app(tmp_path):
     """`mikiui desktop` without --app should auto-discover app.py."""
     pytest.importorskip("typer.testing")
-    from typer.testing import CliRunner
     from unittest import mock
+
+    from typer.testing import CliRunner
 
     from mikiui.cli import cli
 

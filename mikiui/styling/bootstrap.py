@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 BOOTSTRAP_CDN_CSS = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
 BOOTSTRAP_CDN_JS = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
 
@@ -74,7 +73,7 @@ def runtime_html(
     return "\n    ".join(parts)
 
 
-def validate_bootstrap_paths(config: "BootstrapConfig", project_dir: str | Path = ".") -> list[str]:
+def validate_bootstrap_paths(config: BootstrapConfig, project_dir: str | Path = ".") -> list[str]:
     """Validate all file paths in a :class:`BootstrapConfig`.
 
     Returns a list of warning strings (empty list if all paths are valid).
@@ -116,7 +115,7 @@ def validate_bootstrap_paths(config: "BootstrapConfig", project_dir: str | Path 
     return warnings
 
 
-def css_files_to_bundle(config: "BootstrapConfig", project_dir: str | Path = ".") -> list[str]:
+def css_files_to_bundle(config: BootstrapConfig, project_dir: str | Path = ".") -> list[str]:
     """Return the list of local CSS file paths to bundle in production.
 
     CDN files are skipped (they are fetched at runtime).

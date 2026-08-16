@@ -6,8 +6,8 @@ from unittest import mock
 
 import pytest
 
-from mikiui import MikiApp, Div
-from mikiui.build.desktop_build import _has_pywebview, _wait_for_server, run_desktop, _infer_app_spec
+from mikiui import Div, MikiApp
+from mikiui.build.desktop_build import _has_pywebview, _infer_app_spec, _wait_for_server, run_desktop
 
 
 def make_app() -> MikiApp:
@@ -79,7 +79,7 @@ def test_run_desktop_passes_kwargs_to_native():
 def test_run_desktop_passes_kwargs_to_browser():
     """run_desktop should forward all parameters to the browser path."""
     app = make_app()
-    with mock.patch("mikiui.build.desktop_build._serve_app"), mock.patch(
+    with mock.patch("mikiui.build.desktop_build._start_server") as start, mock.patch(
         "mikiui.build.desktop_build._run_webview"
     ), mock.patch("mikiui.build.desktop_build._wait_for_server", return_value=True), mock.patch(
         "mikiui.build.desktop_build.threading.Thread"
@@ -137,8 +137,8 @@ def test_infer_app_spec_finds_module_attribute():
 
 def test_run_native_reload_calls_restart_server():
     """_run_native_reload should start the server and spawn a watcher thread."""
-    from mikiui.build.desktop_build import _run_native_reload, _restart_server
     import mikiui.build.desktop_build as db
+    from mikiui.build.desktop_build import _restart_server, _run_native_reload
 
     app = make_app()
     fake_webview = mock.MagicMock()

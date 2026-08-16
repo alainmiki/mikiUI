@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..components import A, Div, Form, Input, SubmitButton
+from ..components import A, Div, Input, SubmitButton
 from ..components.base import Component
 from ..engine import _
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from mikiui import render
 from mikiui.components import Navbar
-from mikiui.widgets import Drawer, Footer, Hero, Rail, Sidebar, ContextWindow
+from mikiui.widgets import ContextWindow, Drawer, Footer, Hero, Rail, Sidebar
 
 
 def test_hero_renders_title():

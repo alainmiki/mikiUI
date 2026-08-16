@@ -132,6 +132,26 @@ class SessionPlugin(Plugin):
         app._sessions = self._sessions
         self._inject_session_methods(app)
 
+    def middleware_classes(self) -> list[type]:
+        """Return session middleware class for automatic mounting."""
+        return [self._create_middleware()]
+
+    def _create_middleware(self) -> type:
+        """Create a Starlette middleware class for session handling."""
+
+        class SessionMiddleware:
+            def __init__(self, app: Any) -> None:
+                self.app = app
+
+            async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+                if scope["type"] != "http":
+                    await self.app(scope, receive, send)
+                    return
+                await self.app(scope, receive, send)
+
+        SessionMiddleware.__name__ = "SessionMiddleware"
+        return SessionMiddleware
+
     def _inject_session_methods(self, app: MikiApp) -> None:
         """Inject session management methods onto the app."""
         plugin_self = self

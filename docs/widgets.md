@@ -9,6 +9,73 @@ attributes for accessibility.
 
 ---
 
+## Widget Lifecycle
+
+### Creation
+
+Widgets are instantiated as Python objects:
+
+```python
+from mikiui.widgets import DataGrid
+
+grid = DataGrid(
+    columns=["Name", "Email"],
+    rows=[{"Name": "Alice", "Email": "alice@example.com"}],
+)
+```
+
+### Hooks
+
+Custom widgets can implement lifecycle hooks:
+
+```python
+class MyWidget(Component):
+    def __init__(self, *children, **attrs):
+        super().__init__(*children, **attrs)
+        self.on_mount()
+
+    def on_mount(self):
+        """Called when widget is first rendered."""
+        pass
+
+    def on_update(self, old_state):
+        """Called when widget state changes."""
+        pass
+
+    def on_unmount(self):
+        """Called when widget is removed from DOM."""
+        pass
+```
+
+### Custom Widget Creation
+
+Create a custom widget by composing components:
+
+```python
+from mikiui.components import Component, Div, H2, P, Button
+from mikiui.widgets import Card
+
+class ProfileCard(Card):
+    def __init__(self, name, role, bio, **attrs):
+        super().__init__(
+            H2(name, class_="text-xl font-bold"),
+            P(f"{role} — {bio}"),
+            Button("Follow", variant="primary"),
+            title=name,
+            **attrs,
+        )
+```
+
+Use it in your app:
+
+```python
+@app.route("/profile")
+def profile():
+    return ProfileCard("Alice", "Admin", "Python enthusiast")
+```
+
+---
+
 ## Layout Widgets
 
 ### Hero
@@ -96,7 +163,6 @@ Sidebar(
 ### Navbar
 
 A top navigation bar with brand, links, and optional right-side content.
-(See also `mikiui.components.Navbar` for the lightweight version.)
 
 ```python
 from mikiui.components import Navbar
@@ -124,7 +190,7 @@ Navbar(
 
 ### Drawer
 
-A slide-in panel with modal overlay. Uses native `<dialog>` accessibility.
+A slide-in panel with modal overlay.
 
 ```python
 from mikiui.widgets import Drawer
@@ -152,7 +218,7 @@ Drawer(
 
 ### Rail
 
-A slim icon-only navigation rail, typically on the left edge of the screen.
+A slim icon-only navigation rail.
 
 ```python
 from mikiui.widgets import Rail
@@ -344,7 +410,7 @@ Progress(100, label="Complete")
 
 ### Icon
 
-An inline SVG icon — works in both web and desktop contexts without external dependencies.
+An inline SVG icon.
 
 ```python
 from mikiui.widgets import Icon, IconSet
@@ -394,6 +460,20 @@ DataGrid(
 )
 ```
 
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `columns` | `list` | — | Column definitions |
+| `rows` | `list` | — | Row data |
+| `sortable` | `bool` | `True` | Allow sorting |
+| `filterable` | `bool` | `False` | Allow filtering |
+| `pagination` | `bool` | `True` | Enable pagination |
+| `search` | `bool` | `True` | Enable search input |
+| `page` | `int` | `0` | Current page (0-indexed) |
+| `page_size` | `int` | `10` | Rows per page |
+| `height` | `int` | `None` | Fixed height in px |
+
 ---
 
 ### TabbedPanel
@@ -433,12 +513,6 @@ from mikiui.widgets import MessageBox
 MessageBox("Operation completed successfully!", type="success")
 MessageBox("Error: something went wrong.", type="error")
 ```
-
----
-
-### Drawer
-
-See [Drawer](#drawer) above.
 
 ---
 
@@ -647,12 +721,6 @@ ScrollPanel(Div("Long content here..."), height="300px")
 
 ---
 
-### TabbedPanel
-
-See [TabbedPanel](#tabbedpanel) above.
-
----
-
 ### ToolboxPanel
 
 A collapsible toolbox container.
@@ -701,6 +769,8 @@ from mikiui.widgets import LoginForm
 LoginForm(action="/login", method="post")
 ```
 
+---
+
 ### SignupForm
 
 A pre-built signup form.
@@ -715,15 +785,54 @@ SignupForm(action="/signup", method="post")
 
 ## Navigation & Utility Widgets
 
-### SplitView
+### ChatUI
 
-See [SplitView](#splitview) above.
+A messaging interface.
+
+```python
+from mikiui.widgets import ChatUI
+
+ChatUI(
+    messages=[
+        ("Alice", "Hello!"),
+        ("Bob", "Hi there."),
+    ],
+    current_user="Bob",
+)
+```
 
 ---
 
-### GroupBox
+### InspectorPanel
 
-See [GroupBox](#groupbox) above.
+A debugging state/routes panel.
+
+```python
+from mikiui.widgets import InspectorPanel
+
+InspectorPanel(
+    app_state=app.state,
+    routes=list(app.routes.values()),
+)
+```
+
+---
+
+### PropertyGrid
+
+An editable property/value grid.
+
+```python
+from mikiui.widgets import PropertyGrid
+
+PropertyGrid(
+    properties={
+        "name": "Alice",
+        "role": "Admin",
+        "active": True,
+    }
+)
+```
 
 ---
 
@@ -740,7 +849,7 @@ All MikiUI widgets include:
 
 ## i18n Support
 
-All widgets accept a `data-i18n` attribute for internationalization:
+All widgets accept a `data_i18n` attribute for internationalization:
 
 ```python
 from mikiui.widgets import Button
@@ -748,5 +857,200 @@ from mikiui.widgets import Button
 Button("Save", data_i18n="buttons.save")
 ```
 
-The `data-i18n` key can be used by a client-side i18n library to replace
+The `data_i18n` key can be used by a client-side i18n library to replace
 the text content at runtime.
+
+---
+
+## JavaScript-Enhanced Widgets
+
+Many MikiUI widgets rely on the bundled `miki_ui.js` for interactivity.
+When `miki_ui.js` is loaded, it auto-initializes elements that have
+`data-miki-*` attributes. This works **without** Alpine.js — the framework
+includes its own minimal JS runtime that replaces all `x_on:*` / `x_data`
+directives.
+
+### Auto-Initialization
+
+`miki_ui.js` runs on `DOMContentLoaded` and scans for elements with
+`data-miki-*` attributes:
+
+| Widget | Data Attribute | Description |
+|--------|---------------|-------------|
+| Tabs | `data-miki-tabs="true"` | Enables tab switching with keyboard navigation |
+| Drawer | `data-miki-drawer="true"` | Slide-in panel with overlay close and ESC |
+| Modal | `data-miki-modal="true"` | Modal dialog with ESC close and backdrop click |
+| Dialog | `data-miki-dialog="true"` | Native `<dialog>` with polyfill for `showModal()` |
+| ProgressDialog | `data-miki-progress-dialog="true"` | Modal progress with ESC close |
+| SplitView | `data-miki-splitview="true"` | Resizable panes with drag splitters; supports `data-resize-mode="horizontal"` \| `"vertical"` \| `"both"` |
+| DockablePanel | `data-miki-dockable="true"` | Draggable header; drag toward any screen edge (top/left/right/bottom) to snap
+| Slider | `data-miki-slider="true"` | Live value display + PageUp/PageDown support |
+| Dial | `data-miki-dial="true"` | Circular knob with rotation + keyboard support |
+| Collapsible | `data-miki-collapsible="true"` | Smooth-expand accordion with toggle icon rotation |
+| ProgressBar | `data-miki-progress="true"` | Striped animated progress bar |
+| Toggle Button | `data-miki-toggle="true"` | Click to switch between two icon states |
+| Searchable Select | `data-miki-searchable="true"` | Filter options by typing |
+| Dropzone / FilePicker | `data-miki-dropzone="true"` | Drag-drop file selection with filename display |
+| Upload | `data-miki-file-input="true"` | Hidden file input with label click handler |
+| ContextWindow | `data-miki-context-window="true"` | Click-to-toggle floating context menu |
+| MessageBox | `data-miki-messagebox="true"` | Alert with ESC and overlay close |
+| MenuBar | `data-miki-menubar="true"` | Hover/click dropdowns |
+| DataGrid | `data-miki-datagrid="true"` | Sortable, filterable, paginated table |
+| Kanban | `data-miki-kanban="true"` | Drag-and-drop task board |
+| Carousel | `data-miki-carousel="true"` | Autoplay slideshow with arrows/dots |
+| Chat | `data-miki-chat="true"` | Scrolling message log with typing indicator |
+
+### Global API
+
+`miki_ui.js` exposes several `window.miki*` objects for imperative control
+from Python-rendered `onclick` handlers:
+
+```js
+// Dialog
+mikiDialog.show(dlg);     // Opens a <dialog> (with showModal polyfill)
+mikiDialog.close(dlg);    // Closes it
+
+// Modal
+mikiModal.show(el);       // Shows modal overlay
+mikiModal.close(el);      // Hides it
+
+// Drawer
+mikiDrawer.open(el);      // Opens drawer (adds .miki-drawer-open)
+mikiDrawer.close(el);     // Closes drawer
+mikiDrawer.toggle(el);    // Toggles
+
+// DockablePanel
+mikiDockablePanel.toggle(el);   // Expand/collapse
+mikiDockablePanel.close(el);    // Close (display:none)
+mikiDockablePanel.detach(el);   // Float / dock
+mikiDockablePanel.dockAt(el, 'top'|'left'|'right'|'bottom'|'floating'); // Snap to any edge
+
+// Tabs
+mikiTabs.show(groupId, index);  // Switch to tab at index
+mikiTabs.close(groupId, index); // Close a tab
+mikiTabs.activate(groupId, index);
+
+// Slider
+mikiSlider.setValue(input, value);
+
+// Dial
+// Value syncs automatically; use input.value to set programmatically
+
+// Progress
+mikiProgress.set(el, value, max);
+
+// Progress Dialog
+mikiProgressDialog.setValue(dlg, value);
+
+// Collapsible
+mikiCollapsible.open(el);
+mikiCollapsible.close(el);
+mikiCollapsible.toggle(el);
+
+// Context Window
+mikiContextWindow.open(container);
+mikiContextWindow.close(container);
+mikiContextWindow.toggle(container);
+
+// Message Box
+mikiMessageBox.show(el);
+mikiMessageBox.close(el);
+
+// Carousel
+mikiCarousel.next(el);
+mikiCarousel.prev(el);
+mikiCarousel.goTo(el, index);
+mikiCarousel.startAutoplay(el, interval);
+mikiCarousel.stopAutoplay(el);
+
+// DataGrid
+mikiDataGrid.sort(el, field);
+mikiDataGrid.applyFilter(el);
+
+// Kanban
+mikiKanban.draggedItem;  // Currently dragged item
+
+// Chat
+mikiChat.scrollToBottom(el);
+mikiChat.toggleTyping(el, show);
+
+// Global helpers (used in onclick attrs)
+mikiCloseDialog(btn);   // Closes the dialog containing btn
+mikiClose.dialog(btn);  // Closes dialog
+mikiClose.modal(btn);   // Closes modal
+```
+
+### SplitView
+
+The SplitView supports dynamic, directional resizing via the `resize_mode` parameter:
+
+```python
+from mikiui.widgets import SplitView
+from mikiui.components import Div
+
+# Horizontal resize (drag splitter left/right)
+SplitView(Div("Left"), Div("Right"), resize_mode="horizontal")
+
+# Vertical resize (drag splitter up/down)
+SplitView(Div("Top"), Div("Bottom"), orientation="vertical", resize_mode="vertical")
+
+# Bidirectional resize (drag in any direction)
+SplitView(Div("A"), Div("B"), resize_mode="both")
+```
+
+The splitter automatically shows the correct cursor (`ew-resize` or `ns-resize`)
+and displays a visual gripper pattern (`● ● ●`) on hover. The gripper orientation
+matches the active resize axis.
+
+### DockablePanel
+
+DockablePanel headers are draggable. When you drag a docked panel, it automatically
+detaches into a floating window. Drag the floating window toward any screen edge
+(top, left, right, or bottom) — visual snap zones appear with labels ("Dock Top",
+"Dock Left", "Dock Right", "Dock Bottom") when you get close to an edge.
+
+```python
+from mikiui.widgets import DockablePanel
+
+# Docked to the right by default, fully draggable
+DockablePanel("Properties", Div("Content"), dock="right")
+
+# Start floating
+DockablePanel("Inspector", Div("Content"), dock="floating")
+```
+
+Action buttons in the header:
+- **Toggle** (▼/▶): Collapse/expand the panel body
+- **Close** (×): Hide the panel
+- **Detach** (⇋): Toggle between docked and floating state
+
+### Fallback Behavior
+
+If `miki_ui.js` fails to load, all widgets degrade gracefully to standard
+HTML:
+
+- **Tabs**: All tab panels are visible (no hiding). Navigation falls back to
+  anchor links.
+- **Drawer/Modal**: The `open` attribute on `<dialog>` is used as fallback.
+- **Slider/Dial**: Native `<input type="range">` behavior with `<output>`.
+- **SplitView**: Panes display side-by-side at their CSS-defined widths.
+- **Toggle Button**: The button is static (no click-to-switch). The current
+  icon state is shown as-is.
+- **Searchable Select**: Falls back to native `<select>` dropdown.
+- **Dropzone**: Falls back to plain file input (no drag-drop, no filename display).
+
+### Accessibility Notes
+
+- All interactive widgets support keyboard navigation (Tab, Enter, Space,
+  Escape, arrow keys).
+- ARIA attributes (`aria-expanded`, `aria-hidden`, `aria-modal`, etc.) are
+  updated automatically by `miki_ui.js`.
+- DockablePanel and Drawer include `tabindex="0"` for focus management.
+- **Focus trap**: Dialogs, Modals, and MessageBoxes trap focus within them —
+  Tab cycles between the first and last focusable element. Focus is restored
+  to the triggering element when closed.
+- **Focus restoration**: When a Dialog or Modal closes, focus returns to the
+  element that opened it (stored via `data-miki-focus-trap-return`).
+- **SplitView splitter**: Supports both mouse drag and keyboard (arrow keys
+  for 1px, Shift+arrow for 5px, double-click to maximize).
+

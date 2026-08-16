@@ -8,10 +8,13 @@ from .base import Component
 
 
 class Progress(Component):
-    """A styled ``<progress>`` element.
+    """A styled ``<progress>`` element with JS-driven value updates.
 
     ``value`` and ``max`` map to the native attributes.  ``variant`` can be
-    ``"default"`` (filled bar) or ``"striped"`` (diagonal stripes).
+    ``"default"`` (filled bar) or ``"striped"`` (diagonal stripes animation).
+
+    ``miki_ui.js`` auto-initializes progress elements with
+    ``data-miki-progress="true"``.
     """
 
     tag = "progress"
@@ -26,6 +29,9 @@ class Progress(Component):
         attrs["class_"] = f"{classes} {user_classes}".strip()
         attrs.setdefault("value", value)
         attrs.setdefault("max", max)
+        attrs.setdefault("data-miki-progress", "true")
+        attrs.setdefault("data-value", str(value))
+        attrs.setdefault("data-max", str(max))
         super().__init__(*children, **attrs)
 
     def to_html(self) -> str:
