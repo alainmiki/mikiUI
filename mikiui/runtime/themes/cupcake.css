@@ -1,0 +1,45 @@
+[data-miki-theme="cupcake"] {
+  --miki-bg: #fdf6f9;
+  --miki-fg: #291334;
+  --miki-accent: #65c3c8;
+  --miki-accent-hover: #5bb5ba;
+  --miki-border: #e5e7eb;
+  --miki-border-hover: #d1d5db;
+
+  --miki-surface: #ffffff;
+  --miki-surface-hover: #f9fafb;
+  --miki-surface-active: #f3f4f6;
+
+  --miki-input-bg: #ffffff;
+  --miki-input-border: #e5e7eb;
+  --miki-input-focus: #65c3c8;
+
+  --miki-text-muted: #9ca3af;
+  --miki-text-secondary: #6b7280;
+
+  --miki-yellow: #fbbd23;
+  --miki-orange: #f59e0b;
+  --miki-red: #f87272;
+  --miki-magenta: #d946ef;
+  --miki-violet: #8b5cf6;
+  --miki-blue: #3b82f6;
+  --miki-cyan: #06b6d4;
+  --miki-green: #36d399;
+
+  --miki-success: #36d399;
+  --miki-success-hover: #2bbf89;
+  --miki-warning: #fbbd23;
+  --miki-warning-hover: #f59e0b;
+  --miki-error: #f87272;
+  --miki-error-hover: #ef4444;
+
+  --miki-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --miki-shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+
+  --miki-radius: 0.5rem;
+  --miki-radius-lg: 0.75rem;
+
+  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+  color-scheme: light;
+}

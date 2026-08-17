@@ -1,12 +1,8 @@
-/* MikiUI "light" theme.
-   Sets CSS custom properties consumed by miki.css (base layer) and
-   component/default styles.  This is the default theme. */
-
-:root {
- --miki-bg: #ffffff;
+[data-theme="retro"] {
+  --miki-bg: #ece3d2;
   --miki-fg: #1f2937;
-  --miki-accent: #3b82f6;
-  --miki-accent-hover: #2563eb;
+  --miki-accent: #ef4444;
+  --miki-accent-hover: #dc2626;
   --miki-border: #d1d5db;
   --miki-border-hover: #9ca3af;
 
@@ -16,7 +12,7 @@
 
   --miki-input-bg: #ffffff;
   --miki-input-border: #d1d5db;
-  --miki-input-focus: #3b82f6;
+  --miki-input-focus: #ef4444;
 
   --miki-text-muted: #6b7280;
   --miki-text-secondary: #374151;
@@ -39,13 +35,14 @@
 
   --miki-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
   --miki-shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --miki-shadow-xl: 0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04);
+  --miki-shadow-2xl: 0 25px 50px rgba(0,0,0,0.25);
+    --miki-radius: 0.5rem;
+    --miki-radius-lg: 0.75rem;
+    --miki-radius-xl: 1rem;
+    --miki-radius-2xl: 1.5rem;
 
-  --miki-radius: 0.5rem;
-  --miki-radius-lg: 0.75rem;
+    --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    color-scheme: light;
 
-  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-[data-miki-theme="light"] {
-  color-scheme: light;
 }

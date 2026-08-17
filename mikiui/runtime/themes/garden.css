@@ -1,22 +1,18 @@
-/* MikiUI "light" theme.
-   Sets CSS custom properties consumed by miki.css (base layer) and
-   component/default styles.  This is the default theme. */
-
-:root {
- --miki-bg: #ffffff;
-  --miki-fg: #1f2937;
-  --miki-accent: #3b82f6;
-  --miki-accent-hover: #2563eb;
+[data-miki-theme="garden"] {
+  --miki-bg: #f0fdf4;
+  --miki-fg: #14532d;
+  --miki-accent: #22c55e;
+  --miki-accent-hover: #16a34a;
   --miki-border: #d1d5db;
   --miki-border-hover: #9ca3af;
 
-  --miki-surface: #f9fafb;
-  --miki-surface-hover: #f3f4f6;
-  --miki-surface-active: #e5e7eb;
+  --miki-surface: #ffffff;
+  --miki-surface-hover: #f9fafb;
+  --miki-surface-active: #f3f4f6;
 
   --miki-input-bg: #ffffff;
   --miki-input-border: #d1d5db;
-  --miki-input-focus: #3b82f6;
+  --miki-input-focus: #22c55e;
 
   --miki-text-muted: #6b7280;
   --miki-text-secondary: #374151;
@@ -38,14 +34,16 @@
   --miki-error-hover: #dc2626;
 
   --miki-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+
+ --miki-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
   --miki-shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
 
   --miki-radius: 0.5rem;
   --miki-radius-lg: 0.75rem;
 
   --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+  color-scheme: light;
+
 }
 
-[data-miki-theme="light"] {
-  color-scheme: light;
-}

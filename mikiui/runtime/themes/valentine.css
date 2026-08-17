@@ -1,30 +1,26 @@
-/* MikiUI "light" theme.
-   Sets CSS custom properties consumed by miki.css (base layer) and
-   component/default styles.  This is the default theme. */
+[data-miki-theme="valentine"] {
+  --miki-bg: #fdf2f8;
+  --miki-fg: #4b5563;
+  --miki-accent: #ec4899;
+  --miki-accent-hover: #db2777;
+  --miki-border: #e5e7eb;
+  --miki-border-hover: #d1d5db;
 
-:root {
- --miki-bg: #ffffff;
-  --miki-fg: #1f2937;
-  --miki-accent: #3b82f6;
-  --miki-accent-hover: #2563eb;
-  --miki-border: #d1d5db;
-  --miki-border-hover: #9ca3af;
-
-  --miki-surface: #f9fafb;
-  --miki-surface-hover: #f3f4f6;
-  --miki-surface-active: #e5e7eb;
+  --miki-surface: #ffffff;
+  --miki-surface-hover: #f9fafb;
+  --miki-surface-active: #f3f4f6;
 
   --miki-input-bg: #ffffff;
-  --miki-input-border: #d1d5db;
-  --miki-input-focus: #3b82f6;
+  --miki-input-border: #e5e7eb;
+  --miki-input-focus: #ec4899;
 
-  --miki-text-muted: #6b7280;
-  --miki-text-secondary: #374151;
+  --miki-text-muted: #9ca3af;
+  --miki-text-secondary: #6b7280;
 
   --miki-yellow: #facc15;
   --miki-orange: #fb923c;
   --miki-red: #ef4444;
-  --miki-magenta: #d946ef;
+  --miki-magenta: #ec4899;
   --miki-violet: #8b5cf6;
   --miki-blue: #3b82f6;
   --miki-cyan: #06b6d4;
@@ -44,8 +40,6 @@
   --miki-radius-lg: 0.75rem;
 
   --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
 
-[data-miki-theme="light"] {
   color-scheme: light;
 }

@@ -1,12 +1,8 @@
-/* MikiUI "light" theme.
-   Sets CSS custom properties consumed by miki.css (base layer) and
-   component/default styles.  This is the default theme. */
-
-:root {
- --miki-bg: #ffffff;
+[data-miki-theme="corporate"] {
+  --miki-bg: #ffffff;
   --miki-fg: #1f2937;
-  --miki-accent: #3b82f6;
-  --miki-accent-hover: #2563eb;
+  --miki-accent: #0ea5e9;
+  --miki-accent-hover: #0284c7;
   --miki-border: #d1d5db;
   --miki-border-hover: #9ca3af;
 
@@ -16,7 +12,7 @@
 
   --miki-input-bg: #ffffff;
   --miki-input-border: #d1d5db;
-  --miki-input-focus: #3b82f6;
+  --miki-input-focus: #0ea5e9;
 
   --miki-text-muted: #6b7280;
   --miki-text-secondary: #374151;
@@ -26,7 +22,7 @@
   --miki-red: #ef4444;
   --miki-magenta: #d946ef;
   --miki-violet: #8b5cf6;
-  --miki-blue: #3b82f6;
+  --miki-blue: #0ea5e9;
   --miki-cyan: #06b6d4;
   --miki-green: #22c55e;
 
@@ -44,8 +40,6 @@
   --miki-radius-lg: 0.75rem;
 
   --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
 
-[data-miki-theme="light"] {
   color-scheme: light;
 }

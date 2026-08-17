@@ -72,7 +72,7 @@ mikiui dev           # No extra setup needed
 ## What's Available
 
 - **Components** — all HTML elements as Python classes (Button, Input, Form, Table, Dialog, Tabs, etc.)
-- **Widgets** — high-level composite UI (DataGrid, MediaPlayer, DockablePanel, IDE Editor, etc.)
+- **Widgets** — high-level composite UI (DataGrid, MediaPlayer, DockablePanel, IDE Editor, ThemeSwitcher, etc.)
 - **Themes** — 4 built-in themes (light, dark, solarized-dark, dracula) with custom theme support
 - **Styling** — Tailwind CSS, Bootstrap, or plain CSS
 - **Plugins** — extend with custom themes, components, and widgets

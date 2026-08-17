@@ -129,6 +129,9 @@ This catalog defines all base components (HTML elements) and advanced widgets/pa
 - **SidePanel** → Slide-in navigation or tools.
 - **TabbedPanel** → Multi-tabbed content areas.
 
+### Theming
+- **ThemeSwitcher** → Dynamic dropdown that auto-discovers all registered themes (built-in + custom plugins) and switches via HTMX or direct app API.
+
 ### Developer Tools
 - **IDE-like Editor** → Code editor with syntax highlighting.
 - **TerminalWidget** → Embedded console/terminal.

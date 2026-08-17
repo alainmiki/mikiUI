@@ -125,7 +125,7 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
             if theme.css_path.startswith("http"):
                 href = theme.css_path
             result["links"].append(_style_tag(href))
-    elif theme.framework == "css":
+    elif theme.framework is None or theme.framework == "css":
         if theme.css_path:
             href = theme.css_path
             if os.path.isabs(theme.css_path):

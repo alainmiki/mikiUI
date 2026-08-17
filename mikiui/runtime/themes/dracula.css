@@ -43,7 +43,87 @@
   --miki-radius-lg: 0.75rem;
 
   --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+  color-scheme: dark;
 }
+
+/* DaisyUI/Tailwind classes mapped to variables */
+.btn {
+  background-color: var(--miki-accent);
+  color: var(--miki-fg);
+  border-radius: var(--miki-radius);
+  transition: var(--miki-transition);
+}
+.btn:hover {
+  background-color: var(--miki-accent-hover);
+}
+
+.btn-primary {
+  background-color: var(--miki-success);
+}
+.btn-primary:hover {
+  background-color: var(--miki-success-hover);
+}
+
+.btn-secondary {
+  background-color: var(--miki-warning);
+}
+.btn-secondary:hover {
+  background-color: var(--miki-warning-hover);
+}
+
+.btn-error {
+  background-color: var(--miki-error);
+}
+.btn-error:hover {
+  background-color: var(--miki-error-hover);
+}
+
+.text-muted {
+  color: var(--miki-text-muted);
+}
+.text-secondary {
+  color: var(--miki-text-secondary);
+}
+
+.input {
+  background-color: var(--miki-input-bg);
+  border: 1px solid var(--miki-input-border);
+  border-radius: var(--miki-radius);
+  color: var(--miki-fg);
+}
+.input:focus {
+  border-color: var(--miki-input-focus);
+  box-shadow: 0 0 0 2px var(--miki-accent);
+}
+
+.card {
+  background-color: var(--miki-surface);
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius-lg);
+  box-shadow: var(--miki-shadow);
+  color: var(--miki-fg);
+}
+.card:hover {
+  border-color: var(--miki-border-hover);
+  box-shadow: var(--miki-shadow-lg);
+}
+
+.alert-success {
+  background-color: var(--miki-success);
+  color: var(--miki-fg);
+}
+.alert-warning {
+  background-color: var(--miki-warning);
+  color: var(--miki-fg);
+}
+.alert-error {
+  background-color: var(--miki-error);
+  color: var(--miki-fg);
+}
+
+
+
 
 [data-miki-theme="dracula"] {
   color-scheme: dark;

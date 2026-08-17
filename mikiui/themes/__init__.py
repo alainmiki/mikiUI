@@ -32,6 +32,19 @@ COLOR_THEMES: dict[str, str] = {
     "dark": "dark.css",
     "dracula": "dracula.css",
     "solarized-dark": "solarized-dark.css",
+    "cupcake": "cupcake.css",
+    "synthwave": "synthwave.css",
+    "corporate": "corporate.css",
+    "emerald": "emerald.css",
+    "bumblebee": "bumblebee.css",
+    "retro": "retro.css",
+    "aqua": "aqua.css",
+    "cyberpunk": "cyberpunk.css",
+    "forest": "forest.css",
+    "garden": "garden.css",
+    "halloween": "halloween.css",
+    "pastel": "pastel.css",
+    "valentine": "valentine.css",
 }
 
 # Framework themes – users can opt into Tailwind, Bootstrap, or plain CSS.
