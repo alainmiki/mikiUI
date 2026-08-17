@@ -20,6 +20,10 @@ from mikiui.widgets import (
     MdiSubWindow,
     MenuBar,
     MessageBox,
+    MikiButtonGroup,
+    MikiColumnView,
+    MikiMenu,
+    MikiSizeGrip,
     NotificationPanel,
     ProgressDialog,
     ScrollPanel,
@@ -107,8 +111,10 @@ def test_stacked_panel_pages():
 
 def test_toolbox_panel_collapsible():
     html = ToolboxPanel({"Tools": ["hammer", "wrench"]}).to_html()
-    assert "<details" in html
-    assert "<summary" in html
+    assert "miki-toolbox" in html
+    assert "miki-toolbox-section" in html
+    assert "miki-toolbox-header" in html
+    assert "miki-toolbox-body" in html
     assert "Tools" in html
     assert "hammer" in html
 
@@ -346,3 +352,33 @@ def test_progress_dialog_uses_progress_element():
     html = pd.to_html()
     assert "<dialog" in html
     assert "<progress" in html
+
+
+def test_miki_menu_items():
+    html = MikiMenu(["Open", "Save", "Exit"]).to_html()
+    assert "miki-menu" in html
+    assert 'role="menu"' in html
+    assert "Open" in html
+    assert 'role="menuitem"' in html
+
+
+def test_miki_sizegrip():
+    html = MikiSizeGrip().to_html()
+    assert "miki-sizegrip" in html
+    assert 'role="separator"' in html
+
+
+def test_miki_columnview():
+    html = MikiColumnView([["a", "b"], ["c", "d"]]).to_html()
+    assert "miki-columnview" in html
+    assert "miki-column" in html
+    assert "miki-column-item" in html
+    assert "a" in html and "d" in html
+
+
+def test_miki_buttongroup():
+    html = MikiButtonGroup(["OK", "Cancel"]).to_html()
+    assert "miki-btngroup" in html
+    assert 'role="group"' in html
+    assert "OK" in html
+    assert "Cancel" in html

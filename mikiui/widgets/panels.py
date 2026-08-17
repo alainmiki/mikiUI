@@ -116,23 +116,25 @@ class StackedPanel(Component):
 class ToolboxPanel(Component):
     """A collapsible toolbox of grouped items (maps ``QToolBox``).
 
-    :param groups: a dict mapping a group title to a list of item contents.
+    :param groups: a dict mapping a group title to arbitrary content.
     """
 
     tag = "div"
 
-    def __init__(self, groups: dict[str, list[Any]], **attrs: Any) -> None:
+    def __init__(self, groups: dict[str, Any], **attrs: Any) -> None:
         attrs.setdefault("class", "miki-toolbox")
-        blocks = []
-        for title, items in groups.items():
-            blocks.append(
-                Details(
-                    Summary(title, class_="miki-toolbox-summary"),
-                    Ul(*[Li(item) for item in items], class_="miki-toolbox-items"),
-                    class_="miki-toolbox-group",
-                )
+        attrs.setdefault("role", "tablist")
+        attrs.setdefault("aria_label", _("toolbox_label", "Toolbox"))
+        sections = []
+        for i, (title, content) in enumerate(groups.items()):
+            section = Div(
+                Div(title, class_="miki-toolbox-header", role="tab", aria_selected="false", tabindex="0"),
+                Div(content, class_="miki-toolbox-body", role="tabpanel"),
+                class_="miki-toolbox-section",
+                role="group",
             )
-        super().__init__(*blocks, **attrs)
+            sections.append(section)
+        super().__init__(*sections, **attrs)
 
 
 class Toolbar(Component):
@@ -822,3 +824,73 @@ class FilePicker(Component):
         label_span = Span(label, class_="miki-dropzone-label")
 
         super().__init__(file_input, label_span, **attrs)
+
+
+class MikiMenu(Component):
+    """A simple menu of items (maps ``QMenu``).
+
+    :param items: a list of item labels.
+    """
+
+    tag = "ul"
+
+    def __init__(self, items: list[str], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-menu")
+        attrs.setdefault("role", "menu")
+        attrs.setdefault("aria_label", _("menu_label", "Menu"))
+        children = [Div(item, class_="miki-menu-item", role="menuitem") for item in items]
+        super().__init__(*children, **attrs)
+
+
+class MikiSizeGrip(Component):
+    """A resize grip handle (maps ``QSizeGrip``).
+
+    Renders a small square grip in the bottom-right corner of its container.
+    """
+
+    tag = "div"
+
+    def __init__(self, **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-sizegrip")
+        attrs.setdefault("role", "separator")
+        attrs.setdefault("aria_label", _("sizegrip_label", "Resize grip"))
+        super().__init__(**attrs)
+
+
+class MikiColumnView(Component):
+    """A multi-column browser view (maps ``QColumnView``).
+
+    :param columns: a list of columns, where each column is a list of item labels.
+    """
+
+    tag = "div"
+
+    def __init__(self, columns: list[list[str]], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-columnview")
+        attrs.setdefault("role", "list")
+        attrs.setdefault("aria_label", _("columnview_label", "Column view"))
+        col_divs = [
+            Div(
+                *[Div(item, class_="miki-column-item", role="listitem") for item in col],
+                class_="miki-column",
+                role="group",
+            )
+            for col in columns
+        ]
+        super().__init__(*col_divs, **attrs)
+
+
+class MikiButtonGroup(Component):
+    """A group of buttons (maps ``QButtonGroup``).
+
+    :param buttons: a list of button labels.
+    """
+
+    tag = "div"
+
+    def __init__(self, buttons: list[str], **attrs: Any) -> None:
+        attrs.setdefault("class", "miki-btngroup")
+        attrs.setdefault("role", "group")
+        attrs.setdefault("aria_label", _("btngroup_label", "Button group"))
+        children = [Div(label, class_="miki-btn", role="button") for label in buttons]
+        super().__init__(*children, **attrs)

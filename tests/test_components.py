@@ -103,6 +103,7 @@ def test_treeview():
 
 def test_listview():
     html = ListView(["a", "b"], selected=0).to_html()
-    assert 'role="listbox"' in html
+    assert 'role="list"' in html
     assert "miki-listview" in html
     assert 'aria-selected="true"' in html
+    assert 'role="listitem"' in html

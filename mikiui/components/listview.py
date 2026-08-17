@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import Component
-from .html import Li, Ul
+from .html import Div, Ul
 
 
 class ListView(Component):
@@ -18,7 +18,7 @@ class ListView(Component):
     Pass ``class_`` for additional CSS classes.
     """
 
-    tag = "div"
+    tag = "ul"
 
     def __init__(
         self,
@@ -28,17 +28,17 @@ class ListView(Component):
     ) -> None:
         user_class = attrs.pop("class_", "")
         attrs["class_"] = f"miki-listview {user_class}".strip()
-        attrs.setdefault("role", "listbox")
+        attrs.setdefault("role", "list")
         if selected is None:
             selected = set()
         elif isinstance(selected, int):
             selected = {selected}
         rendered = [
-            Li(
+            Div(
                 item,
-                role="option",
+                role="listitem",
                 **({"aria-selected": "true"} if i in selected else {}),
             )
             for i, item in enumerate(items)
         ]
-        super().__init__(Ul(*rendered), **attrs)
+        super().__init__(*rendered, **attrs)

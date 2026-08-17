@@ -208,9 +208,8 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 
 /* ---- ListView ---- */
 .miki-listview { max-height: 240px; overflow: auto; border: 1px solid var(--miki-border); border-radius: var(--miki-radius, 0.5rem); }
-.miki-listview ul { list-style: none; margin: 0; padding: 0; }
-.miki-listview li { padding: 0.4rem 0.6rem; cursor: pointer; }
-.miki-listview li:hover { background: var(--miki-surface-hover, #f1f5f9); }
+.miki-listview > div { padding: 0.4rem 0.6rem; cursor: pointer; }
+.miki-listview > div:hover { background: var(--miki-surface-hover, #f1f5f9); }
 .miki-listview [aria-selected="true"] { background: var(--miki-surface-active, #dbeafe); }
 
 /* ---- Calendar ---- */
@@ -289,18 +288,89 @@ tr { display: table-row; }
   border-radius: var(--miki-radius, 0.5rem);
   background: var(--miki-surface, #fff);
 }
-.miki-toolbox-summary {
+.miki-toolbox-section + .miki-toolbox-section {
+  border-top: 1px solid var(--miki-border);
+}
+.miki-toolbox-header {
   cursor: pointer;
   font-weight: 500;
   padding: 0.5rem;
   background: var(--miki-surface-hover, #f1f5f9);
   border-bottom: 1px solid var(--miki-border);
 }
-.miki-toolbox-items {
+.miki-toolbox-body {
+  padding: 0.5rem 1rem;
+  display: none;
+}
+.miki-toolbox-section.active .miki-toolbox-body {
+  display: block;
+}
+
+/* ---- Menu ---- */
+.miki-menu {
   list-style: none;
   margin: 0;
   padding: 0.5rem;
+  background: var(--miki-surface, #fff);
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius, 0.5rem);
 }
+.miki-menu-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  color: var(--miki-fg);
+}
+.miki-menu-item:hover {
+  background: var(--miki-surface-hover, #f1f5f9);
+  border-radius: var(--miki-radius, 0.5rem);
+}
+
+/* ---- SizeGrip ---- */
+.miki-sizegrip {
+  width: 16px;
+  height: 16px;
+  background: var(--miki-border);
+  cursor: se-resize;
+  border-radius: var(--miki-radius, 0.5rem);
+}
+
+/* ---- ColumnView ---- */
+.miki-columnview {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+}
+.miki-column {
+  flex: 1;
+  background: var(--miki-surface, #fff);
+  border: 1px solid var(--miki-border);
+  border-radius: var(--miki-radius, 0.5rem);
+  padding: 0.5rem;
+}
+.miki-column-item {
+  padding: 0.25rem 0.5rem;
+  color: var(--miki-fg);
+}
+.miki-column-item:hover {
+  background: var(--miki-surface-hover, #f1f5f9);
+}
+
+/* ---- ButtonGroup ---- */
+.miki-btngroup {
+  display: flex;
+  gap: 0.5rem;
+}
+.miki-btngroup .miki-btn {
+  flex: 1;
+  background: var(--miki-accent);
+  color: var(--miki-fg);
+  border-radius: var(--miki-radius, 0.5rem);
+  transition: var(--miki-transition, background 0.15s ease);
+}
+.miki-btngroup .miki-btn:hover {
+  background: var(--miki-accent-hover);
+}
+
 .miki-toolbar {
   display: flex;
   gap: 0.25rem;
@@ -2469,10 +2539,10 @@ textarea {
 }
 
 /* ---- Toolbox Enhancements ---- */
-.miki-toolbox-group {
-  margin-bottom: 0.5rem;
+.miki-toolbox-section + .miki-toolbox-section {
+  border-top: 1px solid var(--miki-border);
 }
-.miki-toolbox-group:last-child {
+.miki-toolbox-section:last-child {
   margin-bottom: 0;
 }
 
