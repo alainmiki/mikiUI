@@ -668,38 +668,25 @@
 
       var orientation = el.getAttribute("data-orientation") || "horizontal";
       var resizeMode = el.getAttribute("data-resize-mode") || "horizontal";
-      var minSize = parseInt(el.getAttribute("data-min-size") || "200", 10);
+      var minSize = parseInt(el.getAttribute("data-min-size") || "50", 10);
+      // Threshold (px) to detect first meaningful movement in 'both' mode.
+      var splitThreshold = parseInt(el.getAttribute("data-split-threshold") || "5", 10);
+      // Optional persistence key for layout saving/loading
+      var persistKey = el.getAttribute("data-miki-persist-key") || null;
 
-      // Determine which axes are active
+      // Determine which axes are active based on resize_mode
       var canDragX = (resizeMode === "horizontal" || resizeMode === "both");
       var canDragY = (resizeMode === "vertical" || resizeMode === "both");
 
-      // For 'both' mode, the primary axis defaults to orientation axis.
-      // The actual axis used during drag is picked dynamically based on the
-      // initial drag direction (the axis with the greater movement).
-      var isHorizontal = orientation === "horizontal";
+      // Default drag axis: horizontal orientation → X-axis, vertical → Y-axis
+      var dragAxis = (orientation === "horizontal") ? "x" : "y";
+      if (resizeMode === "horizontal") dragAxis = "x";
+      if (resizeMode === "vertical") dragAxis = "y";
 
       var dragging = false;
       var startPosX = 0, startPosY = 0;
       var startSizeFirstX = 0, startSizeFirstY = 0;
-      var startSizeSecondX = 0, startSizeSecondY = 0;
-      var dragAxis = canDragX ? "x" : "y";
-      var dragStarted = false;  // Tracks whether we've determined the drag axis yet
-
-      function setSizes(sizeX, sizeY) {
-        if (canDragX && sizeX !== null) {
-          firstPane.style.flexBasis = sizeX + "px";
-          secondPane.style.flexBasis = "auto";
-          firstPane.style.flex = "none";
-          secondPane.style.flex = "1 1 0";
-        }
-        if (canDragY && sizeY !== null) {
-          firstPane.style.flexBasis = sizeY + "px";
-          secondPane.style.flexBasis = "auto";
-          firstPane.style.flex = "none";
-          secondPane.style.flex = "1 1 0";
-        }
-      }
+      var dragStarted = false;
 
       function resetFlexBasis() {
         firstPane.style.flexBasis = "";
@@ -717,6 +704,13 @@
         };
       }
 
+      function applySize(primarySize, axis) {
+        firstPane.style.flexBasis = primarySize + "px";
+        firstPane.style.flex = "none";
+        secondPane.style.flexBasis = "auto";
+        secondPane.style.flex = "1 1 0";
+      }
+
       function onMouseMove(e) {
         if (!dragging) return;
         e.preventDefault();
@@ -724,36 +718,30 @@
         var mouseX = e.clientX;
         var mouseY = e.clientY;
 
-        // For 'both' mode: determine axis on first meaningful movement
+        // For 'both' mode: determine axis on first meaningful movement (5px threshold)
         if (resizeMode === "both" && !dragStarted) {
           var deltaX0 = Math.abs(mouseX - startPosX);
           var deltaY0 = Math.abs(mouseY - startPosY);
-          if (deltaX0 > 5 || deltaY0 > 5) {
+          if (deltaX0 > splitThreshold || deltaY0 > splitThreshold) {
             dragAxis = deltaX0 >= deltaY0 ? "x" : "y";
             dragStarted = true;
           }
         }
 
-        if (dragAxis === "x") {
+        if (dragAxis === "x" && canDragX) {
           var deltaX = mouseX - startPosX;
           var newSizeX = startSizeFirstX + deltaX;
           var dims = getDims();
           var maxW = dims.containerW - dims.splitterW - minSize;
           newSizeX = Math.max(minSize, Math.min(maxW, newSizeX));
-          firstPane.style.flexBasis = newSizeX + "px";
-          firstPane.style.flex = "none";
-          secondPane.style.flexBasis = "auto";
-          secondPane.style.flex = "1 1 0";
-        } else {
+          applySize(newSizeX, "x");
+        } else if (dragAxis === "y" && canDragY) {
           var deltaY = mouseY - startPosY;
           var newSizeY = startSizeFirstY + deltaY;
           var dims2 = getDims();
           var maxH = dims2.containerH - dims2.splitterH - minSize;
           newSizeY = Math.max(minSize, Math.min(maxH, newSizeY));
-          firstPane.style.flexBasis = newSizeY + "px";
-          firstPane.style.flex = "none";
-          secondPane.style.flexBasis = "auto";
-          secondPane.style.flex = "1 1 0";
+          applySize(newSizeY, "y");
         }
 
         dispatch(el, "miki:splitview:resize", {
@@ -771,24 +759,26 @@
         resetFlexBasis();
         off(document, "mousemove", onMouseMove);
         off(document, "mouseup", onMouseUp);
+        // Persist layout if requested
+        try {
+          if (persistKey && window.localStorage && window.mikiSplitView && typeof window.mikiSplitView.getLayout === 'function') {
+            var layout = window.mikiSplitView.getLayout(el);
+            localStorage.setItem(persistKey, JSON.stringify(layout));
+          }
+        } catch (err) {
+          /* ignore storage errors */
+        }
       }
 
       on(splitter, "mousedown", function (e) {
         if (e.button !== 0) return;
         e.preventDefault();
 
-        // For 'both' mode: primary axis is determined on first drag movement
-        // For 'horizontal': X axis only; 'vertical': Y axis only
-        dragAxis = canDragX ? "x" : "y";
-        dragStarted = false;
-
         dragging = true;
         startPosX = e.clientX;
         startPosY = e.clientY;
         startSizeFirstX = firstPane.offsetWidth;
         startSizeFirstY = firstPane.offsetHeight;
-        startSizeSecondX = secondPane.offsetWidth;
-        startSizeSecondY = secondPane.offsetHeight;
         splitter.classList.add("miki-splitter-dragging");
         on(document, "mousemove", onMouseMove, { passive: false });
         on(document, "mouseup", onMouseUp);
@@ -802,7 +792,8 @@
         } else {
           el.classList.add("miki-split-maximized");
           var dims = getDims();
-          if (dragAxis === "x") {
+          var activeAxis = (orientation === "horizontal") ? "x" : "y";
+          if (activeAxis === "x") {
             firstPane.style.flexBasis = (dims.containerW - dims.splitterW) + "px";
             firstPane.style.flex = "none";
             secondPane.style.flexBasis = "auto";
@@ -821,11 +812,11 @@
       on(splitter, "keydown", function (e) {
         var step = e.shiftKey ? 1 : 5;
         var dims = getDims();
-        var currentSize, maxSize;
+        var activeAxis = (orientation === "horizontal") ? "x" : "y";
 
-        if (dragAxis === "x") {
-          currentSize = firstPane.offsetWidth;
-          maxSize = dims.containerW - dims.splitterW - minSize;
+        if (activeAxis === "x" && canDragX) {
+          var currentSize = firstPane.offsetWidth;
+          var maxSize = dims.containerW - dims.splitterW - minSize;
           if (e.key === "ArrowLeft") {
             e.preventDefault();
             var newW = Math.max(minSize, currentSize - step);
@@ -841,9 +832,9 @@
             secondPane.style.flexBasis = "auto";
             secondPane.style.flex = "1 1 0";
           }
-        } else {
-          currentSize = firstPane.offsetHeight;
-          maxSize = dims.containerH - dims.splitterH - minSize;
+        } else if (activeAxis === "y" && canDragY) {
+          var currentSize = firstPane.offsetHeight;
+          var maxSize = dims.containerH - dims.splitterH - minSize;
           if (e.key === "ArrowUp") {
             e.preventDefault();
             var newH = Math.max(minSize, currentSize - step);
@@ -866,20 +857,140 @@
       on(splitter, "touchstart", function (e) {
         if (e.touches.length !== 1) return;
         e.preventDefault();
-        dragAxis = canDragX ? "x" : "y";
         dragStarted = false;
         dragging = true;
         startPosX = e.touches[0].clientX;
         startPosY = e.touches[0].clientY;
         startSizeFirstX = firstPane.offsetWidth;
         startSizeFirstY = firstPane.offsetHeight;
-        startSizeSecondX = secondPane.offsetWidth;
-        startSizeSecondY = secondPane.offsetHeight;
         splitter.classList.add("miki-splitter-dragging");
       }, { passive: false });
 
       on(document, "touchmove", onMouseMove, { passive: false });
       on(document, "touchend", onMouseUp);
+    },
+
+    // Get layout state as a serializable object
+    getLayout: function (el) {
+      var data = [];
+      var panes = el.querySelectorAll('[data-miki-split-pane]');
+      for (var i = 0; i < panes.length; i++) {
+        var pane = panes[i];
+        var size = pane.dataset.mikiSize || pane.style.flexBasis || "";
+        data.push({
+          id: pane.id || "",
+          size: size,
+          collapsed: pane.classList.contains("miki-split-pane-collapsed")
+        });
+      }
+      return {
+        orientation: el.getAttribute("data-orientation") || "horizontal",
+        resizeMode: el.getAttribute("data-resize-mode") || "horizontal",
+        minSize: parseInt(el.getAttribute("data-min-size") || "50", 10),
+        panes: data
+      };
+    },
+
+    // Apply layout from a saved state object
+    setLayout: function (el, layout) {
+      if (!layout) return;
+      el.setAttribute("data-orientation", layout.orientation || "horizontal");
+      el.setAttribute("data-resize-mode", layout.resizeMode || "horizontal");
+      el.setAttribute("data-min-size", String(layout.minSize || 50));
+
+      var panes = el.querySelectorAll('[data-miki-split-pane]');
+      for (var i = 0; i < panes.length; i++) {
+        if (i >= layout.panes.length) break;
+        var pane = panes[i];
+        var state = layout.panes[i];
+        if (state.size) {
+          pane.style.flexBasis = state.size;
+          pane.style.flex = "none";
+        }
+        if (state.collapsed) {
+          pane.classList.add("miki-split-pane-collapsed");
+        } else {
+          pane.classList.remove("miki-split-pane-collapsed");
+        }
+        if (state.id) pane.id = state.id;
+      }
+
+      // Re-init to pick up new attributes
+      if (el.dataset.mikiInit === "true") {
+        el.dataset.mikiInit = "";
+        mikiSplitView.init(el);
+      }
+      // If a persisted layout exists, apply it (after re-init)</br>
+      try {
+        if (persistKey && window.localStorage) {
+          var stored = localStorage.getItem(persistKey);
+          if (stored) {
+            var parsed = JSON.parse(stored);
+            if (parsed) {
+              // apply stored layout
+              if (el.dataset.mikiInit === "true") {
+                el.dataset.mikiInit = "";
+              }
+              window.mikiSplitView.setLayout(el, parsed);
+            }
+          }
+        }
+      } catch (err) {
+        /* ignore storage / parse errors */
+      }
+    },
+
+    // Add a new pane (inserts before the splitter)
+    addPane: function (el, contentHtml, position) {
+      var splitter = el.querySelector('[data-miki-splitter="true"]');
+      if (!splitter) return;
+      var firstPane = el.querySelector('[data-miki-split-pane="first"]');
+      if (!firstPane) return;
+
+      var newPane = document.createElement("div");
+      newPane.className = "miki-split-pane";
+      newPane.setAttribute("data-miki-split-pane", "second");
+      newPane.setAttribute("role", "region");
+      newPane.innerHTML = contentHtml;
+      newPane.style.flex = "1 1 0";
+
+      // Insert new pane + splitter before second pane
+      var secondPane = el.querySelector('[data-miki-split-pane="second"]');
+      if (position === "before-first" || !secondPane) {
+        el.insertBefore(newPane, firstPane);
+        var newSplitter = splitter.cloneNode(false);
+        newSplitter.setAttribute("data-miki-splitter", "true");
+        el.insertBefore(newSplitter, firstPane);
+      } else {
+        // Replace second pane position
+        var newSplitter2 = splitter.cloneNode(false);
+        newSplitter2.setAttribute("data-miki-splitter", "true");
+        el.insertBefore(newPane, splitter);
+        el.insertBefore(newSplitter2, secondPane);
+      }
+
+      // Re-init
+      el.dataset.mikiInit = "";
+      mikiSplitView.init(el);
+    },
+
+    // Remove a pane by index (0 = first, 1 = second)
+    removePane: function (el, index) {
+      var panes = el.querySelectorAll('[data-miki-split-pane]');
+      if (index < 0 || index >= panes.length) return;
+      var pane = panes[index];
+      var splitter = pane.nextElementSibling;
+      if (splitter && splitter.hasAttribute("data-miki-splitter")) {
+        splitter.remove();
+      } else {
+        splitter = pane.previousElementSibling;
+        if (splitter && splitter.hasAttribute("data-miki-splitter")) {
+          splitter.remove();
+        }
+      }
+      pane.remove();
+      el.dataset.mikiInit = "";
+      mikiSplitView.init(el);
     }
   };
 
@@ -900,7 +1011,10 @@
       var floatHeight = el.getAttribute("data-float-height") || "50vh";
 
       // Persist original dock position so we can restore it
-      var originalDock = el.getAttribute("data-miki-dock-position") || "right";
+      var originalDock = el.getAttribute("data-miki-original-dock") || "in-page";
+      if (!el.hasAttribute("data-miki-original-dock")) {
+        el.setAttribute("data-miki-original-dock", originalDock);
+      }
 
       // --- Action button event binding ---
       var buttons = el.querySelectorAll("[data-miki-dock-action]");
@@ -1035,9 +1149,10 @@
           e.preventDefault();
           e.stopPropagation();
 
-          // If docked, switch to floating first
-          var wasDocked = !el.classList.contains("miki-dock-floating");
-          if (wasDocked) {
+          // If docked or in-page, switch to floating first (centered)
+          var wasDocked = !el.classList.contains("miki-dock-floating") && !el.classList.contains("miki-dock-in-page");
+          var wasInPage = el.classList.contains("miki-dock-in-page");
+          if (wasDocked || wasInPage) {
             mikiDockablePanel.detach(el);
           }
 
@@ -1124,22 +1239,63 @@
           on(document, "mouseup", endDrag);
         });
       }
+
+      // Persist docked/floating state if a key is supplied
+      try {
+        var dockPersistKey = el.getAttribute("data-miki-dock-persist-key") || null;
+        if (dockPersistKey && window.localStorage) {
+          // Save current state whenever panel changes
+          var saveDockState = function () {
+            var stateObj = {
+              position: el.getAttribute("data-miki-dock-position"),
+              dockState: el.getAttribute("data-miki-dock-state"),
+              rect: el.getBoundingClientRect ? el.getBoundingClientRect() : null
+            };
+            try { localStorage.setItem(dockPersistKey, JSON.stringify(stateObj)); } catch (e) {}
+          };
+
+          // Hook into actions that change state
+          on(el, "miki:dockable:docked", saveDockState);
+          on(el, "miki:dockable:detach", saveDockState);
+          on(el, "miki:dockable:toggle", saveDockState);
+          on(el, "miki:dockable:closed", saveDockState);
+          on(el, "miki:dockable:shown", saveDockState);
+
+          // On init, attempt to restore saved state
+          var saved = null;
+          try { saved = JSON.parse(localStorage.getItem(dockPersistKey)); } catch (e) { saved = null; }
+          if (saved && saved.position) {
+            // Apply saved position (use dockAt for edge positions)
+            if (saved.position === "floating") {
+              mikiDockablePanel.detach(el);
+            } else if (saved.position === "in-page") {
+              mikiDockablePanel.dockAt(el, "in-page");
+            } else {
+              mikiDockablePanel.dockAt(el, saved.position);
+            }
+          }
+        }
+      } catch (err) {
+        /* ignore storage errors */
+      }
     },
 
-    // Dock the panel at a specific position
-    dockAt: function (el, position) {
-      var valid = ["top", "left", "right", "bottom", "floating"];
+     // Dock the panel at a specific position
+     dockAt: function (el, position) {
+      var valid = ["top", "left", "right", "bottom", "floating", "in-page"];
       if (valid.indexOf(position) === -1) return;
 
       // Remove all dock classes
-      el.classList.remove("miki-dock-top", "miki-dock-left", "miki-dock-right", "miki-dock-bottom", "miki-dock-floating");
+      el.classList.remove("miki-dock-top", "miki-dock-left", "miki-dock-right", "miki-dock-bottom", "miki-dock-floating", "miki-dock-in-page", "miki-dock-collapsed");
 
-      // Add the new dock class
-      el.classList.add("miki-dock-" + position);
+      // For in-page, don't add a position class (it stays in normal flow)
+      if (position !== "in-page") {
+        el.classList.add("miki-dock-" + position);
+      }
 
       // Update data attributes
       el.setAttribute("data-miki-dock-position", position);
-      el.setAttribute("data-miki-dock-state", position === "floating" ? "floating" : "docked");
+      el.setAttribute("data-miki-dock-state", position === "floating" ? "floating" : (position === "in-page" ? "in-page" : "docked"));
 
       // Clear ALL inline positioning styles — CSS classes handle positioning
       el.style.cssText = el.style.cssText.replace(/position\s*:\s*[^;]+;?/g, "");
@@ -1158,17 +1314,18 @@
       // Update indicator
       var indicator = el.querySelector(".miki-dock-indicator");
       if (indicator) {
-        var icons = { top: "▲", left: "◀", right: "▶", bottom: "▼", floating: "◎" };
-        var tooltips = { top: "Docked top", left: "Docked left", right: "Docked right", bottom: "Docked bottom", floating: "Floating" };
-        indicator.textContent = icons[position] || "▶";
-        indicator.setAttribute("aria-label", tooltips[position] || "");
-        indicator.className = "miki-dock-indicator miki-dock-" + position;
+        var icons = { in_page: "◎", top: "▲", left: "◀", right: "▶", bottom: "▼", floating: "◎" };
+        var tooltips = { in_page: "In-page (inline)", top: "Docked top", left: "Docked left", right: "Docked right", bottom: "Docked bottom", floating: "Floating" };
+        var iconKey = position === "in-page" ? "in_page" : position;
+        indicator.textContent = icons[iconKey] || "◎";
+        indicator.setAttribute("aria-label", tooltips[iconKey] || "");
+        indicator.className = "miki-dock-indicator miki-dock-" + (position === "in-page" ? "in-page" : position);
       }
 
       // Update detach/anchor button aria-label
       var detachBtn = el.querySelector('[data-miki-dock-action="detach"]');
       if (detachBtn) {
-        detachBtn.setAttribute("aria-label", position === "floating" ? "Dock panel" : "Float panel");
+        detachBtn.setAttribute("aria-label", position === "floating" || position === "in-page" ? "Dock panel" : "Float panel");
       }
 
       dispatch(el, "miki:dockable:docked", { position: position });
@@ -1199,32 +1356,34 @@
       dispatch(el, "miki:dockable:closed", {});
     },
 
-    // Show the panel (restore from closed)
-    show: function (el) {
+     // Show the panel (restore from closed)
+     show: function (el) {
       el.style.display = "";
       var state = el.getAttribute("data-miki-dock-state") || "docked";
-      if (state === "closed") el.setAttribute("data-miki-dock-state", "docked");
+      if (state === "closed") {
+        var dockPos = el.getAttribute("data-miki-dock-position") || "in-page";
+        el.setAttribute("data-miki-dock-state", dockPos === "floating" ? "floating" : (dockPos === "in-page" ? "in-page" : "docked"));
+      }
       dispatch(el, "miki:dockable:shown", {});
-    },
+     },
 
-    // Detach (float) or return to docked position
-    detach: function (el) {
+      // Detach (float) or return to original position (in-page or docked)
+     detach: function (el) {
       var wasFloating = el.classList.contains("miki-dock-floating");
       var dockWidth = el.getAttribute("data-float-width") || "40vw";
       var dockHeight = el.getAttribute("data-float-height") || "50vh";
 
       if (wasFloating) {
-        // Return to docked position (preserve original if possible)
-        var dockPos = el.getAttribute("data-miki-dock-position");
-        if (dockPos === "floating" || !dockPos) {
-          dockPos = "right";
-        }
+        // Return to original position (in-page or docked edge)
+        var dockPos = el.getAttribute("data-miki-original-dock") || "in-page";
         el.classList.remove("miki-dock-floating");
-        el.classList.add("miki-dock-" + dockPos);
-        el.setAttribute("data-miki-dock-state", "docked");
+        if (dockPos !== "in-page") {
+          el.classList.add("miki-dock-" + dockPos);
+        }
+        el.setAttribute("data-miki-dock-state", dockPos === "floating" ? "floating" : (dockPos === "in-page" ? "in-page" : "docked"));
         el.setAttribute("data-miki-dock-position", dockPos);
 
-        // Clear all inline styles
+        // Clear all inline positioning styles — CSS handles it
         el.style.position = "";
         el.style.zIndex = "";
         el.style.left = "";
@@ -1237,9 +1396,10 @@
         el.style.width = "";
         el.style.height = "";
       } else {
-        // Go floating
+        // Go floating (centered over viewport)
+        el.setAttribute("data-miki-original-dock", el.getAttribute("data-miki-dock-position") || "in-page");
         el.classList.add("miki-dock-floating");
-        el.classList.remove("miki-dock-top", "miki-dock-left", "miki-dock-right", "miki-dock-bottom");
+        el.classList.remove("miki-dock-top", "miki-dock-left", "miki-dock-right", "miki-dock-bottom", "miki-dock-in-page");
         el.setAttribute("data-miki-dock-state", "floating");
         el.setAttribute("data-miki-dock-position", "floating");
 

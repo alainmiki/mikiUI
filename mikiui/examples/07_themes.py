@@ -205,4 +205,4 @@ async def copy_theme(ctx) -> Div:
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(desktop=True)

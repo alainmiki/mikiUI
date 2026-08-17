@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mikiui.components import Div
 from mikiui.engine import render
 from mikiui.widgets import (
     Carousel,
@@ -413,3 +414,97 @@ def test_dockable_panel_has_dock_indicator():
     html = render(panel)
     assert "miki-dock-indicator" in html
     assert "▶" in html
+
+
+def test_splitview_default_min_50():
+    sv = SplitView("left", "right")
+    html = render(sv)
+    assert 'data-min-size="50"' in html
+
+
+def test_splitview_custom_min_size():
+    sv = SplitView("left", "right", min_size=100)
+    html = render(sv)
+    assert 'data-min-size="100"' in html
+
+
+def test_splitview_blue_hover_class():
+    sv = SplitView("left", "right")
+    html = render(sv)
+    assert "miki-splitter-clickable" in html
+
+
+def test_splitview_vertical_orientation():
+    sv = SplitView("top", "bottom", orientation="vertical")
+    html = render(sv)
+    assert 'data-orientation="vertical"' in html
+    assert 'aria-orientation="vertical"' in html
+
+
+def test_splitview_has_splitter_data_attr():
+    sv = SplitView("left", "right")
+    html = render(sv)
+    assert 'data-miki-splitter="true"' in html
+
+
+def test_splitview_collapsible_param():
+    sv = SplitView("left", "right", collapsible=False)
+    html = render(sv)
+    # Collapsed pane class not present (not collapsed by default)
+    assert "miki-split-pane-collapsed" not in html
+
+
+def test_splitview_vertical_min_height():
+    sv = SplitView("top", "bottom", orientation="vertical")
+    html = render(sv)
+    assert "min-height" in html
+
+
+def test_nested_splitviews():
+    inner = SplitView(Div("TL"), Div("BL"), orientation="vertical")
+    outer = SplitView(inner, Div("Right"), orientation="horizontal")
+    html = render(outer)
+    # Both splitviews should render
+    assert html.count("data-miki-splitview") == 2
+    assert html.count("data-miki-splitter") == 2
+    assert html.count("data-miki-split-pane") == 4
+
+
+def test_splitview_has_separator_width():
+    sv = SplitView("left", "right", separator_width=12)
+    html = render(sv)
+    assert 'data-splitter-width="12"' in html
+
+
+def test_dockable_panel_default_in_page():
+    panel = DockablePanel("Title", "body")
+    html = render(panel)
+    assert 'data-miki-dock-position="in-page"' in html
+    # In-page mode should NOT add a miki-dock-{position} CSS class to the panel element
+    # (the indicator span can still have it, but the <section> should not)
+    assert 'miki-dockable-panel miki-dock-' not in html
+    assert 'data-miki-dock-state="in-page"' in html
+
+
+def test_dockable_panel_has_original_dock():
+    panel = DockablePanel("Title", "body", dock="left")
+    html = render(panel)
+    assert 'data-miki-original-dock="left"' in html
+
+
+def test_dockable_panel_explicit_floating():
+    panel = DockablePanel("Title", "body", dock="floating")
+    html = render(panel)
+    assert 'data-miki-dock-position="floating"' in html
+    assert "miki-dock-floating" in html
+
+
+def test_dockable_panel_in_page_no_css_class():
+    """In-page panels should not get a miki-dock-* CSS class on the section (stays in normal flow)."""
+    panel = DockablePanel("Title", "body", dock="in-page")
+    html = render(panel)
+    # The <section> tag should not have miki-dock-in-page class
+    section_start = html.find("<section")
+    section_end = html.find(">", section_start) + 1
+    section_attrs = html[section_start:section_end]
+    assert "miki-dock-in-page" not in section_attrs

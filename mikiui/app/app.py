@@ -13,6 +13,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from ..app.static_assets import register_plugin_assets
 from ..engine.dom import normalize
 from ..themes import Theme
 from .plugins import Plugin
@@ -54,7 +55,17 @@ class MikiApp:
 
         # New registries
         self.registry: WidgetRegistry = WidgetRegistry()
-        self.theme_registry: ThemeRegistry = ThemeRegistry()
+        # ThemeRegistry should consult the global theme registry as a parent
+        from ..themes import get_theme, list_themes
+
+        class _GlobalThemeProxy:
+            def get(self, name: str):
+                return get_theme(name)
+
+            def list_all(self):
+                return list_themes()
+
+        self.theme_registry: ThemeRegistry = ThemeRegistry(parent_registry=_GlobalThemeProxy())
         self._backend_routes: list[dict[str, Any]] = []
         self._middleware_classes: list[type] = []
 
@@ -180,7 +191,19 @@ class MikiApp:
 
     def register_theme(self, theme: Theme) -> MikiApp:
         """Register a custom or plugin theme and activate it."""
-        self.theme_registry.register(theme)
+        # Register locally and propagate to the global registry so renderer
+        # and other tooling can discover the theme.
+        try:
+            self.theme_registry.register(theme, propagate_global=True)
+        except TypeError:
+            # Older register API: fall back to simple register and call global helper
+            self.theme_registry.register(theme)
+            try:
+                from ..themes import register_theme as _global_register
+
+                _global_register(theme)
+            except Exception:
+                pass
         self.theme = theme.name
         return self
 
@@ -301,6 +324,14 @@ class MikiApp:
             self._backend_routes.extend(plugin.backend_routes())
         if hasattr(plugin, "middleware_classes"):
             self._middleware_classes.extend(plugin.middleware_classes())
+        # Register plugin static assets for server mounting
+        if hasattr(plugin, "assets"):
+            try:
+                paths = plugin.assets()
+                if paths:
+                    register_plugin_assets(plugin.name, paths)
+            except Exception:
+                logger.exception("Plugin %r assets() failed; skipping.", plugin.name)
         return self
 
     # -- backend integration ---------------------------------------------------

@@ -8,7 +8,9 @@ Inspired by:
 
 Features:
 - Drag-to-dock behavior
-- Floatable panels (separate window/tab)
+- In-page (default) mode: panel stays inline in normal document flow
+- Dock-to-edge: panel becomes fixed to screen edge (top/left/right/bottom)
+- Float mode: panel becomes a centered floating window over the page
 - Tabbed dock containers
 - Collapsible with smooth animation
 - Keyboard shortcuts (Ctrl+W to close)
@@ -25,7 +27,7 @@ title : str
 *content : Any
     Panel body content.
 dock : str
-    Default dock position: 'left', 'right', 'bottom', 'floating'
+    Default dock position: 'in-page', 'top', 'left', 'right', 'bottom', 'floating'
 collapsible : bool
     Show collapse/expand toggle.
 closeable : bool
@@ -35,12 +37,13 @@ minimal : bool
 resizable : bool
     Allow resize by dragging edges.
 detachable : bool
-    Allow detaching as separate window/tab.
+    Allow detaching (move from docked → floating or in-page).
 **attrs : Additional HTML attributes.
 """
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from ..components import Button, Div, Span
@@ -63,8 +66,12 @@ class DockablePanel(Component):
         Panel title shown in header.
     *content : Any
         Panel body content.
-    dock : str
-        Default dock position: 'top', 'left', 'right', 'bottom', 'floating'.
+dock : str
+    Default dock position: 'in-page' (default), 'top', 'left', 'right',
+    'bottom', 'floating'.
+    - 'in-page': Panel stays inline in normal document flow (default).
+    - 'top'/'left'/'right'/'bottom': Panel is fixed to that screen edge.
+    - 'floating': Panel is centered as a floating window over the page.
     collapsible : bool
         Show collapse/expand toggle button.
     closeable : bool
@@ -98,7 +105,7 @@ class DockablePanel(Component):
         self,
         title: str,
         *content: Any,
-        dock: str = "right",
+        dock: str = "in-page",
         collapsible: bool = True,
         closeable: bool = False,
         minimal: bool = False,
@@ -113,25 +120,30 @@ class DockablePanel(Component):
         float_height: str = "50vh",
         **attrs: Any,
     ) -> None:
-        dock_positions = ("top", "left", "right", "bottom", "floating")
+        dock_positions = ("in-page", "top", "left", "right", "bottom", "floating")
         if dock not in dock_positions:
             raise ValueError(f"dock must be one of {dock_positions}, got {dock!r}")
 
         attrs.setdefault("class_", "miki-dockable-panel")
         attrs.setdefault("role", "region")
-        attrs.setdefault("aria_labelledby", f"{title}-dock-title")
+        # Generate a safe, unique id for the title used by ARIA attributes.
+        title_id = f"miki-dock-title-{uuid.uuid4().hex[:8]}"
+        attrs.setdefault("aria_labelledby", title_id)
         attrs.setdefault("tabindex", "0")
         attrs.setdefault("data-miki-dockable", "true")
         attrs.setdefault("data-miki-dock-position", dock)
+        attrs.setdefault("data-miki-original-dock", dock)
 
-        if dock == "floating":
-            dock_state = "floating"
-            attrs.setdefault("data-miki-close-on-escape", "true" if close_on_escape else "false")
-        elif not open:
+        if not open:
             dock_state = "collapsed"
+        elif dock == "floating":
+            dock_state = "floating"
+        elif dock == "in-page":
+            dock_state = "in-page"
         else:
             dock_state = "docked"
         attrs.setdefault("data-miki-dock-state", dock_state)
+        attrs.setdefault("data-miki-close-on-escape", "true" if close_on_escape else "false")
 
         # Customization attributes for JS
         attrs.setdefault("data-snap-threshold", str(snap_threshold))
@@ -149,8 +161,9 @@ class DockablePanel(Component):
         style_parts.append(f"--miki-float-height:{float_height}")
         attrs["style"] = ";".join(style_parts)
 
-        # Add dock position CSS class for initial rendering
-        attrs["class_"] = attrs.get("class_", "miki-dockable-panel") + f" miki-dock-{dock}"
+        # Add dock position CSS class for initial rendering (skip 'in-page' — it's inline)
+        if dock != "in-page":
+            attrs["class_"] = attrs.get("class_", "miki-dockable-panel") + f" miki-dock-{dock}"
 
         if not open:
             attrs["class_"] += " miki-dock-collapsed"
@@ -163,7 +176,7 @@ class DockablePanel(Component):
         title_span = Span(
             title,
             class_="miki-dock-title",
-            id=f"{title}-dock-title",
+            id=title_id,
             title=f"Dock position: {dock}",
         )
         header_children.append(title_span)
@@ -247,6 +260,7 @@ class DockablePanel(Component):
         with a directional arrow icon, making the dock position obvious.
         """
         indicators = {
+            "in-page": ("◎", "miki-dock-indicator miki-dock-in-page", "In-page (inline)"),
             "top": ("▲", "miki-dock-indicator miki-dock-top", "Docked to top edge"),
             "left": ("◀", "miki-dock-indicator miki-dock-left", "Docked to left edge"),
             "right": ("▶", "miki-dock-indicator miki-dock-right", "Docked to right edge"),

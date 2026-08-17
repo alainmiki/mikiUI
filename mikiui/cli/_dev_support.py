@@ -15,7 +15,7 @@ from typing import Any
 from ..backend import create_app
 
 #: User-provided app spec (``"module.path:attr"``), set via env var by the CLI.
-APP_SPEC: str = os.environ.get("MIKIUI_APP_SPEC", "mikiui.examples.demo:app")
+APP_SPEC: str = os.environ.get("MIKIUI_APP_SPEC", "")
 
 #: Factory used to wrap a :class:`~mikiui.app.MikiApp` in a FastAPI ASGI app.
 CREATE_APP = create_app

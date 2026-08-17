@@ -882,8 +882,8 @@ directives.
 | Modal | `data-miki-modal="true"` | Modal dialog with ESC close and backdrop click |
 | Dialog | `data-miki-dialog="true"` | Native `<dialog>` with polyfill for `showModal()` |
 | ProgressDialog | `data-miki-progress-dialog="true"` | Modal progress with ESC close |
-| SplitView | `data-miki-splitview="true"` | Resizable panes with drag splitters; supports `data-resize-mode="horizontal"` \| `"vertical"` \| `"both"` |
-| DockablePanel | `data-miki-dockable="true"` | Draggable header; drag toward any screen edge (top/left/right/bottom) to snap
+| SplitView | `data-miki-splitview="true"` | VS Code-style resizing; supports nested SplitViews, `resize_mode` (horizontal/vertical/both), min_size, dynamic add/remove panes, save/load layout |
+| DockablePanel | `data-miki-dockable="true"` | Draggable header; drag toward any edge (top/left/right/bottom) to snap; customizable dimensions |
 | Slider | `data-miki-slider="true"` | Live value display + PageUp/PageDown support |
 | Dial | `data-miki-dial="true"` | Circular knob with rotation + keyboard support |
 | Collapsible | `data-miki-collapsible="true"` | Smooth-expand accordion with toggle icon rotation |
@@ -919,11 +919,20 @@ mikiDrawer.open(el);      // Opens drawer (adds .miki-drawer-open)
 mikiDrawer.close(el);     // Closes drawer
 mikiDrawer.toggle(el);    // Toggles
 
+// SplitView
+mikiSplitView.getLayout(el);   // Returns JSON-serializable layout state
+mikiSplitView.setLayout(el, layout); // Restores layout from getLayout() result
+mikiSplitView.addPane(el, html, position?); // Add a new pane (position: "before-first" or default)
+mikiSplitView.removePane(el, index); // Remove a pane by index (0=first, 1=second)
+
 // DockablePanel
-mikiDockablePanel.toggle(el);   // Expand/collapse
-mikiDockablePanel.close(el);    // Close (display:none)
+mikiDockablePanel.toggle(el);   // Expand/collapse body
+mikiDockablePanel.close(el);    // Hide panel (display:none)
+mikiDockablePanel.show(el);     // Restore panel from closed state
 mikiDockablePanel.detach(el);   // Float / dock
-mikiDockablePanel.dockAt(el, 'top'|'left'|'right'|'bottom'|'floating'); // Snap to any edge
+mikiDockablePanel.dockAt(el, 'top'|'left'|'right'|'bottom'|'floating'|'in-page'); // Snap to edge
+// Default dock='in-page' keeps the panel inline in the parent flow.
+// Use dockAt() to move to any edge, or detach() to float.
 
 // Tabs
 mikiTabs.show(groupId, index);  // Switch to tab at index
@@ -982,25 +991,44 @@ mikiClose.modal(btn);   // Closes modal
 
 ### SplitView
 
-The SplitView supports dynamic, directional resizing via the `resize_mode` parameter:
+The SplitView supports VS Code-style dynamic resizing via the `resize_mode` parameter:
 
 ```python
 from mikiui.widgets import SplitView
 from mikiui.components import Div
 
-# Horizontal resize (drag splitter left/right)
+# Horizontal resize (drag splitter left/right — primary axis is X)
 SplitView(Div("Left"), Div("Right"), resize_mode="horizontal")
 
-# Vertical resize (drag splitter up/down)
+# Vertical resize (drag splitter up/down — primary axis is Y)
 SplitView(Div("Top"), Div("Bottom"), orientation="vertical", resize_mode="vertical")
 
-# Bidirectional resize (drag in any direction)
+# Bidirectional resize — drag in any direction
+# The first meaningful mouse movement determines the active axis
 SplitView(Div("A"), Div("B"), resize_mode="both")
+
+# Vertical orientation with bidirectional resize
+SplitView(Div("A"), Div("B"), orientation="vertical", resize_mode="both")
 ```
 
-The splitter automatically shows the correct cursor (`ew-resize` or `ns-resize`)
-and displays a visual gripper pattern (`● ● ●`) on hover. The gripper orientation
-matches the active resize axis.
+**Behavior**:
+- The first pane's `flex-basis` grows/shrinks with the drag; the second pane
+  automatically fills remaining space (flexbox `flex: 1 1 0` on release).
+- In `both` mode, the system watches the initial drag direction: if you move more
+  horizontally, it locks to X-axis; if vertically, Y-axis. This prevents accidental
+  diagonal jitter.
+- Double-click maximizes the first pane; double-click again restores.
+- Keyboard: arrow keys adjust by 5px (Shift for 1px steps). Keys map to the
+  orientation's primary axis (left/right for horizontal, up/down for vertical).
+- Touch: single-finger drag works the same as mouse.
+
+The splitter cursor indicates the active mode:
+- `ew-resize` for horizontal drag
+- `ns-resize` for vertical drag
+- `nwse-resize` for bidirectional `both` mode
+
+A visual gripper (`● ● ●`) appears on hover with dots oriented to match the
+primary resize axis (vertical for horizontal mode, horizontal for vertical mode).
 
 ### DockablePanel
 
@@ -1015,14 +1043,53 @@ from mikiui.widgets import DockablePanel
 # Docked to the right by default, fully draggable
 DockablePanel("Properties", Div("Content"), dock="right")
 
-# Start floating
+# Start floating (centered)
 DockablePanel("Inspector", Div("Content"), dock="floating")
+
+# Fully customized
+DockablePanel(
+    "Console",
+    Div("Log output"),
+    dock="bottom",
+    collapsible=True,
+    closeable=True,
+    detachable=True,
+    close_on_escape=True,
+    snap_threshold=80,       # pixels from edge to trigger snap
+    dock_width="400px",      # width when left/right docked
+    dock_height="250px",     # height when top/bottom docked
+    float_width="50vw",      # width when floating
+    float_height="60vh",     # height when floating
+)
 ```
 
-Action buttons in the header:
-- **Toggle** (▼/▶): Collapse/expand the panel body
+**Customization parameters**:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `dock` | `"right"` | Initial dock position: `top`, `left`, `right`, `bottom`, `floating` |
+| `collapsible` | `True` | Show collapse/expand toggle button |
+| `closeable` | `False` | Show close button |
+| `detachable` | `True` | Allow detaching as floating panel |
+| `open` | `True` | Initial expanded state |
+| `close_on_escape` | `True` | Close floating panel with ESC key |
+| `snap_threshold` | `100` | Pixel distance from screen edge to trigger snap-to-dock |
+| `dock_width` | `"300px"` | Panel width when docked left/right |
+| `dock_height` | `"300px"` | Panel height when docked top/bottom |
+| `float_width` | `"40vw"` | Panel width when floating |
+| `float_height` | `"50vh"` | Panel height when floating |
+
+**Action buttons in the header**:
+- **Toggle** (▼/▶ with rotation animation): Collapse/expand the panel body
 - **Close** (×): Hide the panel
 - **Detach** (⇋): Toggle between docked and floating state
+
+**Drag-to-dock**:
+1. Click and drag the header from any state (docked or floating)
+2. The panel detaches to floating if it was docked
+3. Drag toward a screen edge — snap zone indicators appear
+4. Release near an edge to dock there, or release elsewhere to stay floating
+5. Drag is constrained within viewport bounds during movement
 
 ### Fallback Behavior
 

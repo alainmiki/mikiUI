@@ -15,6 +15,10 @@
   --miki-fg: #0f172a;
   --miki-accent: #2563eb;
   --miki-border: #e2e8f0;
+  --miki-surface: #ffffff;
+  --miki-surface-hover: #f1f5f9;
+  --miki-muted: #64748b;
+  --miki-text-muted: #64748b;
 }
 
 * { box-sizing: border-box; }
@@ -477,6 +481,15 @@ tr { display: table-row; }
   box-shadow: var(--miki-shadow-xl, 0 20px 25px rgba(0, 0, 0, 0.3));
   border-radius: var(--miki-radius, 0.5rem);
 }
+/* In-page mode: panel stays in normal document flow (no fixed positioning) */
+.miki-dockable-panel.miki-dock-in-page {
+  position: static;
+  width: 100%;
+  z-index: auto;
+  transform: none;
+  box-shadow: var(--miki-shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
+  border-radius: var(--miki-radius, 0.5rem);
+}
 .miki-dockable-panel.miki-dock-left {
   position: fixed;
   left: 0;
@@ -871,8 +884,10 @@ nav {
   width: 100%;
   height: 100%;
   display: flex;
-  gap: 0.5rem;
   user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
   flex-direction: row;
@@ -883,86 +898,49 @@ nav {
 .miki-split-pane {
   flex: 1 1 0;
   overflow: auto;
-  min-width: 150px;
-  min-height: 0;
+  min-width: 50px;
+  min-height: 50px;
   background: var(--miki-surface, #fff);
-  transition: flex-basis 0.05s ease-out;
 }
 .miki-split-pane.miki-split-first { order: 1; }
 .miki-split-pane.miki-split-second { order: 2; }
-.miki-split-pane.miki-split-left { order: 1; }
-.miki-split-pane.miki-split-right { order: 2; }
-.miki-split-pane.miki-split-top { order: 1; }
-.miki-split-pane.miki-split-bottom { order: 2; }
+/* VS Code-style sash: transparent by default, blue on hover */
 .miki-splitter {
   flex-shrink: 0;
-  background: var(--miki-border);
-  border-radius: 4px;
+  background: transparent;
+  border-radius: 0;
   touch-action: none;
   user-select: none;
-  transition: background 0.2s ease;
   z-index: 1;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.05s ease;
 }
 .miki-splitter:hover {
-  background: var(--miki-accent);
+  background: rgba(99, 102, 245, 0.15);
 }
-/* Horizontal orientation: vertical splitter bar */
+.miki-splitter.miki-splitter-dragging {
+  background: rgba(99, 102, 245, 0.25);
+  opacity: 0.9;
+}
+/* Sash bar: vertical bar for horizontal orientation (side-by-side), horizontal bar for vertical */
 .miki-splitview[data-orientation="horizontal"] .miki-splitter {
   width: 8px;
-  min-width: 8px;
   height: 100%;
-  cursor: col-resize;
+  cursor: ew-resize;
 }
-/* Vertical orientation: horizontal splitter bar */
 .miki-splitview[data-orientation="vertical"] .miki-splitter {
   width: 100%;
   height: 8px;
-  min-height: 8px;
-  cursor: row-resize;
+  cursor: ns-resize;
 }
-/* resize_mode overrides cursor */
-.miki-splitview[data-orientation="horizontal"][data-resize-mode="horizontal"] .miki-splitter,
-.miki-splitview[data-orientation="horizontal"][data-resize-mode="both"] .miki-splitter {
-  cursor: col-resize;
-}
-.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter,
-.miki-splitview[data-orientation="vertical"][data-resize-mode="both"] .miki-splitter {
-  cursor: row-resize;
-}
-/* For 'both' mode with horizontal orientation, allow diagonal cursor */
+/* Resize mode overrides */
 .miki-splitview[data-resize-mode="both"] .miki-splitter {
   cursor: nwse-resize;
 }
-.miki-splitview[data-orientation="horizontal"][data-resize-mode="horizontal"] .miki-splitter,
-.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter {
-  /* Override the 'both' cursor for single-axis modes */
-  cursor: col-resize;
-}
-.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter {
-  cursor: row-resize;
-}
-.miki-splitter::before {
-  content: "";
-  display: block;
-  background: var(--miki-accent);
-  border-radius: 2px;
-}
-/* Vertical splitter (horizontal orientation): thin vertical line */
-.miki-splitview[data-orientation="horizontal"] .miki-splitter::before {
-  height: 100%;
-  width: 2px;
-  margin: auto;
-}
-/* Horizontal splitter (vertical orientation): thin horizontal line */
-.miki-splitview[data-orientation="vertical"] .miki-splitter::before {
-  height: 2px;
-  width: 100%;
-  margin: auto;
-}
+/* Gripper dots */
 .miki-splitter::after {
   content: "";
   position: absolute;
@@ -971,44 +949,50 @@ nav {
   transform: translate(-50%, -50%);
   display: flex;
   gap: 2px;
-  opacity: 0.4;
-  transition: opacity 0.15s;
+  opacity: 0;
+  transition: opacity 0.05s ease;
   pointer-events: none;
 }
-.miki-splitter:hover::after {
-  opacity: 0.8;
+.miki-splitter:hover::after,
+.miki-splitter.miki-splitter-dragging::after {
+  opacity: 0.6;
 }
-/* Horizontal mode: vertical dots (left/right drag) */
-.miki-splitview[data-orientation="horizontal"][data-resize-mode="horizontal"] .miki-splitter::after,
-.miki-splitview[data-resize-mode="both"] .miki-splitter::after {
+/* Horizontal orientation: vertical dot column */
+.miki-splitview[data-orientation="horizontal"] .miki-splitter::after {
   content: "● ● ●";
   flex-direction: column;
-  align-items: center;
   font-size: 4px;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
-/* Vertical mode: horizontal dots (up/down drag) */
-.miki-splitview[data-orientation="vertical"][data-resize-mode="vertical"] .miki-splitter::after {
+/* Vertical orientation: horizontal dot row */
+.miki-splitview[data-orientation="vertical"] .miki-splitter::after {
   content: "● ● ●";
   flex-direction: row;
-  align-items: center;
-  font-size: 6px;
-  letter-spacing: 1px;
+  font-size: 4px;
+  letter-spacing: 2px;
 }
-.miki-splitview[data-orientation="vertical"][data-resize-mode="both"] .miki-splitter::after {
-  content: "● ● ●";
-  flex-direction: row;
-  align-items: center;
-  font-size: 6px;
-  letter-spacing: 1px;
-}
-.miki-splitter.miki-splitter-dragging {
-  background: var(--miki-accent);
-  opacity: 0.8;
+/* Collapsed pane */
+.miki-split-pane.miki-split-pane-collapsed {
+  display: none;
 }
 .miki-split-maximized .miki-split-pane.miki-split-second {
   display: none;
 }
+@media (max-width: 640px) {
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
+    flex-direction: column;
+  }
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter {
+    width: 100%;
+    height: 8px;
+    min-height: 8px;
+    cursor: ns-resize;
+  }
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter::after {
+    content: "● ● ●";
+    flex-direction: row;
+    font-size: 6px;
+  }
 
 @media (max-width: 640px) {
   .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
@@ -1018,7 +1002,7 @@ nav {
     width: 100%;
     height: 8px;
     min-height: 8px;
-    cursor: row-resize;
+    cursor: ns-resize;
   }
   .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter::before {
     height: 2px;
@@ -2245,6 +2229,7 @@ textarea {
   display: flex;
   height: 100%;
   width: 100%;
+  flex: 1 1 0;
 }
 .miki-split-h { flex-direction: row; }
 .miki-split-v { flex-direction: column; }

@@ -83,6 +83,7 @@ from .navbar import Navbar
 from .picture import Picture
 from .progressbar import Meter, Output, Progress
 from .table import Caption, Table, Tbody, Td, Tfoot, Th, Thead, Tr
+from .splitview.splitview import EditorGroup, EditorTab, SplitView
 from .tabs import Tabs
 from .tooltip import Tooltip
 from .treeview import TreeView
@@ -191,6 +192,9 @@ __all__ = [
     "Chart",
     "Picture",
     "Accordion",
+    "EditorGroup",
+    "EditorTab",
+    "SplitView",
     "Tooltip",
     "Breadcrumbs",
     "MenuItem",

@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ..app import MikiApp, RouteDef
 from ..app.routes import resolve_title
+from ..app.static_assets import discover, get_asset_mounts, init_defaults, register_plugin_assets
 from ..engine.renderer import render_fragment, render_page
 from ..middleware.error_handler import ErrorHandlerMiddleware, register_exception_handlers
 from ..router.middleware import apply_default_middleware
@@ -120,12 +121,43 @@ def create_app(
     """
     app = FastAPI(title=miki_app.title)
 
+    # Initialize and discover static assets from components, widgets, and plugins
+    init_defaults()
+
+    # Collect plugin static assets
+    plugin_asset_paths: list[tuple[str, str]] = []
+    for plugin in miki_app.plugins:
+        if hasattr(plugin, "assets"):
+            try:
+                paths = plugin.assets()
+                if paths:
+                    plugin_asset_paths.append((plugin.name, paths))
+            except Exception:
+                logger.exception("Plugin %r assets() failed; skipping.", plugin.name)
+
+    # Discover all static directories
+    discover()
+    for plugin_name, paths in plugin_asset_paths:
+        register_plugin_assets(plugin_name, paths)
+
+    # Mount runtime static files
     if os.path.isdir(_RUNTIME_DIR):
         app.mount(
             "/_miki/runtime",
             StaticFiles(directory=_RUNTIME_DIR),
             name="miki-runtime",
         )
+
+    # Mount discovered component/widget/plugin static files
+    asset_mounts = get_asset_mounts()
+    for url_path, abs_path in asset_mounts.items():
+        if os.path.isdir(abs_path):
+            mount_name = "miki-static-" + url_path.replace("/", "-").strip("-")
+            app.mount(
+                url_path,
+                StaticFiles(directory=abs_path),
+                name=mount_name,
+            )
 
     if cors_origins:
         from starlette.middleware.cors import CORSMiddleware

@@ -404,16 +404,16 @@ def test_resolve_app_spec_with_explicit_spec():
     """resolve_app_spec should accept an explicit module:attr spec."""
     from mikiui.cli.app_discovery import resolve_app_spec
 
-    spec = resolve_app_spec("mikiui.examples.demo:app")
-    assert spec == "mikiui.examples.demo:app"
+    spec = resolve_app_spec("mikiui.examples.demo1:app")
+    assert spec == "mikiui.examples.demo1:app"
 
 
 def test_resolve_app_spec_appends_attr():
     """resolve_app_spec should append ':app' if no attr is given."""
     from mikiui.cli.app_discovery import resolve_app_spec
 
-    spec = resolve_app_spec("mikiui.examples.demo")
-    assert spec == "mikiui.examples.demo:app"
+    spec = resolve_app_spec("mikiui.examples.demo1")
+    assert spec == "mikiui.examples.demo1:app"
 
 
 def test_discover_app_finds_module(tmp_path):
@@ -480,15 +480,56 @@ def test_cli_dev_auto_discovers_app(tmp_path):
 
     runner = CliRunner()
     with mock.patch("mikiui.cli.commands.resolve_app_spec") as resolve:
-        resolve.return_value = "mikiui.examples.demo:app"
-        with mock.patch("uvicorn.run") as uvicorn_run:
+        resolve.return_value = "mikiui.examples.demo1:app"
+        with mock.patch("uvicorn.run"):
             result = runner.invoke(cli, ["dev", "--no-reload", "--port", "9999"])
             assert result.exit_code == 0, result.stdout
             resolve.assert_called_once()
 
 
+def test_resolve_app_spec_raises_without_app(tmp_path):
+    """resolve_app_spec should raise AppDiscoveryError when no app is found."""
+    original_cwd = os.getcwd()
+    original_sys = sys.path[:]
+    try:
+        os.chdir(tmp_path)
+        sys.path.insert(0, str(tmp_path))
+        from mikiui.cli.app_discovery import AppDiscoveryError, resolve_app_spec
+
+        # No .py files with MikiApp in the temp dir
+        (tmp_path / "empty.py").write_text("x = 42\n")
+        with pytest.raises(AppDiscoveryError, match="No MikiApp instance found"):
+            resolve_app_spec(None)
+    finally:
+        os.chdir(original_cwd)
+        sys.path[:] = original_sys
+        sys.modules.pop("empty", None)
+
+
+def test_discover_app_finds_miki_app_via_ast(tmp_path):
+    """discover_app should find MikiApp via AST scan without importing."""
+    test_content = '''
+from mikiui import MikiApp
+app = MikiApp(title="Test")
+'''
+    (tmp_path / "myapp.py").write_text(test_content)
+
+    original_cwd = os.getcwd()
+    original_sys = sys.path[:]
+    try:
+        os.chdir(tmp_path)
+        sys.path.insert(0, str(tmp_path))
+        from mikiui.cli.app_discovery import discover_app
+
+        spec = discover_app()
+        assert spec == "myapp:app"
+    finally:
+        os.chdir(original_cwd)
+        sys.path[:] = original_sys
+        sys.modules.pop("myapp", None)
+
+
 def test_cli_desktop_auto_discovers_app(tmp_path):
-    """`mikiui desktop` without --app should auto-discover app.py."""
     pytest.importorskip("typer.testing")
     from unittest import mock
 

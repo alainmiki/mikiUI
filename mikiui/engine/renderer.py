@@ -99,7 +99,8 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     if theme is None:
         return result
 
-    # Framework CSS links (Tailwind, Bootstrap, or custom CSS file)
+    # Framework CSS links (Tailwind, Bootstrap, or custom CSS file).
+    # Color themes (framework=None) are inlined below; they do NOT need a <link>.
     if theme.framework == "tailwind":
         if theme.cdn_url:
             result["links"].append(_style_tag(theme.cdn_url))
@@ -124,7 +125,7 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
             if theme.css_path.startswith("http"):
                 href = theme.css_path
             result["links"].append(_style_tag(href))
-    elif theme.framework is None or theme.framework == "css":
+    elif theme.framework == "css":
         if theme.css_path:
             href = theme.css_path
             if os.path.isabs(theme.css_path):
@@ -137,7 +138,9 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
         if theme.cdn_url:
             result["links"].append(_style_tag(theme.cdn_url))
 
-    # Color theme inline CSS (merges with base miki.css)
+    # Color-theme / custom inline CSS (merges with base miki.css).
+    # Color themes (framework=None) are always inlined; framework themes
+    # may also provide inline CSS in addition to their <link> tag above.
     color_css = theme.css()
     if color_css:
         result["inline_css"].append(f"<style id=\"miki-theme\">{color_css}</style>")
@@ -145,7 +148,9 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     # Body classes/data attributes
     extra = list(theme.extra_classes) or []
     data_attrs = ""
-    if theme.framework == "tailwind" and "daisyui" in (theme.source or "").lower():
+    # For Tailwind (and DaisyUI) frameworks we expose a data-theme attribute
+    # so frameworks that use it (like DaisyUI) can switch palettes.
+    if theme.framework == "tailwind":
         data_attrs = f" data-theme=\"mikiui-{_esc(theme_name)}\""
     if extra:
         result["body_attrs"] = f" class=\"{ _esc(' '.join(extra)) }\"{data_attrs}"

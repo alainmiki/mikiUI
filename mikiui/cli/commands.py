@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from .app_discovery import resolve_app_spec
+from .app_discovery import AppDiscoveryError, resolve_app_spec
 from .scaffolding import UI_FRAMEWORKS, _prompt_framework, scaffold
 
 cli = typer.Typer(
@@ -58,6 +58,15 @@ def _print_ready(message: str) -> None:
         console.print(Panel(message, title="[bold green]MikiUI[/bold green]", border_style="green"))
     except ImportError:
         typer.echo(message)
+
+
+def _safe_resolve(app: str | None) -> str:
+    """Resolve app spec, showing a clean error if discovery fails."""
+    try:
+        return resolve_app_spec(app)
+    except AppDiscoveryError as exc:
+        typer.echo(f"[red]Error:[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
 
 
 @cli.command()
@@ -226,7 +235,7 @@ def dev(
     """
     import uvicorn
 
-    spec = resolve_app_spec(app)
+    spec = _safe_resolve(app)
     module_name, _, attr = spec.partition(":")
     try:
         mod = importlib.import_module(module_name)
@@ -299,7 +308,7 @@ def build(
         typer.echo(f"[red]Invalid mode:[/red] {mode} (choose: fullstack, separate)", err=True)
         raise typer.Exit(code=1)
 
-    spec = resolve_app_spec(app)
+    spec = _safe_resolve(app)
     module_name, _, attr = spec.partition(":")
     try:
         mod = importlib.import_module(module_name)
@@ -387,7 +396,7 @@ def desktop(
     """
     from ..build import run_desktop
 
-    spec = resolve_app_spec(app)
+    spec = _safe_resolve(app)
     module_name, _, attr = spec.partition(":")
     try:
         mod = importlib.import_module(module_name)

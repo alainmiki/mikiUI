@@ -40,10 +40,12 @@ class ThemeRegistry:
     def __init__(self, parent_registry: ThemeRegistry | None = None) -> None:
         self._registry: dict[str, Theme] = {}
         self._active: str = "light"
-        self._parent: ThemeRegistry | None = parent_registry
+        self._parent_registry: ThemeRegistry | None = parent_registry
         self._inheritance: dict[str, str] = {}
 
-    def register(self, theme: Theme, *, override: bool = False) -> None:
+    def register(
+        self, theme: Theme, *, override: bool = False, propagate_global: bool = False
+    ) -> None:
         """Register a theme.
 
         Parameters
@@ -55,7 +57,7 @@ class ThemeRegistry:
             If False (default), a warning is logged when overriding.
         """
         existing = self._registry.get(theme.name) or (
-            self._parent._registry.get(theme.name) if self._parent else None
+            self._parent_registry.get(theme.name) if self._parent_registry else None
         )
         if existing and not override:
             logger.warning(
@@ -64,12 +66,15 @@ class ThemeRegistry:
                 existing.source,
             )
         self._registry[theme.name] = theme
-        # Backward compatibility: also register with global theme registry
-        try:
-            from ..themes import register_theme as _global_register
-            _global_register(theme)
-        except ImportError:
-            pass
+        # Optional: propagate to global registry when caller explicitly requests it.
+        if propagate_global:
+            try:
+                from ..themes import register_theme as _global_register
+
+                _global_register(theme)
+            except Exception:
+                # Don't fail registration if global propagation isn't available.
+                logger.debug("Global theme propagation skipped for %s", theme.name)
         logger.debug("Registered theme: %s (source=%s)", theme.name, theme.source)
 
     def inherit(self, child_name: str, parent_name: str) -> None:
@@ -101,8 +106,8 @@ class ThemeRegistry:
         if name in self._registry:
             return self._resolve(name, self._registry[name])
         # Check parent
-        if self._parent:
-            parent_theme = self._parent.get(name)
+        if self._parent_registry:
+            parent_theme = self._parent_registry.get(name)
             if parent_theme:
                 return parent_theme
         return None
@@ -142,7 +147,7 @@ class ThemeRegistry:
             If the theme is not registered.
         """
         if name not in self._registry:
-            parent = self._parent.get(name) if self._parent else None
+            parent = self._parent_registry.get(name) if self._parent_registry else None
             if parent is None:
                 raise ValueError(
                     f"Unknown theme: {name!r}. Available: {self.list_all()}"
@@ -160,8 +165,8 @@ class ThemeRegistry:
     def list_all(self) -> list[str]:
         """Return all registered theme names (including parent)."""
         names = set(self._registry.keys())
-        if self._parent:
-            names.update(self._parent.list_all())
+        if self._parent_registry:
+            names.update(self._parent_registry.list_all())
         return sorted(names)
 
     def list_registered(self) -> list[str]:

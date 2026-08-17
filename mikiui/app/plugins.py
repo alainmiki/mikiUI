@@ -163,7 +163,12 @@ class ThemePlugin(Plugin):
         t = self.theme()
         registry = getattr(app, "theme_registry", None)
         if registry is not None:
-            registry.register(t)
+            # Prefer propagating to the global registry so get_theme() can find it.
+            try:
+                registry.register(t, propagate_global=True)
+            except TypeError:
+                # Older ThemeRegistry may not accept propagate_global.
+                registry.register(t)
         else:
             from ..themes import get_theme
             from ..themes import register_theme as _register

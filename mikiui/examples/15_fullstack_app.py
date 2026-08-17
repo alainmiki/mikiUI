@@ -27,6 +27,7 @@ from mikiui import (
     register_theme,
 )
 from mikiui.components import Button, Form, Input, Label, Navbar, Select, Textarea
+from mikiui.components.form import Option
 from mikiui.themes import Theme
 from mikiui.widgets import (
     Avatar,
