@@ -209,13 +209,13 @@ class APIPlugin(Plugin):
         router.add_api_route(
             path=path,
             endpoint=endpoint,
-            methods=[m.capitalize() for m in methods],
+            methods=[m.upper() for m in methods],
             include_in_schema=True,
         )
 
         return {
             "path": path,
-            "methods": [m.capitalize() for m in methods],
+            "methods": [m.upper() for m in methods],
             "endpoint": endpoint,
             "include_in_schema": True,
             "name": endpoint.__name__,

@@ -95,7 +95,7 @@ class ServerError(MikiUIError):
     message = "Internal server error"
 
 
-def error_response(error: MikiUIError, request: Request) -> JSONResponse | HTMLResponse:
+async def error_response(error: MikiUIError, request: Request, app: Any | None = None) -> JSONResponse | HTMLResponse:
     """Convert a :class:`MikiUIError` into the appropriate response.
 
     Returns JSON for API routes and HTML for page routes.
@@ -104,6 +104,24 @@ def error_response(error: MikiUIError, request: Request) -> JSONResponse | HTMLR
     is_api = request.headers.get("accept", "").startswith("application/json") or request.url.path.startswith("/api/")
     if is_api:
         return JSONResponse(payload, status_code=error.status_code)
+    if app is not None:
+        handler = getattr(app, "_error_pages", {}).get(error.status_code)
+        if handler is not None:
+            try:
+                from ..app.routes import Ctx
+                ctx = Ctx(request, app)
+                result = handler(ctx)
+                if hasattr(result, "__await__"):
+                    result = await result
+                from ..engine.dom import normalize
+                from ..engine.renderer import render_page
+                nodes = normalize(result)
+                return HTMLResponse(
+                    render_page(nodes, title=f"{error.status_code}", lang="en"),
+                    status_code=error.status_code,
+                )
+            except Exception:
+                logger.exception("Custom error page handler failed for %d", error.status_code)
     body = _render_error_html(error)
     return HTMLResponse(body, status_code=error.status_code)
 

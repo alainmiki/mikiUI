@@ -536,9 +536,24 @@ def test_cli_desktop_auto_discovers_app(tmp_path):
     from typer.testing import CliRunner
 
     from mikiui.cli import cli
+    from mikiui.cli import commands as cmd_mod
 
     runner = CliRunner()
-    with mock.patch("mikiui.build.run_desktop") as mocked:
-        result = runner.invoke(cli, ["desktop", "--browser"])
-        assert result.exit_code == 0, result.stdout
-        mocked.assert_called_once()
+    fake_app = MikiApp(title="Theme Desktop Test")
+
+    import mikiui.app.app as app_module
+
+    original_app = getattr(app_module, "app", None)
+    app_module.app = fake_app
+    try:
+        with mock.patch.object(cmd_mod, "_safe_resolve", return_value="mikiui.app.app:app"), mock.patch(
+            "mikiui.build.run_desktop"
+        ) as mocked:
+            result = runner.invoke(cli, ["desktop", "--browser"])
+            assert result.exit_code == 0, result.stdout
+            mocked.assert_called_once()
+    finally:
+        if original_app is None:
+            delattr(app_module, "app")
+        else:
+            app_module.app = original_app

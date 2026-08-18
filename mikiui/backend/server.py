@@ -23,15 +23,43 @@ from ..app import MikiApp, RouteDef
 from ..app.routes import resolve_title
 from ..app.static_assets import discover, get_asset_mounts, init_defaults, register_plugin_assets
 from ..engine.renderer import render_fragment, render_page
+from ..errors import MikiUIError, NotFoundError, error_response
 from ..middleware.error_handler import ErrorHandlerMiddleware, register_exception_handlers
+from ..router.auth_middleware import AuthMiddleware, ensure_auth_strategies
 from ..router.middleware import apply_default_middleware
 from ..router.router import add_pwa_manifest
+from ..router.group import _get_route_group
+from ..router.csrf import CSRFMiddleware
+from ..router.rate_limit import RateLimitMiddleware
+from ..router.auth import AuthRequirement
+from ..router.auth_middleware import resolve_auth_requirement
 from ..runtime.runtime_loader import runtime_scripts
 from .api_routes import add_api_routes
 
 logger = logging.getLogger(__name__)
 
 _RUNTIME_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "runtime"))
+
+
+def _wrap_endpoint(endpoint: Any, middleware_classes: list[type]) -> Any:
+    """Wrap *endpoint* with per-route-group middleware classes."""
+
+    async def _asgi_endpoint(request: Request) -> Any:
+        return await endpoint(request)
+
+    call_next = _asgi_endpoint
+    for mw_cls in reversed(middleware_classes):
+        try:
+            mw = mw_cls(call_next)
+            _next = call_next
+
+            async def _wrapped(request: Request, _mw: Any = mw, _next: Any = _next) -> Any:
+                return await _mw.dispatch(request, _next)
+
+            call_next = _wrapped
+        except Exception:
+            logger.exception("Failed to apply middleware %s", mw_cls)
+    return call_next
 
 
 class RequestLoggingMiddleware:
@@ -68,15 +96,12 @@ class RequestLoggingMiddleware:
 
 
 def _make_endpoint(miki_app: MikiApp, route: RouteDef):
+    auth_middleware = AuthMiddleware(miki_app)
+
     async def endpoint(request: Request) -> HTMLResponse:
-        if route.requires_auth:
-            session_cookie = request.cookies.get("mikiui_session")
-            if not session_cookie:
-                return JSONResponse(
-                    {"error": "Unauthorized", "detail": "Login required"},
-                    status_code=401,
-                    headers={"HX-Redirect": "/login"} if request.headers.get("HX-Request") else {},
-                )
+        auth_result = auth_middleware.enforce(request, route)
+        if auth_result is not None:
+            return auth_result
 
         path_params = dict(request.path_params) if hasattr(request, "path_params") else {}
         nodes, ctx = await miki_app.invoke(route, request, path_params)
@@ -185,12 +210,17 @@ def create_app(
     has_api_plugin = any(
         getattr(p, "name", None) == "api" for p in miki_app.plugins
     )
+    ensure_auth_strategies(miki_app)
     for route in miki_app.routes.values():
         if has_api_plugin and route.path.startswith("/api/"):
             continue
+        endpoint = _make_endpoint(miki_app, route)
+        group = _get_route_group(route)
+        if group is not None and group.middleware:
+            endpoint = _wrap_endpoint(endpoint, group.middleware)
         app.add_api_route(
             route.path,
-            _make_endpoint(miki_app, route),
+            endpoint,
             methods=list(route.methods),
             name=route.name,
         )
@@ -225,6 +255,9 @@ def create_app(
                     tags=tags,
                 )
         app.include_router(plugin_router)
+
+    # Custom 404 handler via exception handler (no catch-all route needed;
+    # Starlette raises HTTPException(404) when nothing matches).
 
     # Add plugin-provided middleware
     middleware_classes = getattr(miki_app, "get_middleware_classes", lambda: [])()

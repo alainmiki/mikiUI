@@ -48,11 +48,12 @@ handlers across files.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from fastapi.responses import JSONResponse
 
-from ..app import MikiApp
+if TYPE_CHECKING:
+    from ..app import MikiApp
 
 
 class Router:
@@ -71,17 +72,35 @@ class Router:
     """
 
     def __init__(self, prefix: str = "") -> None:
-        self.prefix = prefix.rstrip("/")
+        self._prefix = prefix.strip("/")
         self._app: MikiApp | None = None
         self._parent: Router | None = None
 
+    @property
+    def prefix(self) -> str:
+        """Computed full prefix from this router and its parent chain."""
+        parts: list[str] = []
+        node: Router | None = self
+        while node is not None:
+            if node._prefix:
+                parts.append(node._prefix)
+            node = node._parent
+        if not parts:
+            return ""
+        return "/" + "/".join(reversed(parts))
+
+    @prefix.setter
+    def prefix(self, value: str) -> None:
+        self._prefix = value.strip("/")
+
     def _join(self, path: str) -> str:
         """Join the router prefix with a route path."""
-        if not self.prefix:
+        prefix = self.prefix
+        if not prefix:
             return path
         if path == "/":
-            return self.prefix
-        return f"{self.prefix}{path}"
+            return prefix + "/"
+        return f"{prefix}{path}"
 
     def _resolve_app(self, app: MikiApp | None = None) -> MikiApp:
         """Return the bound app, preferring an explicitly-passed app."""
@@ -104,6 +123,7 @@ class Router:
         name: str | None = None,
         title: str | None = None,
         requires_auth: bool = False,
+        auth: Any | None = None,
     ) -> Callable[[Callable], Callable]:
         """Register a handler on the bound app at the prefixed path.
 
@@ -137,6 +157,7 @@ class Router:
                 name,
                 title=title,
                 requires_auth=requires_auth,
+                auth=auth,
             )(fn)
             return fn
 
@@ -150,9 +171,10 @@ class Router:
         name: str | None = None,
         title: str | None = None,
         requires_auth: bool = False,
+        auth: Any | None = None,
     ) -> Callable[[Callable], Callable]:
         """Register a handler at *path* with *methods* (decorator form)."""
-        return self.add(path_or_app, path, methods, name, title=title, requires_auth=requires_auth)
+        return self.add(path_or_app, path, methods, name, title=title, requires_auth=requires_auth, auth=auth)
 
     def get(
         self,
@@ -161,9 +183,10 @@ class Router:
         name: str | None = None,
         title: str | None = None,
         requires_auth: bool = False,
+        auth: Any | None = None,
     ) -> Callable[[Callable], Callable]:
         """Register a GET-only handler."""
-        return self.add(path_or_app, path, ("GET",), name, title=title, requires_auth=requires_auth)
+        return self.add(path_or_app, path, ("GET",), name, title=title, requires_auth=requires_auth, auth=auth)
 
     def post(
         self,
@@ -172,9 +195,10 @@ class Router:
         name: str | None = None,
         title: str | None = None,
         requires_auth: bool = False,
+        auth: Any | None = None,
     ) -> Callable[[Callable], Callable]:
         """Register a POST-only handler."""
-        return self.add(path_or_app, path, ("POST",), name, title=title, requires_auth=requires_auth)
+        return self.add(path_or_app, path, ("POST",), name, title=title, requires_auth=requires_auth, auth=auth)
 
     def mount(self, target: MikiApp | Router) -> Router:
         """Bind this router to *target* for bare-decorator usage.
@@ -204,8 +228,6 @@ class Router:
                 return Div("items")  # mounted at /api/v1/items
         """
         if isinstance(target, Router):
-            combined = (self.prefix or "") + (target.prefix or "")
-            target.prefix = combined.rstrip("/")
             target._parent = self
         else:
             self._app = target

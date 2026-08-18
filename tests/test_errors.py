@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -24,6 +26,7 @@ class DummyRequest:
         self.url = type("U", (), {"path": path})()
         self.method = method
         self.headers = {"accept": accept}
+        self.app = type("A", (), {"state": type("S", (), {"miki_app": None})()})()
 
 
 class TestMikiUIError:
@@ -87,14 +90,14 @@ class TestErrorResponse:
     def test_json_for_api(self):
         err = ValidationError({"f": "bad"})
         req = DummyRequest(path="/api/test", accept="application/json")
-        resp = error_response(err, req)
+        resp = asyncio.run(error_response(err, req))
         assert resp.status_code == 422
         assert resp.headers["content-type"].startswith("application/json")
 
     def test_html_for_page(self):
         err = NotFoundError("page")
         req = DummyRequest(path="/test", accept="text/html")
-        resp = error_response(err, req)
+        resp = asyncio.run(error_response(err, req))
         assert resp.status_code == 404
         assert resp.headers["content-type"].startswith("text/html")
 

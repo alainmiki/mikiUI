@@ -18,6 +18,7 @@ def runtime_scripts(mode: str = "local") -> list[str]:
             "/_miki/runtime/miki_ui.js",
             "/_miki/runtime/htmx_runtime.js",
             "/_miki/runtime/alpine_runtime.js",
+            "/_miki/runtime/history_router.js",
         ]
     # Offline-first: real HTMX + Alpine served locally by the backend.
     # Order matters: HTMX loads first, then Alpine.js (depends on being on page),
@@ -28,4 +29,5 @@ def runtime_scripts(mode: str = "local") -> list[str]:
         "/_miki/runtime/alpine.min.js",
         "/_miki/runtime/alpine_runtime.js",
         "/_miki/runtime/miki_ui.js",
+        "/_miki/runtime/history_router.js",
     ]

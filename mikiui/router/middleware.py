@@ -54,22 +54,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._csp = content_security_policy
         self._hsts = strict_transport_security
-        self._nonce: str | None = None
 
     async def dispatch(self, request: Request, call_next):
-        self._nonce = secrets.token_urlsafe(16)
-        request.state.csp_nonce = self._nonce
+        nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = nonce
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
-        if self._nonce:
-            csp = self._csp or ""
-            response.headers.setdefault("Content-Security-Policy", f"{csp} 'nonce-{self._nonce}'")
-        else:
-            if self._csp:
-                response.headers.setdefault("Content-Security-Policy", self._csp)
+        csp = self._csp or ""
+        if nonce:
+            csp = csp.replace("script-src 'self'", f"script-src 'self' 'nonce-{nonce}'")
+            csp = csp.replace("style-src 'self' 'unsafe-inline'", f"style-src 'self' 'unsafe-inline' 'nonce-{nonce}'")
+        response.headers.setdefault("Content-Security-Policy", csp)
         if self._hsts:
             is_https = (
                 request.url.scheme == "https"

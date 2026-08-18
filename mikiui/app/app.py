@@ -52,6 +52,8 @@ class MikiApp:
         self._head_meta: list[dict[str, str]] = []
         self._head_links: list[dict[str, str]] = []
         self._head_scripts: str = ""
+        self._not_found_handler: Callable | None = None
+        self._error_pages: dict[int, Callable] = {}
 
         # New registries
         self.registry: WidgetRegistry = WidgetRegistry()
@@ -68,6 +70,8 @@ class MikiApp:
         self.theme_registry: ThemeRegistry = ThemeRegistry(parent_registry=_GlobalThemeProxy())
         self._backend_routes: list[dict[str, Any]] = []
         self._middleware_classes: list[type] = []
+        self._route_groups: dict[str, RouteGroup] = {}
+        self._auth_strategies: dict[str, Any] = {}
 
         # Initialize theme registry with builtin themes
         from ..themes import get_theme as _get_theme
@@ -86,6 +90,7 @@ class MikiApp:
         name: str | None = None,
         title: str | None = None,
         requires_auth: bool = False,
+        auth: Any | None = None,
     ):
         """Register a route handler for *path*.
 
@@ -102,7 +107,7 @@ class MikiApp:
         methods:
             Tuple of HTTP methods.
         name:
-            Route name (defaults to the handler function name).
+            Route name (defaults to the handler function name). Must be unique.
         title:
             Per-page ``<title>`` tag content.
         requires_auth:
@@ -111,6 +116,15 @@ class MikiApp:
         """
         def decorator(fn: Callable) -> Callable:
             upper_methods = tuple(m.upper() for m in methods)
+            resolved_name = name or getattr(fn, "__name__", "route")
+            existing = next(
+                (r for r in self.routes.values() if r.name == resolved_name), None
+            )
+            if existing is not None:
+                raise ValueError(
+                    f"Route name {resolved_name!r} is already used by {existing.path!r}. "
+                    "Pass a unique `name=` to the decorator."
+                )
             if path in self.routes:
                 existing = self.routes[path]
                 raise ValueError(
@@ -118,7 +132,7 @@ class MikiApp:
                     "Use a different path or remove the existing route first."
                 )
             self.routes[path] = RouteDef(
-                path, fn, upper_methods, name, title, requires_auth
+                path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth
             )
             for plugin in self.plugins:
                 if hasattr(plugin, "on_route_add"):
@@ -126,6 +140,32 @@ class MikiApp:
             return fn
 
         return decorator
+
+    def not_found(self, handler: Callable) -> Callable:
+        """Register a custom 404 handler.
+
+        The handler may accept ``ctx`` as its first parameter and should
+        return a component tree. If not set, MikiUI returns a standard
+        ``NotFoundError`` response.
+
+        Example::
+
+            @app.not_found
+            def not_found(ctx):
+                return Div("This page does not exist.")
+        """
+        self._not_found_handler = handler
+        return handler
+
+    def set_error_page(self, status_code: int, handler: Callable) -> MikiApp:
+        """Register a custom error page for *status_code*.
+
+        Example::
+
+            app.set_error_page(403, lambda ctx: Div("Access denied"))
+        """
+        self._error_pages[status_code] = handler
+        return self
 
     def mount(self, router: Router, *, prefix: str | None = None) -> MikiApp:
         """Mount a :class:`~mikiui.router.Router` onto this app.
@@ -163,11 +203,39 @@ class MikiApp:
         router.mount(self)
         return self
 
-    def get(self, path: str, name: str | None = None, title: str | None = None):
-        return self.route(path, ("GET",), name, title)
+    def route_group(self, prefix: str) -> "RouteGroupBuilder":
+        """Create a route group with shared prefix, auth, and middleware.
 
-    def post(self, path: str, name: str | None = None, title: str | None = None):
-        return self.route(path, ("POST",), name, title)
+        Example::
+
+            api = app.route_group("/api")
+            api.rate_limit(limit=200, window=60)
+            api.auth(AuthRequirement(strategy="jwt", scopes=["admin"]))
+
+            @api.get("/users")
+            def list_users(ctx):
+                return Div("users")
+        """
+        return RouteGroupBuilder(self, prefix)
+
+    def register_auth_strategy(self, name: str, strategy: Any) -> MikiApp:
+        """Register an auth strategy callable.
+
+        The strategy must implement ``validate(request) -> user | None``.
+        Built-in strategies: ``"session"`` (from SessionPlugin), ``"jwt"``.
+        """
+        self._auth_strategies[name] = strategy
+        return self
+
+    def get_auth_strategy(self, name: str) -> Any | None:
+        """Return a registered auth strategy by name."""
+        return self._auth_strategies.get(name)
+
+    def get(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
+        return self.route(path, ("GET",), name, title, auth=auth)
+
+    def post(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
+        return self.route(path, ("POST",), name, title, auth=auth)
 
     # -- themes ---------------------------------------------------------------
     def set_theme(self, name: str) -> MikiApp:

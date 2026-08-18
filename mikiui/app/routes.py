@@ -43,6 +43,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..engine.dom import normalize
+from ..router.auth import AuthRequirement
 
 _PATH_PARAM_RE = re.compile(r"\{(\w+)\}")
 
@@ -137,6 +138,8 @@ class RouteDef:
         "path_params",
         "param_names",
         "requires_auth",
+        "_auth_requirement",
+        "_route_group",
     )
 
     def __init__(
@@ -147,6 +150,7 @@ class RouteDef:
         name: str | None,
         title: str | None = None,
         requires_auth: bool = False,
+        auth: AuthRequirement | None = None,
     ) -> None:
         self.path = path
         self.handler = handler
@@ -154,6 +158,8 @@ class RouteDef:
         self.name = name or getattr(handler, "__name__", "route")
         self.title = title
         self.requires_auth = requires_auth
+        self._auth_requirement = auth
+        self._route_group = None
         # Extract {param} placeholders from the path
         self.path_params: list[str] = self._extract_path_params(path)
         params = list(inspect.signature(handler).parameters)
@@ -161,6 +167,14 @@ class RouteDef:
         # Handler param names excluding ctx/request — these receive path params
         all_params = set(params)
         self.param_names = [p for p in self.path_params if p in all_params]
+
+    def get_auth_requirement(self) -> AuthRequirement | None:
+        """Return the effective auth requirement for this route."""
+        if self._auth_requirement is not None:
+            return self._auth_requirement
+        if not self.requires_auth:
+            return AuthRequirement(strategy="none")
+        return None
 
     @staticmethod
     def _extract_path_params(path: str) -> list[str]:

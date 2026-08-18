@@ -195,24 +195,83 @@ session = SessionPlugin(
 
 ## 6. Authentication & Authorization
 
-### Route-level auth
+MikiUI uses a pluggable auth strategy system. Built-in strategies include
+`"session"` (from `SessionPlugin`) and `"token"` (bearer tokens). Custom
+strategies can be registered via `app.register_auth_strategy(name, strategy)`.
+
+### AuthRequirement
+
+Declare auth requirements declaratively using `AuthRequirement`:
 
 ```python
-@app.route("/admin", requires_auth=True)
-def admin():
-    return Div("Admin panel")
+from mikiui.router.auth import AuthRequirement
+
+# Public route
+@app.route("/about")
+def about():
+    return Div("About")
+
+# Require session auth
+@app.route("/dashboard", auth=AuthRequirement(strategy="session"))
+def dashboard(ctx):
+    return Div("Dashboard")
+
+# Require JWT with scopes
+@app.route("/admin", auth=AuthRequirement(strategy="jwt", scopes=["admin"]))
+def admin(ctx):
+    return Div("Admin")
 ```
 
-### Cookie name
+### Per-route-group auth
 
-MikiUI uses the cookie name `mikiui_session` consistently across all components.
+Apply auth to an entire route group:
+
+```python
+from mikiui.router.auth import AuthRequirement
+
+api = app.route_group("/api")
+api.auth(AuthRequirement(strategy="jwt", scopes=["user"]))
+
+@api.get("/profile")
+def profile(ctx):
+    return Div("Your profile")
+```
+
+### Legacy `requires_auth`
+
+The `requires_auth=True` shorthand still works and defaults to the `"session"`
+strategy:
+
+```python
+@app.route("/secret", requires_auth=True)
+def secret():
+    return Div("Secret data")
+```
+
+### Auth strategies
+
+A strategy is any callable with a `validate(request) -> user | None` method.
+Register custom strategies:
+
+```python
+def validate_jwt(request):
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    return decode_jwt(token)
+
+app.register_auth_strategy("jwt", validate_jwt)
+```
+
+### Session strategy
+
+When `SessionPlugin` is active, MikiUI auto-registers a `"session"` strategy
+that reads the `mikiui_session` cookie or `Authorization` header.
 
 ### API authentication
 
 ```python
 from mikiui_app_plugins.api import APIPlugin
 
-api = APIPlugin(prefix="/api", requires_auth=True)
+api = APIPlugin(session_plugin=session)
 app.use(api)
 ```
 

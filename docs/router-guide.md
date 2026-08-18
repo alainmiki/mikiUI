@@ -89,24 +89,105 @@ def admin_dashboard():
 
 Both patterns produce identical route entries in `app.routes`.
 
-## Multiple Routers
+## Nested Routers
 
-Mount multiple routers for different sections of your app:
+Routers can be mounted on other routers. The child inherits the parent's prefix:
 
 ```python
-user_router = Router(prefix="/users")
-admin_router = Router(prefix="/admin")
+api = Router(prefix="/api")
+v1 = Router(prefix="/v1")
+api.mount(v1)
 
-app.mount(user_router)
-app.mount(admin_router)
+@v1.get("/items")
+def items():
+    return Div("items")  # mounted at /api/v1/items
+```
 
-@user_router.get("/list")
-def users():
-    return Div("Users")
+Nested router prefixes are computed from the parent chain. The child's prefix is
+not mutated; reusing the same router instance across apps is safe.
 
-@admin_router.get("/panel")
-def admin():
-    return Div("Admin Panel")
+## Route Name Uniqueness
+
+Route names default to the handler function name. Duplicate names raise
+`ValueError`:
+
+```python
+@app.route("/home")
+def home():
+    return Div("Home")
+
+@app.route("/about")
+def home():  # ValueError: route name 'home' is already used
+    return Div("About")
+```
+
+Pass a unique `name=` to avoid collisions:
+
+```python
+@app.route("/about", name="about_page")
+def home():
+    return Div("About")
+```
+
+## Route Groups
+
+Group routes that share a prefix, auth, and middleware:
+
+```python
+from mikiui.router.auth import AuthRequirement
+from mikiui.router.csrf import CSRFMiddleware
+from mikiui.router.rate_limit import RateLimitMiddleware
+
+api = app.route_group("/api")
+api.auth(AuthRequirement(strategy="jwt", scopes=["user"]))
+api.rate_limit(limit=200, window=60)
+api.use(RequestLoggingMiddleware)
+
+@api.get("/profile")
+def profile(ctx):
+    return Div("Your profile")
+
+@api.post("/logout")
+def logout(ctx):
+    return Div("Logged out")
+```
+
+### Route group methods
+
+| Method | Description |
+|--------|-------------|
+| `group.auth(requirement)` | Set auth requirement for all routes in the group |
+| `group.rate_limit(limit, window)` | Enable rate limiting |
+| `group.csrf(exempt_paths, exempt_methods)` | Enable CSRF protection |
+| `group.use(middleware_cls)` | Add middleware class |
+| `group.get/post/route(path, **kwargs)` | Register a handler (prefix is auto-applied) |
+
+### Per-route overrides
+
+Override group settings on individual routes:
+
+```python
+public_api = app.route_group("/api/public")
+public_api.auth(AuthRequirement(strategy="session"))
+
+@public_api.get("/health", auth=AuthRequirement(strategy="none"))
+def health():
+    return Div("OK")
+```
+
+## Custom 404 Handler
+
+```python
+@app.not_found
+def not_found(ctx):
+    return Div("This page does not exist.")
+```
+
+## Custom Error Pages
+
+```python
+app.set_error_page(403, lambda ctx: Div("Access denied"))
+app.set_error_page(500, lambda ctx: Div("Something went wrong"))
 ```
 
 ## Path Parameters

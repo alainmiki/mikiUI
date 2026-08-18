@@ -26,7 +26,7 @@ from mikiui.router import Router, add_pwa_manifest
 def test_router_prefix_joins_path():
     router = Router(prefix="/admin")
     assert router._join("/x") == "/admin/x"
-    assert router._join("/") == "/admin"
+    assert router._join("/") == "/admin/"
 
 
 def test_router_empty_prefix():
