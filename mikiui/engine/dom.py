@@ -116,6 +116,13 @@ class I18nText:
         self.key = key
         self.default = default
 
+    def __str__(self) -> str:
+        text = _translator(self.key, self.default) if _translator else self.default
+        return str(text)
+
+    def __repr__(self) -> str:
+        return f"I18nText(key={self.key!r}, default={self.default!r})"
+
     def to_html(self) -> str:
         text = _translator(self.key, self.default) if _translator else self.default
         return (

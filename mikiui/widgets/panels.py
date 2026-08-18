@@ -835,10 +835,10 @@ class MikiMenu(Component):
     tag = "ul"
 
     def __init__(self, items: list[str], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-menu")
+        attrs.setdefault("class", "miki-simple-menu")
         attrs.setdefault("role", "menu")
         attrs.setdefault("aria_label", _("menu_label", "Menu"))
-        children = [Div(item, class_="miki-menu-item", role="menuitem") for item in items]
+        children = [Div(item, class_="miki-simple-menu-item", role="menuitem") for item in items]
         super().__init__(*children, **attrs)
 
 

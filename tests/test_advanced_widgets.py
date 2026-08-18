@@ -356,7 +356,7 @@ def test_progress_dialog_uses_progress_element():
 
 def test_miki_menu_items():
     html = MikiMenu(["Open", "Save", "Exit"]).to_html()
-    assert "miki-menu" in html
+    assert "miki-simple-menu" in html
     assert 'role="menu"' in html
     assert "Open" in html
     assert 'role="menuitem"' in html

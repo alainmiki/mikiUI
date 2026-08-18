@@ -296,7 +296,7 @@ tr { display: table-row; }
 }
 
 /* ---- Menu ---- */
-.miki-menu {
+.miki-simple-menu {
   list-style: none;
   margin: 0;
   padding: 0.5rem;
@@ -304,12 +304,12 @@ tr { display: table-row; }
   border: 1px solid var(--miki-border);
   border-radius: var(--miki-radius, 0.5rem);
 }
-.miki-menu-item {
+.miki-simple-menu-item {
   padding: 0.5rem 1rem;
   cursor: pointer;
   color: var(--miki-fg);
 }
-.miki-menu-item:hover {
+.miki-simple-menu-item:hover {
   background: var(--miki-surface-hover, #f1f5f9);
   border-radius: var(--miki-radius, 0.5rem);
 }
