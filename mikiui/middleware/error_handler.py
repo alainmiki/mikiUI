@@ -110,7 +110,7 @@ def register_exception_handlers(app: Any) -> None:
             loc = ".".join(str(part) for part in err.get("loc", []) if part != "body")
             errors[loc] = err.get("msg", "Invalid value")
         miki_error = ValidationError(errors)
-        return error_response(miki_error, request, app=miki_app)
+        return await error_response(miki_error, request, app=miki_app)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_exc_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse | HTMLResponse:
@@ -123,15 +123,15 @@ def register_exception_handlers(app: Any) -> None:
             miki_error = RateLimitError()
         else:
             miki_error = ServerError(str(exc.detail))
-        return error_response(miki_error, request, app=miki_app)
+        return await error_response(miki_error, request, app=miki_app)
 
     @app.exception_handler(ValidationError)
     async def _miki_validation_handler(request: Request, exc: ValidationError) -> JSONResponse | HTMLResponse:
-        return error_response(exc, request, app=miki_app)
+        return await error_response(exc, request, app=miki_app)
 
     @app.exception_handler(MikiUIError)
     async def _miki_error_handler(request: Request, exc: MikiUIError) -> JSONResponse | HTMLResponse:
-        return error_response(exc, request, app=miki_app)
+        return await error_response(exc, request, app=miki_app)
 
     @app.exception_handler(Exception)
     async def _catch_all_handler(request: Request, exc: Exception) -> JSONResponse | HTMLResponse:
@@ -152,7 +152,7 @@ def register_exception_handlers(app: Any) -> None:
             exc_info=True,
         )
         miki_error = ServerError()
-        return error_response(miki_error, request, app=miki_app)
+        return await error_response(miki_error, request, app=miki_app)
 
 
 __all__ = ["ErrorHandlerMiddleware", "register_exception_handlers"]

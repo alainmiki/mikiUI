@@ -47,8 +47,8 @@ BASE_TEMPLATE = """<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{page_title}</title>
   {favicon}
-  {theme_links}
   {base_css}
+  {theme_links}
   {theme_inline_css}
   {theme_vars}
   {head_extra}
