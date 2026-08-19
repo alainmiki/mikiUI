@@ -60,7 +60,8 @@ def test_breadcrumbs_accessible_and_links():
 
 def test_menuitem_tag():
     html = MenuItem("Copy").to_html()
-    assert "<menuitem" in html
+    assert "<button" in html
+    assert 'role="menuitem"' in html
     assert "Copy" in html
 
 

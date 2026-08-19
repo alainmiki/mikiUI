@@ -85,7 +85,10 @@ def test_normalize_wraps_scalar():
     assert normalize(div) == [div]
     assert normalize(None) == []
     assert normalize([div, None, div]) == [div, div]
-    assert normalize("x") == ["x"]
+    result = normalize("x")
+    assert len(result) == 1
+    assert isinstance(result[0], Text)
+    assert str(result[0].content) == "x"
 
 
 def test_render_dispatches():

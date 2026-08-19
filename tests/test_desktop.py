@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from unittest import mock
 
 import pytest
@@ -71,9 +72,66 @@ def test_run_desktop_passes_kwargs_to_native():
     app = make_app()
     with mock.patch("mikiui.build.desktop_build._run_native") as native:
         run_desktop(app, host="0.0.0.0", port=9000, title="My Title", width=800, height=600)
-        native.assert_called_once_with(
-            app, "0.0.0.0", 9000, "My Title", 800, 600, "local", False, None, None
-        )
+        args, kwargs = native.call_args
+        assert args[:8] == (app, "0.0.0.0", 9000, "My Title", 800, 600, "local", False)
+        assert args[8] is not None  # icon defaults to runtime icon
+
+
+def test_run_desktop_passes_icon_to_run_native():
+    """run_desktop should forward the icon parameter to _run_native."""
+    app = make_app()
+    with mock.patch("mikiui.build.desktop_build._run_native") as native:
+        run_desktop(app, icon="/path/to/icon.ico")
+        args, kwargs = native.call_args
+        assert args[8] == os.path.abspath("/path/to/icon.ico")
+
+
+def test_default_desktop_icon_returns_ico_on_windows():
+    """_default_desktop_icon should return .ico path on Windows."""
+    from mikiui.build.desktop_build import _default_desktop_icon
+    with mock.patch("mikiui.build.desktop_build.platform.system", return_value="Windows"):
+        icon_path = _default_desktop_icon()
+        assert icon_path.endswith("mikiui-icon.ico")
+        assert os.path.exists(icon_path)
+
+
+def test_default_desktop_icon_returns_png_on_non_windows():
+    """_default_desktop_icon should return .png path on macOS/Linux."""
+    from mikiui.build.desktop_build import _default_desktop_icon
+    with mock.patch("mikiui.build.desktop_build.platform.system", return_value="Linux"):
+        icon_path = _default_desktop_icon()
+        assert icon_path.endswith("mikiui-icon.png")
+        assert os.path.exists(icon_path)
+
+
+def test_default_desktop_icon_returns_png_on_macos():
+    """_default_desktop_icon should return .png path on macOS (NSImage accepts PNG)."""
+    from mikiui.build.desktop_build import _default_desktop_icon
+    with mock.patch("mikiui.build.desktop_build.platform.system", return_value="Darwin"):
+        icon_path = _default_desktop_icon()
+        assert icon_path.endswith("mikiui-icon.png")
+        assert os.path.exists(icon_path)
+
+
+def test_run_desktop_falls_back_to_app_desktop_icon():
+    """run_desktop should use miki_app.desktop_icon when icon is not provided."""
+    app = make_app()
+    app.desktop_icon = "/path/to/desktop_icon.ico"
+    with mock.patch("mikiui.build.desktop_build._run_native") as native:
+        run_desktop(app)
+        args, kwargs = native.call_args
+        assert args[8] == os.path.abspath("/path/to/desktop_icon.ico")
+
+
+def test_run_desktop_reload_falls_back_to_app_desktop_icon():
+    """run_desktop with reload=True should use miki_app.desktop_icon as icon fallback."""
+    app = make_app()
+    app.desktop_icon = "/path/to/desktop_icon.ico"
+    import mikiui.build.desktop_build as db
+    with mock.patch.object(db, "_run_native_reload") as reload_fn:
+        run_desktop(app, reload=True)
+        args, kwargs = reload_fn.call_args
+        assert kwargs.get("icon") == os.path.abspath("/path/to/desktop_icon.ico")
 
 
 def test_run_desktop_passes_kwargs_to_browser():

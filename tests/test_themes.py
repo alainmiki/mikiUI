@@ -8,6 +8,8 @@ import sys
 import pytest
 
 from mikiui import Button, Div, Input, MikiApp, Table, Td, Th, Tr
+from mikiui.app.plugin_discovery import discover_plugins
+from mikiui.app.plugin_security import PluginSecurityConfig
 from mikiui.app.plugins import ComponentPlugin, Plugin, ThemePlugin, WidgetPlugin
 from mikiui.engine.renderer import render_page
 from mikiui.themes import (
@@ -130,8 +132,7 @@ def test_render_page_includes_theme_css():
 
     page = render_page(Div("hello"), title="Test", theme="dark")
     assert 'data-miki-theme="dark"' in page
-    assert "<style id=\"miki-theme\">" in page
-    assert "--miki-bg" in page  # theme CSS sets this variable
+    assert '<link rel="stylesheet" href="/_miki/runtime/themes/dark.css"' in page
 
 
 def test_render_page_default_theme():
@@ -557,3 +558,126 @@ def test_cli_desktop_auto_discovers_app(tmp_path):
             delattr(app_module, "app")
         else:
             app_module.app = original_app
+
+
+# --- Plugin discovery -----------------------------------------------------------
+# These tests guard against regressions in discover_plugins / auto_load, which
+# previously used spec_from_file_location with bare module names and silently
+# failed to discover any plugin that used relative imports or dataclasses.
+
+def test_discover_builtin_plugins_finds_all():
+    """All four built-in plugin modules should be discoverable."""
+    metas = discover_plugins(include_entry_points=False)
+    names = {m.name for m in metas}
+    # session, notifications, api are real plugins; demo is a script with no
+    # Plugin subclass and may or may not appear depending on metadata, but the
+    # three functional plugins must be found.
+    assert {"api", "session", "notifications"} <= names
+
+
+def test_discover_builtin_plugins_use_qualified_module_paths():
+    """Discovered module_paths must be package-qualified so load_plugin works."""
+    from mikiui.app.plugin_discovery import discover_plugins
+
+    metas = discover_plugins(include_entry_points=False)
+    for meta in metas:
+        if meta.name == "session":
+            assert meta.module_path == "mikiui_app_plugins.session"
+            assert meta.class_name == "SessionPlugin"
+        if meta.name == "notifications":
+            assert meta.module_path == "mikiui_app_plugins.notifications"
+            assert meta.class_name == "NotificationPlugin"
+
+
+def test_autoload_registers_plugins_in_dependency_order():
+    """auto_load must register session before notifications (depends_on)."""
+    from mikiui.app.plugin_discovery import auto_load
+
+    app = MikiApp()
+    registered = auto_load(app, include_entry_points=False)
+    names = [p.name for p in registered]
+    # notifications depends on session, so session must come first.
+    assert "session" in names
+    assert "notifications" in names
+    assert names.index("session") < names.index("notifications")
+
+
+def test_autoload_no_duplicate_plugins():
+    """The same plugin class must not be registered twice (demo re-exports)."""
+    from mikiui.app.plugin_discovery import auto_load
+
+    app = MikiApp()
+    registered = auto_load(app, include_entry_points=False)
+    names = [p.name for p in registered]
+    assert len(names) == len(set(names))
+
+
+def test_autoload_backend_routes_not_duplicated():
+    """backend_routes() must be invoked once per plugin (no duplicate mounts)."""
+    from mikiui.app.plugins import Plugin
+
+    app = MikiApp()
+
+    class SpyPlugin(Plugin):
+        name = "spy"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def backend_routes(self) -> list[dict]:
+            self.calls += 1
+            return [
+                {
+                    "path": "/api/spy-only",
+                    "methods": ["GET"],
+                    "endpoint": lambda request: {"calls": self.calls},
+                }
+            ]
+
+    app.use(SpyPlugin())
+    # get_backend_routes must not re-invoke backend_routes().
+    list(app.get_backend_routes())
+    list(app.get_backend_routes())
+    assert app.plugins[0].calls == 1
+
+
+def test_route_group_returns_builder():
+    """app.route_group must return a usable RouteGroupBuilder (no NameError)."""
+    from mikiui.router.group import RouteGroupBuilder
+
+    app = MikiApp()
+    builder = app.route_group("/admin")
+    assert isinstance(builder, RouteGroupBuilder)
+
+
+def test_autoload_standalone_plugin_dir(tmp_path):
+    """auto_load must discover plugins from arbitrary directories."""
+    from mikiui.app.plugin_discovery import auto_load
+
+    pkg_dir = tmp_path / "myplugins"
+    pkg_dir.mkdir()
+    (pkg_dir / "__init__.py").write_text("")
+    (pkg_dir / "extra.py").write_text(
+        "from mikiui.app.plugins import Plugin\n"
+        "class ExtraPlugin(Plugin):\n"
+        "    name = 'extra'\n"
+    )
+    # Add tmp_path to sys.path so the package is importable.
+    import sys
+
+    sys.path.insert(0, str(tmp_path))
+    try:
+        app = MikiApp()
+        registered = auto_load(
+            app,
+            include_builtins=False,
+            include_entry_points=False,
+            plugin_dirs=[pkg_dir],
+            security_config=PluginSecurityConfig(allow_untrusted=True),
+        )
+        names = [p.name for p in registered]
+        assert "extra" in names
+    finally:
+        sys.path.pop(0)
+        sys.modules.pop("myplugins", None)
+        sys.modules.pop("myplugins.extra", None)

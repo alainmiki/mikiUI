@@ -502,3 +502,54 @@ def test_path_param_missing_raises():
     with pytest.raises(ValueError, match="Missing required path parameters"):
         invoke_route(route, app, path_params={})
 
+
+def test_plugin_on_request_invoked_per_request():
+    """The on_request hook must be called for every incoming request."""
+    from mikiui.app.plugins import Plugin
+
+    calls: list = []
+
+    class RequestSpyPlugin(Plugin):
+        name = "spy-request"
+
+        def on_request(self, request):
+            calls.append(request)
+
+    app = MikiApp()
+    app.use(RequestSpyPlugin())
+
+    @app.route("/")
+    def home():
+        return Div("home")
+
+    client = TestClient(create_app(app))
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert len(calls) == 1
+    assert calls[0] is not None
+
+
+def test_backend_routes_mounted_once():
+    """Plugin backend_routes must be mounted exactly once on the FastAPI app."""
+    from mikiui.app.plugins import Plugin
+
+    class SingleRoutePlugin(Plugin):
+        name = "single"
+
+        def backend_routes(self):
+            return [
+                {
+                    "path": "/api/single",
+                    "methods": ["GET"],
+                    "endpoint": lambda request: {"ok": True},
+                    "include_in_schema": True,
+                    "tags": ["api"],
+                }
+            ]
+
+    app = MikiApp()
+    app.use(SingleRoutePlugin())
+    fa = create_app(app)
+    paths = [r.path for r in fa.routes if r.path == "/api/single"]
+    assert len(paths) == 1
+
