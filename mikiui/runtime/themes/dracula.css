@@ -1,130 +1,35 @@
-/* MikiUI "dracula" theme.
-   Based on the Dracula palette — vibrant purples, pinks, and cyan. */
-
-:root {
+[data-miki-theme="dracula"] {
   --miki-bg: #282a36;
   --miki-fg: #f8f8f2;
   --miki-accent: #bd93f9;
   --miki-accent-hover: #c792f0;
   --miki-border: #44475a;
   --miki-border-hover: #6272a4;
-
   --miki-surface: #3f4154;
   --miki-surface-hover: #44475a;
   --miki-surface-active: #6272a4;
-
   --miki-input-bg: #44475a;
   --miki-input-border: #44475a;
   --miki-input-focus: #bd93f9;
-
   --miki-text-muted: #9da6f0;
   --miki-text-secondary: #c4c6e0;
-
-  --miki-yellow: #f1fa8c;
-  --miki-orange: #ffb86c;
-  --miki-red: #ff6e67;
-  --miki-magenta: #ff79c6;
-  --miki-violet: #bd93f9;
-  --miki-blue: #50d8ce;
-  --miki-cyan: #8be9fd;
-  --miki-green: #50fa7b;
-
+  --miki-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --miki-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
+  --miki-shadow-xl: 0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04);
+  --miki-radius: 0.5rem;
+  --miki-radius-lg: 0.75rem;
+  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   --miki-success: #50fa7b;
   --miki-success-hover: #40e06a;
   --miki-warning: #f1fa8c;
   --miki-warning-hover: #e2e27a;
   --miki-error: #ff6e67;
   --miki-error-hover: #ff5e57;
-
-  --miki-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --miki-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
-
-  --miki-radius: 0.5rem;
-  --miki-radius-lg: 0.75rem;
-
-  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  --miki-dock-width: 300px;
+  --miki-dock-height: 300px;
+  --miki-float-width: 40vw;
+  --miki-float-height: 50vh;
 
   color-scheme: dark;
 }
 
-/* DaisyUI/Tailwind classes mapped to variables */
-.btn {
-  background-color: var(--miki-accent);
-  color: var(--miki-fg);
-  border-radius: var(--miki-radius);
-  transition: var(--miki-transition);
-}
-.btn:hover {
-  background-color: var(--miki-accent-hover);
-}
-
-.btn-primary {
-  background-color: var(--miki-success);
-}
-.btn-primary:hover {
-  background-color: var(--miki-success-hover);
-}
-
-.btn-secondary {
-  background-color: var(--miki-warning);
-}
-.btn-secondary:hover {
-  background-color: var(--miki-warning-hover);
-}
-
-.btn-error {
-  background-color: var(--miki-error);
-}
-.btn-error:hover {
-  background-color: var(--miki-error-hover);
-}
-
-.text-muted {
-  color: var(--miki-text-muted);
-}
-.text-secondary {
-  color: var(--miki-text-secondary);
-}
-
-.input {
-  background-color: var(--miki-input-bg);
-  border: 1px solid var(--miki-input-border);
-  border-radius: var(--miki-radius);
-  color: var(--miki-fg);
-}
-.input:focus {
-  border-color: var(--miki-input-focus);
-  box-shadow: 0 0 0 2px var(--miki-accent);
-}
-
-.card {
-  background-color: var(--miki-surface);
-  border: 1px solid var(--miki-border);
-  border-radius: var(--miki-radius-lg);
-  box-shadow: var(--miki-shadow);
-  color: var(--miki-fg);
-}
-.card:hover {
-  border-color: var(--miki-border-hover);
-  box-shadow: var(--miki-shadow-lg);
-}
-
-.alert-success {
-  background-color: var(--miki-success);
-  color: var(--miki-fg);
-}
-.alert-warning {
-  background-color: var(--miki-warning);
-  color: var(--miki-fg);
-}
-.alert-error {
-  background-color: var(--miki-error);
-  color: var(--miki-fg);
-}
-
-
-
-
-[data-miki-theme="dracula"] {
-  color-scheme: dark;
-}

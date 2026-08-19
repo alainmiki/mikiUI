@@ -19,7 +19,7 @@ class Progress(Component):
 
     tag = "progress"
 
-    def __init__(self, *children: Any, value: float = 0, max: float = 100, variant: str = "default", **attrs: Any) -> None:
+    def __init__(self, *children: Any, value: float = 0, max: float = 100, variant: str = "default", **attrs: Any    ) -> None:
         self.value = value
         self.max = max
         classes = "miki-progress"
@@ -32,6 +32,9 @@ class Progress(Component):
         attrs.setdefault("data-miki-progress", "true")
         attrs.setdefault("data-value", str(value))
         attrs.setdefault("data-max", str(max))
+        attrs.setdefault("aria-valuenow", str(value))
+        attrs.setdefault("aria-valuemin", "0")
+        attrs.setdefault("aria-valuemax", str(max))
         super().__init__(*children, **attrs)
 
     def to_html(self) -> str:
@@ -66,3 +69,6 @@ class Output(Component):
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("class_", "miki-output")
         super().__init__(*children, **attrs)
+
+
+ProgressBar = Progress

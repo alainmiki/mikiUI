@@ -119,7 +119,6 @@ class Tabs(Component):
                     "×",
                     type="button",
                     class_="miki-tab-close",
-                    role="button",
                     aria_label="Close tab",
                     **{"data-miki-tab-close": "true", "onclick": f"mikiTabs.close('{group}', {i});"},
                 )
@@ -133,9 +132,9 @@ class Tabs(Component):
                 )
                 if closeable:
                     tab_content = tab_content + (close_btn,)
-                buttons.append(Div(*tab_content, **tab_attrs))
+                buttons.append(Button(*tab_content, **tab_attrs))
             elif closeable:
-                buttons.append(Div(label, close_btn, **tab_attrs))
+                buttons.append(Button(label, close_btn, **tab_attrs))
             else:
                 buttons.append(Button(label, **tab_attrs))
 

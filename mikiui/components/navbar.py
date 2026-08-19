@@ -71,7 +71,7 @@ class Navbar(Component):
             classes += " miki-navbar-sticky"
         if dark:
             classes += " miki-navbar-dark"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "navigation")
         attrs.setdefault("aria_label", "Main navigation")
 

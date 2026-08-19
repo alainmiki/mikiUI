@@ -84,14 +84,14 @@ class ThemeSwitcher(Component):
         class_: str | None = None,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-theme-switcher")
+        attrs.setdefault("class_", "miki-theme-switcher")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria-label", "Theme Switcher")
 
         wrapper_classes = "miki-theme-switcher"
         if class_:
             wrapper_classes += f" {class_}"
-        attrs["class"] = wrapper_classes
+        attrs["class_"] = wrapper_classes
 
         current_theme = getattr(app, "theme", "light")
 
@@ -149,6 +149,9 @@ class ThemeSwitcher(Component):
             select_attrs["hx-trigger"] = "change"
             select_attrs["hx-swap"] = "none"
             select_attrs["hx-refresh"] = "true"
+        else:
+            select_attrs["data-miki-theme-switch"] = "true"
+            select_attrs["data-miki-theme-endpoint"] = "/_miki/api/theme"
         if on_change is not None:
             select_attrs["data-miki-theme-onchange"] = str(on_change)
 

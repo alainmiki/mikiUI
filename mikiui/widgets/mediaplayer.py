@@ -28,7 +28,7 @@ class MediaPlayer(Component):
         controls: bool = True,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-mediaplayer")
+        attrs.setdefault("class_", "miki-mediaplayer")
         attrs.setdefault("role", "region")
         label = _("mediaplayer_label", "Media player")
         if kind == "audio":

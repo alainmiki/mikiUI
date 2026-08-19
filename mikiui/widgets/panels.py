@@ -41,7 +41,7 @@ class GroupBox(Component):
     tag = "fieldset"
 
     def __init__(self, title: str, *content: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-groupbox")
+        attrs.setdefault("class_", "miki-groupbox")
         super().__init__(Legend(title), *content, **attrs)
 
 
@@ -54,7 +54,7 @@ class ScrollPanel(Component):
     tag = "div"
 
     def __init__(self, *content: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-scrollpanel")
+        attrs.setdefault("class_", "miki-scrollpanel")
         style = attrs.get("style")
         if isinstance(style, dict):
             style.setdefault("overflow", "auto")
@@ -76,7 +76,7 @@ class StackedPanel(Component):
     tag = "div"
 
     def __init__(self, pages: list[tuple[str, Any]], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-stackedpanel")
+        attrs.setdefault("class_", "miki-stackedpanel")
         group = "miki-stacked-" + uuid.uuid4().hex[:8]
 
         buttons = []
@@ -122,7 +122,7 @@ class ToolboxPanel(Component):
     tag = "div"
 
     def __init__(self, groups: dict[str, Any], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-toolbox")
+        attrs.setdefault("class_", "miki-toolbox")
         attrs.setdefault("role", "tablist")
         attrs.setdefault("aria_label", _("toolbox_label", "Toolbox"))
         sections = []
@@ -146,7 +146,7 @@ class Toolbar(Component):
     tag = "div"
 
     def __init__(self, *items: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-toolbar")
+        attrs.setdefault("class_", "miki-toolbar")
         attrs.setdefault("role", "toolbar")
         attrs.setdefault("aria_label", _("toolbar_label", "Toolbar"))
         super().__init__(*items, **attrs)
@@ -161,7 +161,7 @@ class StatusBar(Component):
     tag = "footer"
 
     def __init__(self, *items: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-statusbar")
+        attrs.setdefault("class_", "miki-statusbar")
         attrs.setdefault("role", "status")
         attrs.setdefault("aria_live", "polite")
         super().__init__(*items, **attrs)
@@ -177,7 +177,7 @@ class MenuBar(Component):
     tag = "nav"
 
     def __init__(self, items: list[tuple[str, list[tuple[str, str]]]], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-menubar")
+        attrs.setdefault("class_", "miki-menubar")
         attrs.setdefault("aria_label", _("menubar_label", "Main menu"))
         menus = []
         for label, sub_items in items:
@@ -209,7 +209,7 @@ class SplashScreen(Component):
     tag = "div"
 
     def __init__(self, title: str, subtitle: str = "", **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-splash")
+        attrs.setdefault("class_", "miki-splash")
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria_label", title)
         children = [Div(title, class_="miki-splash-title")]
@@ -254,7 +254,7 @@ class MessageBox(Component):
         if kind not in valid_kinds:
             raise ValueError(f"kind must be one of {valid_kinds}, got {kind!r}")
 
-        attrs.setdefault("class", f"miki-messagebox miki-messagebox-{kind}")
+        attrs.setdefault("class_", f"miki-messagebox miki-messagebox-{kind}")
         attrs.setdefault("role", "alertdialog")
         attrs.setdefault("aria_label", title)
         attrs.setdefault("aria_modal", "true")
@@ -317,7 +317,7 @@ class ColorPicker(Component):
         value: str = "#000000",
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-colorpicker")
+        attrs.setdefault("class_", "miki-colorpicker")
         field_id = "miki-color-" + uuid.uuid4().hex[:8]
         super().__init__(
             Label(label, for_=field_id, class_="miki-colorpicker-label"),
@@ -349,7 +349,7 @@ class DatePicker(Component):
         value: str | None = None,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-datepicker")
+        attrs.setdefault("class_", "miki-datepicker")
         field_id = "miki-date-" + uuid.uuid4().hex[:8]
         input_attrs: dict[str, Any] = {
             "type": "date",
@@ -390,7 +390,7 @@ class ProgressDialog(Component):
         closeable: bool = False,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-progressdialog miki-dialog miki-dialog-md")
+        attrs.setdefault("class_", "miki-progressdialog miki-dialog miki-dialog-md")
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria-modal", "true")
         attrs.setdefault("aria-label", title)
@@ -440,7 +440,7 @@ class LCDNumber(Component):
     tag = "div"
 
     def __init__(self, value: int | float = 0, digits: int = 6, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-lcd")
+        attrs.setdefault("class_", "miki-lcd")
         attrs.setdefault("role", "status")
         attrs.setdefault("aria_label", _("lcd_label", "LCD display"))
         text = f"{value:0{digits}d}" if isinstance(value, int) else str(value)
@@ -468,7 +468,7 @@ class Dial(Component):
         max: int = 100,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-dial")
+        attrs.setdefault("class_", "miki-dial")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria-label", _("dial_label", "Dial"))
         attrs.setdefault("data-miki-dial", "true")
@@ -509,7 +509,7 @@ class MdiSubWindow(Component):
     tag = "section"
 
     def __init__(self, title: str, *content: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-mdi-subwindow")
+        attrs.setdefault("class_", "miki-mdi-subwindow")
         title_bar = Div(
             Span(title, class_="miki-mdi-title"),
             Button(
@@ -535,7 +535,7 @@ class MdiArea(Component):
     tag = "div"
 
     def __init__(self, *windows: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-mdiarea")
+        attrs.setdefault("class_", "miki-mdiarea")
         super().__init__(*windows, **attrs)
 
 
@@ -639,7 +639,7 @@ class SidePanel(Component):
         if collapsible:
             classes += " miki-side-collapsible"
 
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("aria_label", f"Side panel ({side})")
         attrs.setdefault("role", "complementary")
 
@@ -688,7 +688,7 @@ class LogViewer(Component):
         line_numbers: bool = False,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-logviewer")
+        attrs.setdefault("class_", "miki-logviewer")
         attrs.setdefault("role", "log")
         attrs.setdefault("aria_live", "polite")
 
@@ -738,7 +738,7 @@ class TabbedPanel(Tabs):
     """
 
     def __init__(self, tabs: list[tuple[str, Any]], closable: bool = False, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-tabbedpanel")
+        attrs.setdefault("class_", "miki-tabbedpanel")
         super().__init__(tabs, closeable=closable, **attrs)
 
 
@@ -757,7 +757,7 @@ class ProfilerPanel(Component):
     tag = "div"
 
     def __init__(self, metrics: list[tuple[str, Any]], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-profiler")
+        attrs.setdefault("class_", "miki-profiler")
         attrs.setdefault("role", "region")
         attrs.setdefault("aria_label", _("profiler_label", "Profiler"))
         rows = []
@@ -803,7 +803,7 @@ class FilePicker(Component):
         label: str = "Drop files here or click to browse",
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-dropzone")
+        attrs.setdefault("class_", "miki-dropzone")
         attrs.setdefault("role", "button")
         attrs.setdefault("tabindex", "0")
         attrs.setdefault("data-miki-dropzone", "true")
@@ -835,7 +835,7 @@ class MikiMenu(Component):
     tag = "ul"
 
     def __init__(self, items: list[str], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-simple-menu")
+        attrs.setdefault("class_", "miki-simple-menu")
         attrs.setdefault("role", "menu")
         attrs.setdefault("aria_label", _("menu_label", "Menu"))
         children = [Div(item, class_="miki-simple-menu-item", role="menuitem") for item in items]
@@ -851,7 +851,7 @@ class MikiSizeGrip(Component):
     tag = "div"
 
     def __init__(self, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-sizegrip")
+        attrs.setdefault("class_", "miki-sizegrip")
         attrs.setdefault("role", "separator")
         attrs.setdefault("aria_label", _("sizegrip_label", "Resize grip"))
         super().__init__(**attrs)
@@ -866,7 +866,7 @@ class MikiColumnView(Component):
     tag = "div"
 
     def __init__(self, columns: list[list[str]], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-columnview")
+        attrs.setdefault("class_", "miki-columnview")
         attrs.setdefault("role", "list")
         attrs.setdefault("aria_label", _("columnview_label", "Column view"))
         col_divs = [
@@ -889,7 +889,7 @@ class MikiButtonGroup(Component):
     tag = "div"
 
     def __init__(self, buttons: list[str], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-btngroup")
+        attrs.setdefault("class_", "miki-btngroup")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria_label", _("btngroup_label", "Button group"))
         children = [Div(label, class_="miki-btn", role="button") for label in buttons]

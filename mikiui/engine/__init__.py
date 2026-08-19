@@ -9,6 +9,7 @@ from __future__ import annotations
 from .dom import (
     Element,
     I18nText,
+    RawHtml,
     Text,
     _,
     get_translator,
@@ -22,6 +23,7 @@ __all__ = [
     "Element",
     "Text",
     "I18nText",
+    "RawHtml",
     "_",
     "render",
     "normalize",

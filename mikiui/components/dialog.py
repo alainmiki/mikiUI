@@ -53,7 +53,7 @@ class Dialog(Component):
         if size not in ("xs", "sm", "md", "lg", "xl", "fullscreen"):
             size = "md"
 
-        attrs.setdefault("class", f"miki-dialog miki-dialog-{size}")
+        attrs.setdefault("class_", f"miki-dialog miki-dialog-{size}")
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria-modal", "true")
         attrs.setdefault("data-miki-dialog", "true")
@@ -81,8 +81,9 @@ class Dialog(Component):
 
         # Add a default close button if none provided in children
         has_close = any(
-            "data-miki-dialog-close" in str(getattr(c, "attrs", {}))
+            "data-miki-dialog-close" in getattr(c, "attrs", {})
             for c in children_list
+            if hasattr(c, "attrs")
         )
         if not has_close:
             children_list.insert(
@@ -91,7 +92,6 @@ class Dialog(Component):
                     "×",
                     type="button",
                     class_="miki-dialog-close-btn",
-                    role="button",
                     aria_label="Close dialog",
                     **{"data-miki-dialog-close": "true"},
                 )
@@ -232,7 +232,7 @@ class Details(Component):
     tag = "details"
 
     def __init__(self, *children: Any, open: bool = False, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-details miki-details-collapsible")
+        attrs.setdefault("class_", "miki-details miki-details-collapsible")
         if open:
             attrs["open"] = True
         super().__init__(*children, **attrs)
@@ -248,7 +248,7 @@ class Summary(Component):
     tag = "summary"
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-summary")
+        attrs.setdefault("class_", "miki-summary")
         attrs.setdefault("role", "button")
         attrs.setdefault("tabindex", "0")
         super().__init__(*children, **attrs)

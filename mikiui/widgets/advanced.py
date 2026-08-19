@@ -35,7 +35,7 @@ class FormWizard(Component):
     def __init__(
         self, steps: list[tuple[str, Any]], current: int = 0, **attrs: Any
     ) -> None:
-        attrs.setdefault("class", "miki-wizard")
+        attrs.setdefault("class_", "miki-wizard")
         group = "miki-wizard-" + uuid.uuid4().hex[:8]
 
         indicator_items = []
@@ -112,7 +112,7 @@ class SearchPanel(Component):
     def __init__(
         self, placeholder: str = "Search...", on_search: str | None = None, **attrs: Any
     ) -> None:
-        attrs.setdefault("class", "miki-searchpanel")
+        attrs.setdefault("class_", "miki-searchpanel")
         form_attrs: dict[str, Any] = {"role": "search", "class_": "miki-search-form"}
         if on_search:
             form_attrs["hx_post"] = on_search
@@ -143,7 +143,7 @@ class StreamingPanel(Component):
     tag = "section"
 
     def __init__(self, title: str = "Live", **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-streamingpanel")
+        attrs.setdefault("class_", "miki-streamingpanel")
         attrs.setdefault("aria_label", title)
         heading = Div(title, class_="miki-streaming-title")
         log = Div(
@@ -170,7 +170,7 @@ class NotificationPanel(Component):
     tag = "div"
 
     def __init__(self, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-notificationpanel")
+        attrs.setdefault("class_", "miki-notificationpanel")
         attrs.setdefault("role", "log")
         attrs.setdefault("aria_live", "polite")
         super().__init__(**attrs)

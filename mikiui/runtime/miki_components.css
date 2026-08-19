@@ -1,3 +1,4 @@
+@layer components {
 /* Buttons */
 .btn {
   background-color: var(--miki-accent);
@@ -119,12 +120,8 @@
   border: 1px solid var(--miki-border);
   border-radius: var(--miki-radius-lg);
 }
-.collapse-header {
-  color: var(--miki-fg);
-}
-.collapse-content {
-  background-color: var(--miki-surface-hover);
-}
+.collapse-header { color: var(--miki-fg); }
+.collapse-content { background-color: var(--miki-surface-hover); }
 
 /* Toast */
 .toast {
@@ -149,27 +146,18 @@
   border: 1px solid var(--miki-border);
   border-radius: var(--miki-radius);
 }
-.menu-item {
-  color: var(--miki-fg);
-}
-.menu-item:hover {
-  background-color: var(--miki-surface-hover);
-}
+.menu-item { color: var(--miki-fg); }
+.menu-item:hover { background-color: var(--miki-surface-hover); }
 
 /* Avatar */
 .avatar {
   border-radius: 50%;
   border: 2px solid var(--miki-border);
 }
-.avatar-ring {
-  border-color: var(--miki-accent);
-}
+.avatar-ring { border-color: var(--miki-accent); }
 
 /* Steps */
-.steps {
-  display: flex;
-  gap: 0.5rem;
-}
+.steps { display: flex; gap: 0.5rem; }
 .step {
   background-color: var(--miki-border);
   border-radius: var(--miki-radius);
@@ -178,14 +166,6 @@
   background-color: var(--miki-accent);
   color: var(--miki-fg);
 }
-/* Accordion / Collapse */
-.collapse {
-  background-color: var(--miki-surface);
-  border: 1px solid var(--miki-border);
-  border-radius: var(--miki-radius-lg);
-}
-.collapse-header { color: var(--miki-fg); }
-.collapse-content { background-color: var(--miki-surface-hover); }
 
 /* Carousel */
 .carousel {
@@ -272,55 +252,4 @@
   width: 0.75rem;
   height: 0.75rem;
 }
-
-/* Toasts */
-.toast {
-  background-color: var(--miki-surface);
-  color: var(--miki-fg);
-  border-radius: var(--miki-radius);
-  box-shadow: var(--miki-shadow);
-}
-.toast-success { background-color: var(--miki-success); }
-.toast-warning { background-color: var(--miki-warning); }
-.toast-error { background-color: var(--miki-error); }
-
-/* Tooltip */
-.tooltip {
-  background-color: var(--miki-surface-active);
-  color: var(--miki-fg);
-  border-radius: var(--miki-radius);
-  padding: 0.25rem 0.5rem;
-}
-
-/* Divider */
-.divider {
-  border-top: 1px solid var(--miki-border);
-  color: var(--miki-text-muted);
-}
-
-/* Menu */
-.menu {
-  background-color: var(--miki-surface);
-  border: 1px solid var(--miki-border);
-  border-radius: var(--miki-radius);
-}
-.menu-item { color: var(--miki-fg); }
-.menu-item:hover { background-color: var(--miki-surface-hover); }
-
-/* Avatar */
-.avatar {
-  border-radius: 50%;
-  border: 2px solid var(--miki-border);
-}
-.avatar-ring { border-color: var(--miki-accent); }
-
-/* Steps */
-.steps { display: flex; gap: 0.5rem; }
-.step {
-  background-color: var(--miki-border);
-  border-radius: var(--miki-radius);
-}
-.step-active {
-  background-color: var(--miki-accent);
-  color: var(--miki-fg);
 }

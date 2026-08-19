@@ -166,7 +166,7 @@ class Rail(Component):
         if collapsible:
             classes += " miki-rail-collapsible"
 
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "navigation")
         attrs.setdefault("aria_label", "Navigation rail")
 

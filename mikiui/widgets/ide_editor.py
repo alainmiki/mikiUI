@@ -20,7 +20,7 @@ class IDEEditor(Component):
     def __init__(
         self, content: str = "", language: str = "python", **attrs: Any
     ) -> None:
-        attrs.setdefault("class", f"miki-ide miki-ide-{language}")
+        attrs.setdefault("class_", f"miki-ide miki-ide-{language}")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria_label", f"{language} editor")
 

@@ -23,15 +23,99 @@ def npm_dependencies(daisyui: bool = False) -> dict[str, str]:
     return deps
 
 
+def tailwind_config(
+    theme: str = "light",
+    daisyui: bool = False,
+    content: list[str] | None = None,
+    extend: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Generate a complete Tailwind CSS configuration."""
+    content_paths = list(content or []) + [
+        "mikiui/runtime/miki.css",
+        "mikiui/runtime/themes/*.css",
+        "mikiui/components/**/*.py",
+        "mikiui/widgets/**/*.py",
+        "mikiui/build/tailwind/*.py", "mikiui/build/tailwind/**/*.py",
+    ]
+
+    config: dict[str, Any] = {
+        "content": content_paths,
+        "theme": {
+            "extend": extend or {},
+        },
+        "plugins": [],
+    }
+
+    if daisyui:
+        import os
+
+        daisyui_path = os.path.join(
+            os.path.dirname(__file__), "..", "runtime", "daisyui.min.js"
+        )
+        config["plugins"].append(f"'{daisyui_path}'")
+        config["daisyui"] = {
+            "themes": [daisyui_config(theme)],
+            "base": True,
+            "styled": True,
+            "prefix": "miki-",
+        }
+
+    return config
+
+
+def daisyui_config(theme: str = "dark") -> dict[str, Any]:
+    """Build a DaisyUI theme bridge from a MikiUI color theme."""
+    from ..themes import get_theme
+
+    t = get_theme(theme)
+    if t is None:
+        raise ValueError(
+            f"Unknown theme {theme!r}. Available: light, dark, dracula, solarized-dark"
+        )
+
+    css_text = t.css()
+    import re
+
+    daisy_theme: dict[str, str] = {}
+    for match in re.finditer(r"--miki-(\w+):\s*([^;]+);", css_text):
+        key = match.group(1)
+        value = match.group(2).strip()
+        daisy_theme[f"--{key}"] = value
+
+    daisy_theme.setdefault("--primary", daisy_theme.get("--accent", "#3b82f6"))
+    daisy_theme.setdefault("--secondary", daisy_theme.get("--accent-hover", "#60a5fa"))
+    daisy_theme.setdefault("--background", daisy_theme.get("--bg", "#ffffff"))
+    daisy_theme.setdefault("--foreground", daisy_theme.get("--fg", "#1e293b"))
+
+    return {f"mikiui-{theme}": daisy_theme}
+
+
 def write_config(
     path: str,
     theme: str = "light",
     daisyui: bool = False,
 ) -> str:
-    """Write a ``tailwind.config.js`` via the existing build module."""
-    from ..build.tailwind import write_tailwind_config
+    """Write a ``tailwind.config.js``."""
+    import json
 
-    return write_tailwind_config(path, theme=theme, daisyui=daisyui)
+    from ..build.tailwind import tailwind_config
+    from .system import detect_node
+
+    config = tailwind_config(theme=theme, daisyui=daisyui)
+
+    if path.endswith(".js"):
+        text = "/** @type {import('tailwindcss').Config} */\nmodule.exports = "
+        text += json.dumps(config, indent=2) + ";\n"
+    elif path.endswith(".json"):
+        text = json.dumps(config, indent=2) + "\n"
+    else:
+        text = json.dumps(config, indent=2) + "\n"
+
+    from pathlib import Path
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+    return path
 
 
 def write_postcss_config(path: str) -> str:
@@ -58,7 +142,7 @@ def install_deps(
     import json
     import subprocess
 
-    from ..styling.system import detect_node
+    from .system import detect_node
 
     project_dir = Path(project_dir)
     pkg_json = project_dir / "package.json"

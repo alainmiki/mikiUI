@@ -18,7 +18,7 @@ class Dashboard(Component):
     tag = "div"
 
     def __init__(self, *cards: Any, columns: int = 3, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-dashboard")
+        attrs.setdefault("class_", "miki-dashboard")
         attrs.setdefault(
             "style",
             {

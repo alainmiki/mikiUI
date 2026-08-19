@@ -266,6 +266,248 @@ class NotificationPlugin(Plugin):
 
 ---
 
+## Plugin Manifest
+
+Every plugin can ship a structured manifest that describes its identity,
+capabilities, and compatibility.  MikiUI reads manifests at discovery time and
+validates them before the plugin is loaded.
+
+### Manifest sources (checked in order)
+
+1. **Module-level dict** — ``PLUGIN_MANIFEST`` in the plugin module.
+2. **`plugin.json` file** — next to the plugin module.
+3. **Module attributes** — ``__name__``, ``__version__``, ``__doc__`` as fallback.
+
+### Manifest schema
+
+```python
+from mikiui.app.plugin_security import PluginManifest
+
+manifest = PluginManifest(
+    name="my-plugin",             # unique identifier, must match plugin.name
+    version="1.0.0",              # semver
+    description="...",            # human-readable
+    author="...",                 # maintainer
+    license="MIT",                # SPDX identifier
+    min_mikiui_version="0.1.0",   # minimum MikiUI version required
+    dependencies=[],              # other plugin names this plugin requires
+    capabilities=[],              # e.g. ["filesystem:read", "network:outbound"]
+    homepage="...",               # optional URL
+    repository="...",             # optional source URL
+    source="builtin",             # "builtin" | "local" | "entry_point" | "marketplace"
+    checksum="...",               # optional SHA-256 for integrity verification
+)
+```
+
+### `plugin.json` example
+
+```json
+{
+  "name": "chart-widget",
+  "version": "2.1.0",
+  "description": "Reactive chart widget",
+  "author": "MikiUI Labs",
+  "license": "MIT",
+  "min_mikiui_version": "0.2.0",
+  "dependencies": ["data-grid"],
+  "capabilities": ["ui:render"],
+  "source": "marketplace"
+}
+```
+
+---
+
+## Security & Sandboxing
+
+MikiUI enforces a **security-first** plugin policy.  All plugins are validated
+before registration, and the app can enforce a configurable allow/deny policy.
+
+### Security policy
+
+Configure the app's policy via ``PluginSecurityConfig``:
+
+```python
+from mikiui.app import MikiApp, PluginSecurityConfig
+
+config = PluginSecurityConfig(
+    allow_untrusted=False,       # only builtin/entry-point plugins allowed
+    vet_ast=True,                # scan source for dangerous patterns
+    blocked_capabilities=[],     # e.g. ["filesystem:write", "network:outbound"]
+    allow_filesystem_write=False,
+    allow_network=True,
+    max_plugin_size_bytes=0,     # 0 = no limit
+)
+
+app = MikiApp(title="Secure App")
+app.set_plugin_security_config(config)
+```
+
+### Auto-load
+
+Discover and register all plugins (built-in + entry points + local dirs) in
+dependency order:
+
+```python
+from mikiui.app.plugin_discovery import auto_load
+
+app = MikiApp()
+registered = auto_load(app, include_builtins=True, include_entry_points=True)
+```
+
+Plugins are registered in topological order based on ``depends_on`` so that
+dependencies are satisfied before dependents.
+
+### Import allowlist
+
+The plugin validator scans all imports (including relative imports) against an
+allowlist. Built-in modules like ``__future__``, ``os``, ``json``, etc. are
+permitted by default. Plugins may also import ``mikiui`` and ``mikiui_app_plugins``.
+Relative imports (e.g. ``from .session import X``) are resolved against the
+plugin's full module path before validation.
+
+### AST vetting
+
+When ``vet_ast=True``, MikiUI parses plugin source code and blocks dangerous
+patterns before the module is executed:
+
+- ``subprocess.run``, ``subprocess.Popen``, ``subprocess.call``
+- ``os.system``, ``os.popen``, ``os.spawn``, ``os.exec``
+- ``shutil.rmtree``
+- ``eval``, ``exec``, ``compile``, ``__import__``
+- ``importlib.import_module``
+- ``socket.socket``
+- ``requests.post``, ``requests.get``
+- ``aiohttp.ClientSession``
+
+### Import allow-list
+
+When ``allowed_imports`` is non-empty, only those top-level module names may be
+imported.  When empty, the default safe list is used (stdlib + ``mikiui`` +
+``mikiui_app_plugins`` + common web deps like ``fastapi``, ``starlette``,
+``pydantic``).
+
+Explicitly blocked imports always raise ``PluginSecurityViolation`` regardless
+of the allow-list.
+
+### Capability tokens
+
+Plugins declare capabilities they require:
+
+```python
+class MyPlugin(Plugin):
+    name = "my-plugin"
+    capabilities = ["filesystem:read", "network:outbound"]
+```
+
+The app's ``blocked_capabilities`` list prevents any plugin from declaring
+forbidden capabilities.
+
+### Validation flow
+
+1. **Discovery time** — ``discover_plugins()`` can reject plugins whose manifest
+   or source violates policy.
+2. **Registration time** — ``app.use()`` calls the validator before
+   ``plugin.register(self)`` so even manually instantiated plugins are checked.
+
+A plugin that fails validation raises ``PluginSecurityViolation`` and is **not
+registered**.
+
+---
+
+## Marketplace
+
+MikiUI includes a pluggable marketplace client for discovering, auditing, and
+installing plugins from remote or local indexes.
+
+### Quick start
+
+```python
+from mikiui.app import (
+    MikiApp,
+    PluginSecurityConfig,
+    DirectoryIndexSource,
+    PluginMarketplace,
+)
+
+config = PluginSecurityConfig(vet_ast=True, allow_untrusted=True)
+source = DirectoryIndexSource("mikiui_plugins")
+market = PluginMarketplace(source, security_config=config)
+
+app = MikiApp(title="My App")
+app.set_plugin_security_config(config)
+
+# Search
+results = market.search("chart")
+for info in results:
+    print(info.name, info.version, info.description)
+
+# Install
+plugin = market.install("chart-widget", app)
+```
+
+### Directory index
+
+``DirectoryIndexSource`` scans a local directory of plugin packages.  Each
+sub-directory should contain a ``plugin.json`` manifest and the plugin module.
+
+```
+mikiui_plugins/
+  chart-widget/
+    plugin.json
+    chart_widget.py
+  auth-plugin/
+    plugin.json
+    auth_plugin.py
+```
+
+### Remote index
+
+``PyPIIndexSource`` wraps a PyPI-like JSON API for remote discovery:
+
+```python
+from mikiui.app import PyPIIndexSource
+
+source = PyPIIndexSource("https://pypi.org/pypi")
+market = PluginMarketplace(source)
+```
+
+### Custom backends
+
+Implement ``MarketplaceSource`` to plug in any index backend:
+
+```python
+from mikiui.app.marketplace import MarketplaceSource, PluginInfo
+from pathlib import Path
+
+class MySource(MarketplaceSource):
+    def search(self, query: str) -> list[PluginInfo]: ...
+    def fetch(self, name: str, dest: Path) -> Path: ...
+    def list_all(self) -> list[PluginInfo]: ...
+```
+
+### Security in the marketplace
+
+Every plugin downloaded from a marketplace is validated through
+``PluginValidator`` before it is loaded.  The app's security policy
+(``allow_untrusted``, ``vet_ast``, ``blocked_capabilities``) applies.
+
+```python
+# Reject plugins that fail validation
+try:
+    plugin = market.install("unknown-plugin", app)
+except PluginSecurityViolation as e:
+    print(f"Plugin rejected: {e}")
+```
+
+### Bulk install
+
+```python
+installed = market.install_all(app)
+print(f"Installed {len(installed)} plugins")
+```
+
+---
+
 ## Distribution and Discovery
 
 ### Package Structure
@@ -326,6 +568,40 @@ app.use(plugin)
 Plugins run in the same process as your application. Only install plugins
 from trusted sources.
 
+### Validation
+
+MikiUI validates every plugin before registration:
+
+1. **Manifest check** — name, version, and capabilities are verified.
+2. **AST vetting** — source code is scanned for dangerous patterns
+   (``subprocess``, ``eval``, ``os.system``, etc.).
+3. **Import scanning** — only allow-listed modules may be imported.
+
+Plugins that fail validation raise ``PluginSecurityViolation`` and are not
+registered.
+
+### Configuring the security policy
+
+```python
+from mikiui.app import MikiApp, PluginSecurityConfig
+
+app = MikiApp()
+app.set_plugin_security_config(
+    PluginSecurityConfig(
+        vet_ast=True,
+        blocked_capabilities=["filesystem:write"],
+        allow_untrusted=False,
+    )
+)
+```
+
+### Sandboxing
+
+MikiUI does not currently execute plugins in a separate OS-level sandbox.
+Plugins share the full Python runtime.  The AST vetter and import allow-list
+provide **static** sandboxing; for stronger isolation, run untrusted plugins
+in a separate process or container.
+
 ### Input Validation
 
 Validate all external input in `on_request` and `on_render`:
@@ -349,11 +625,6 @@ import functools
 def expensive_lookup(key):
     return compute(key)
 ```
-
-### Sandboxing (Future)
-
-MikiUI plans to support sandboxed plugin execution (see PRD). For now,
-plugins share the full Python runtime.
 
 ### Async Hooks
 

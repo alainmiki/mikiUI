@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import html as _html
 import logging
+import os
 from collections.abc import Callable
 from typing import Any
 
+from ..app.plugin_security import PluginSecurityConfig, PluginValidator
 from ..app.static_assets import register_plugin_assets
 from ..engine.dom import normalize
+from ..router.group import RouteGroup, RouteGroupBuilder
 from ..themes import Theme
 from .plugins import Plugin
 from .routes import RouteDef, invoke_route
@@ -61,17 +64,21 @@ class MikiApp:
         from ..themes import get_theme, list_themes
 
         class _GlobalThemeProxy:
-            def get(self, name: str):
+            def get(self, name: str) -> Theme | None:
                 return get_theme(name)
 
-            def list_all(self):
+            def list_all(self) -> list[str]:
                 return list_themes()
 
-        self.theme_registry: ThemeRegistry = ThemeRegistry(parent_registry=_GlobalThemeProxy())
+        self.theme_registry: ThemeRegistry = ThemeRegistry(parent_registry=_GlobalThemeProxy())  # type: ignore[arg-type]
         self._backend_routes: list[dict[str, Any]] = []
         self._middleware_classes: list[type] = []
         self._route_groups: dict[str, RouteGroup] = {}
         self._auth_strategies: dict[str, Any] = {}
+
+        # Plugin security policy
+        self._plugin_security_config: PluginSecurityConfig = PluginSecurityConfig()
+        self._plugin_validator: PluginValidator = PluginValidator(self._plugin_security_config)
 
         # Initialize theme registry with builtin themes
         from ..themes import get_theme as _get_theme
@@ -203,7 +210,7 @@ class MikiApp:
         router.mount(self)
         return self
 
-    def route_group(self, prefix: str) -> "RouteGroupBuilder":
+    def route_group(self, prefix: str) -> RouteGroupBuilder:
         """Create a route group with shared prefix, auth, and middleware.
 
         Example::
@@ -244,6 +251,7 @@ class MikiApp:
             available = ", ".join(self.theme_registry.list_all())
             raise ValueError(f"Unknown theme: {name!r}. Available: {available}")
         self.theme = name
+        self.theme_registry.set_active(name)
         return self
 
     def set_favicon(
@@ -376,17 +384,28 @@ class MikiApp:
         config:
             Optional configuration dict passed to ``plugin.configure()``.
         """
-        missing = [d for d in plugin.depends_on if not any(p.name == d for p in self.plugins)]
+        missing = [
+            d
+            for d in getattr(plugin, "depends_on", [])
+            if not any(p.name == d for p in self.plugins)
+        ]
         if missing:
             raise RuntimeError(
                 f"Plugin {plugin.name!r} depends on {missing!r}, "
                 "but those plugins are not registered yet. "
                 "Register dependencies before registering this plugin."
             )
+        # Security-first: validate the plugin before it touches the app.
+        self._plugin_validator.validate_plugin(
+            plugin,
+            manifest=getattr(plugin, "manifest", None),
+            source_code=self._resolve_plugin_source(plugin),
+        )
         if config:
             plugin.configure(config)
         self.plugins.append(plugin)
-        plugin.register(self)
+        if hasattr(plugin, "register"):
+            plugin.register(self)
         # Collect backend routes and middleware from plugins
         if hasattr(plugin, "backend_routes"):
             self._backend_routes.extend(plugin.backend_routes())
@@ -402,30 +421,76 @@ class MikiApp:
                 logger.exception("Plugin %r assets() failed; skipping.", plugin.name)
         return self
 
+    def _resolve_plugin_source(self, plugin: Plugin) -> str | None:
+        """Try to read the plugin's source code for AST vetting."""
+        module = getattr(plugin, "__module__", None)
+        if not module:
+            return None
+        module_path = module.replace(".", os.sep) + ".py"
+        candidates = [
+            module_path,
+            os.path.join("mikiui_app_plugins", module_path),
+        ]
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                try:
+                    with open(candidate, encoding="utf-8") as fh:
+                        return fh.read()
+                except OSError:
+                    continue
+        return None
+
+    def set_plugin_security_config(self, config: PluginSecurityConfig) -> MikiApp:
+        """Replace the app's plugin security policy.
+
+        Example::
+
+            app.set_plugin_security_config(
+                PluginSecurityConfig(
+                    allow_untrusted=False,
+                    vet_ast=True,
+                    blocked_capabilities=["filesystem:write"],
+                )
+            )
+        """
+        self._plugin_security_config = config
+        self._plugin_validator = PluginValidator(config)
+        return self
+
+    def get_plugin_security_config(self) -> PluginSecurityConfig:
+        """Return the current plugin security policy."""
+        return self._plugin_security_config
+
     # -- backend integration ---------------------------------------------------
     def get_backend_routes(self) -> list[dict[str, Any]]:
-        """Return all backend route definitions from plugins."""
-        routes = list(self._backend_routes)
-        for plugin in self.plugins:
-            if hasattr(plugin, "backend_routes"):
-                routes.extend(plugin.backend_routes())
-        return routes
+        """Return all backend route definitions from plugins.
+
+        Routes are collected once at :meth:`use` time and cached in
+        ``self._backend_routes``.  Plugins that need to add routes after
+        registration should append to that list directly rather than
+        returning them from :meth:`Plugin.backend_routes`.
+        """
+        return list(self._backend_routes)
 
     def get_middleware_classes(self) -> list[type]:
-        """Return all middleware classes from plugins."""
-        classes = list(self._middleware_classes)
-        for plugin in self.plugins:
-            if hasattr(plugin, "middleware_classes"):
-                classes.extend(plugin.middleware_classes())
-        return classes
+        """Return all middleware classes from plugins.
+
+        Middleware classes are cached at :meth:`use` time (see
+        ``self._middleware_classes``).  Plugins that register middleware
+        after being loaded should append to that list directly.
+        """
+        return list(self._middleware_classes)
 
     def get_plugin_assets(self) -> list[str]:
-        """Return all static assets from plugins."""
-        assets = []
-        for plugin in self.plugins:
-            if hasattr(plugin, "assets"):
-                assets.extend(plugin.assets())
-        return assets
+        """Return all static assets from plugins.
+
+        Assets are collected once at :meth:`use` time via
+        :func:`register_plugin_assets`.  This method returns the deduplicated
+        mount list from the static-assets registry for backward compatibility.
+        """
+        from ..app.static_assets import get_asset_mounts
+
+        return list(get_asset_mounts().values())
 
     # -- invocation ------------------------------------------------------------
     async def invoke(self, route: RouteDef, request: Any = None, path_params: dict[str, Any] | None = None) -> tuple[list[Any], Any]:

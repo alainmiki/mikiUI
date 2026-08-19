@@ -48,7 +48,7 @@ from mikiui.widgets import (
 from mikiui.widgets.layout_widgets import Sidebar
 
 app = MikiApp(title="MikiUI Demo App 1.  ")
-app.set_theme("dark")
+app.set_theme("dracula")
 # app.set_style_framework("tailwind")
 
 @app.route("/")

@@ -24,9 +24,19 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
+import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from .plugin_security import (
+    PluginManifest,
+    PluginSecurityConfig,
+    PluginSecurityViolation,
+    PluginValidator,
+    load_manifest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +88,7 @@ def _get_module_metadata(module: Any) -> PluginMetadata:
             try:
                 from mikiui.app.plugins import Plugin as _BasePlugin
 
-                if issubclass(attr, _BasePlugin):
+                if issubclass(attr, _BasePlugin) and attr.__module__ == module.__name__:
                     metadata.class_name = attr_name
                     metadata.name = getattr(attr, "name", attr_name)
                     metadata.dependencies = list(getattr(attr, "depends_on", []))
@@ -86,6 +96,84 @@ def _get_module_metadata(module: Any) -> PluginMetadata:
             except ImportError:
                 pass
     return metadata
+
+
+def _module_relpath(base: Path, filepath: Path) -> str:
+    """Return the dotted package-relative module path for *filepath* under *base*.
+
+    Example: ``base=.../mikiui_app_plugins``, ``filepath=.../mikiui_app_plugins/notifications.py``
+    -> ``"notifications"``.  For a nested module ``.../mikiui_app_plugins/sub/mod.py``
+    -> ``"sub.mod"``.
+    """
+    rel = filepath.relative_to(base)
+    parts = list(rel.parts)
+    if parts[-1] == "__init__.py":
+        parts = parts[:-1]
+    else:
+        parts[-1] = parts[-1][:-3]  # strip .py
+    return ".".join(parts)
+
+
+def _import_module_rel(base: Path, filepath: Path) -> Any | None:
+    """Import *filepath* (located under *base*) using a package-qualified name.
+
+    The directory *base* is treated as a package root when it contains an
+    ``__init__.py``; otherwise we fall back to loading the file by path while
+    still registering the resulting module in ``sys.modules`` so that
+    ``dataclasses._is_type`` and relative imports inside the module work.
+    """
+    import sys
+
+    is_package = (base / "__init__.py").is_file()
+    if is_package:
+        # Resolve the package's dotted name by walking up package dirs.
+        pkg_parts: list[str] = []
+        cur: Path | None = base
+        while cur is not None and (cur / "__init__.py").is_file():
+            pkg_parts.insert(0, cur.name)
+            parent = cur.parent
+            # Stop at the repo root / first dir without __init__.py
+            if parent is None or not (parent / "__init__.py").is_file():
+                break
+            cur = parent
+        # Verify the top-level package is importable.
+        top_pkg = pkg_parts[0] if pkg_parts else None
+        if top_pkg is None:
+            return None
+        try:
+            importlib.import_module(top_pkg)
+        except Exception:
+            # The package itself isn't importable; fall through to path load.
+            is_package = False
+
+    if is_package:
+        dotted = ".".join(pkg_parts + _module_relpath(base, filepath).split("."))
+        return importlib.import_module(dotted)
+
+    # Fallback for standalone plugin dirs without __init__.py.
+    dotted = _module_relpath(base, filepath)
+    # Sanitize to a valid Python identifier (replace hyphens, etc.).
+    sanitized = re.sub(r"[^a-zA-Z0-9_]", "_", dotted)
+    # Ensure the parent directory is on sys.path so the module's own imports
+    # (e.g. `from mikiui import ...`) resolve from the project root, and so
+    # that a later importlib.import_module(sanitized) can find it.
+    parent = str(filepath.parent)
+    if parent not in sys.path:
+        sys.path.insert(0, parent)
+    try:
+        spec = importlib.util.spec_from_file_location(sanitized, filepath)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[sanitized] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            sys.modules.pop(sanitized, None)
+            raise
+        return module
+    finally:
+        sys.path.remove(parent)
 
 
 def discover_from_directory(directory: str | Path) -> list[PluginMetadata]:
@@ -108,19 +196,18 @@ def discover_from_directory(directory: str | Path) -> list[PluginMetadata]:
     for filepath in sorted(directory.rglob("*.py")):
         if filepath.name.startswith("_") or filepath.name == "__init__.py":
             continue
-        module_name = filepath.stem
-        # Try to import the module
-        spec = importlib.util.spec_from_file_location(module_name, filepath)
-        if spec is None or spec.loader is None:
-            continue
         try:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            metadata = _get_module_metadata(module)
-            metadata.source = f"directory:{directory}"
-            discovered.append(metadata)
+            module = _import_module_rel(directory, filepath)
         except Exception:
-            logger.debug("Failed to load plugin module %s: %s", filepath, exc_info=True)
+            logger.debug(
+                "Failed to load plugin module %s: %s", filepath, exc_info=True
+            )
+            continue
+        if module is None:
+            continue
+        metadata = _get_module_metadata(module)
+        metadata.source = f"directory:{directory}"
+        discovered.append(metadata)
     return discovered
 
 
@@ -194,10 +281,17 @@ def discover_plugins(
         builtin_dir = (
             Path(__file__).resolve().parent.parent.parent / "mikiui_app_plugins"
         )
-        discovered.extend(discover_from_directory(builtin_dir))
+        metas = discover_from_directory(builtin_dir)
+        for meta in metas:
+            meta.source = "builtin"
+        discovered.extend(metas)
 
     for d in (plugin_dirs or []):
-        discovered.extend(discover_from_directory(d))
+        metas = discover_from_directory(d)
+        for meta in metas:
+            if meta.source.startswith("directory:"):
+                meta.source = "directory"
+        discovered.extend(metas)
 
     if include_entry_points:
         discovered.extend(discover_from_entry_points())
@@ -253,12 +347,50 @@ def load_plugin(module_path: str) -> type | None:
     return None
 
 
+def _topological_sort(metas: list[PluginMetadata]) -> list[PluginMetadata]:
+    """Order discovered plugins so each appears after its ``depends_on`` deps.
+
+    Plugins whose dependencies cannot be satisfied are kept (the app's
+    ``use()`` will raise a clear error) but placed last so that any resolvable
+    plugins register first.  This is best-effort: missing deps still surface
+    as a RuntimeError at registration time.
+    """
+    by_name: dict[str, PluginMetadata] = {m.name: m for m in metas}
+    seen: set[str] = set()
+    order: list[PluginMetadata] = []
+    visiting: set[str] = set()
+
+    def visit(meta: PluginMetadata) -> None:
+        if meta.name in seen:
+            return
+        if meta.name in visiting:
+            # Cycle: emit a warning and continue to avoid infinite loop.
+            logger.warning(
+                "Circular plugin dependency detected at %r; registering out of order.",
+                meta.name,
+            )
+            seen.add(meta.name)
+            return
+        visiting.add(meta.name)
+        for dep in meta.dependencies:
+            if dep in by_name:
+                visit(by_name[dep])
+        visiting.discard(meta.name)
+        seen.add(meta.name)
+        order.append(meta)
+
+    for meta in metas:
+        visit(meta)
+    return order
+
+
 def auto_load(
     app: Any,
     *,
     include_builtins: bool = True,
     plugin_dirs: list[str | Path] | None = None,
     include_entry_points: bool = True,
+    security_config: PluginSecurityConfig | None = None,
 ) -> list[Any]:
     """Discover and register plugins on an app.
 
@@ -272,6 +404,10 @@ def auto_load(
         Additional directories to scan.
     include_entry_points:
         If True, include entry point plugins.
+    security_config:
+        Optional security policy.  When omitted the app's own
+        ``_plugin_validator`` is used if available; otherwise the default
+        :class:`PluginSecurityConfig` is applied.
 
     Returns
     -------
@@ -283,21 +419,94 @@ def auto_load(
         plugin_dirs=plugin_dirs,
         include_entry_points=include_entry_points,
     )
+    # Register in dependency order so ``depends_on`` is satisfied.
+    ordered = _topological_sort(discovered)
+
+    # Resolve the validator: prefer the app's own policy unless an explicit
+    # security_config is passed for this auto_load call.
+    if security_config is not None:
+        validator = PluginValidator(security_config)
+    else:
+        validator = getattr(app, "_plugin_validator", None) or PluginValidator()
+
+    # Enforce allow_untrusted: filter out plugins from untrusted sources.
+    if not validator.config.allow_untrusted:
+        trusted_sources = {"builtin", "entry_point"}
+        filtered = []
+        for meta in ordered:
+            if meta.source in trusted_sources:
+                filtered.append(meta)
+            else:
+                logger.warning(
+                    "Plugin %r from untrusted source %r is skipped (allow_untrusted=False).",
+                    meta.name,
+                    meta.source,
+                )
+        ordered = filtered
+
     registered = []
-    for meta in discovered:
-        if meta.class_name:
-            cls = load_plugin(f"{meta.module_path}:{meta.class_name}")
-            if cls:
-                try:
-                    plugin = cls()
-                    app.use(plugin)
-                    registered.append(plugin)
-                except Exception:
-                    logger.debug(
-                        "Failed to instantiate plugin %s.",
-                        meta.name, exc_info=True,
-                    )
+    seen_classes: set[type] = set()
+
+    for meta in ordered:
+        if not meta.class_name:
+            continue
+        cls = load_plugin(f"{meta.module_path}:{meta.class_name}")
+        if cls is None or cls in seen_classes:
+            continue
+        seen_classes.add(cls)
+        try:
+            plugin = cls()
+            # Validate before registering.
+            manifest = _load_manifest_for_class(plugin)
+            source_code = _resolve_source_for_class(plugin)
+            validator.validate_plugin(plugin, manifest=manifest, source_code=source_code)
+            app.use(plugin)
+            registered.append(plugin)
+        except PluginSecurityViolation:
+            logger.warning(
+                "Plugin %r failed security validation; skipping.", meta.name
+            )
+        except Exception:
+            logger.debug(
+                "Failed to instantiate plugin %s.",
+                meta.name,
+                exc_info=True,
+            )
     return registered
+
+
+def _load_manifest_for_class(plugin: Any) -> PluginManifest | None:
+    """Load a manifest for a plugin class, trying module attrs then plugin.json."""
+    module = getattr(plugin, "__module__", None)
+    if not module:
+        return None
+    try:
+        import importlib
+
+        mod = importlib.import_module(module)
+        return load_manifest(mod)
+    except ImportError:
+        return None
+
+
+def _resolve_source_for_class(plugin: Any) -> str | None:
+    """Resolve raw source code for a plugin class by module name."""
+    module = getattr(plugin, "__module__", None)
+    if not module:
+        return None
+    module_path = module.replace(".", os.sep) + ".py"
+    candidates = [
+        module_path,
+        os.path.join("mikiui_app_plugins", module_path),
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            try:
+                with open(candidate, encoding="utf-8") as fh:
+                    return fh.read()
+            except OSError:
+                continue
+    return None
 
 
 __all__ = [

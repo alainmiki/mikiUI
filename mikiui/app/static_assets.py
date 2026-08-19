@@ -107,7 +107,7 @@ def get_asset_url(package_type: str, package_name: str, filename: str) -> str:
     Parameters
     ----------
     package_type:
-        One of ``"components"``, ``"widgets"``, or ``"plugins"``.
+        One of ``"components"``, ``"widgets"``, ``"plugins"``, or ``"themes"``.
     package_name:
         The package/plugin name (e.g. ``"splitview"``).
     filename:
@@ -121,6 +121,8 @@ def get_asset_url(package_type: str, package_name: str, filename: str) -> str:
     """
     safe_pkg = package_name.strip("/")
     safe_file = filename.strip("/")
+    if package_type == "themes":
+        return f"/_miki/runtime/themes/{safe_file}"
     return f"/_miki/{package_type}/{safe_pkg}/static/{safe_file}"
 
 
@@ -201,9 +203,16 @@ def _register_default_roots() -> None:
 
         register_package_root(os.path.join(base_dir, "components"))
         register_package_root(os.path.join(base_dir, "widgets"))
-        register_package_root(os.path.join(base_dir, "plugins"))
         register_package_root(os.path.join(base_dir, "runtime", "themes"))
     except ImportError:
+        pass
+
+    # Also register plugin roots from the workspace-level mikiui_app_plugins
+    try:
+        workspace_plugins = os.path.join(os.getcwd(), "mikiui_app_plugins")
+        if os.path.isdir(workspace_plugins):
+            register_package_root(workspace_plugins)
+    except Exception:
         pass
 
 
@@ -226,8 +235,10 @@ def register_plugin_assets(plugin_name: str, asset_paths: list[str]) -> None:
 
         # Deduplicate by absolute path so the same directory isn't mounted twice
         if abs_path in _PLUGIN_ABS_TO_URL:
-            logger.debug(
-                "Plugin %r asset path already registered: %s", plugin_name, abs_path
+            existing_plugin = _PLUGIN_MOUNTS.get(_PLUGIN_ABS_TO_URL[abs_path], "").split("/_miki/plugins/")[-1].split("/")[0] if _PLUGIN_ABS_TO_URL.get(abs_path) else ""
+            logger.warning(
+                "Plugin %r asset path %s collides with previously registered path from plugin %r. Skipping.",
+                plugin_name, abs_path, existing_plugin
             )
             continue
 
@@ -251,3 +262,28 @@ __all__ = [
     "init_defaults",
     "register_plugin_assets",
 ]
+
+
+def get_versioned_asset_url(package_type: str, package_name: str, filename: str, manifest: dict[str, Any] | None = None) -> str:
+    """Return a cache-busted asset URL if a manifest is provided.
+
+    Parameters
+    ----------
+    package_type, package_name, filename:
+        Same as :func:`get_asset_url`.
+    manifest:
+        Optional manifest dict mapping logical names to hashed paths.
+
+    Returns
+    -------
+    str
+        Versioned URL if found in manifest, otherwise the standard URL.
+    """
+    url = get_asset_url(package_type, package_name, filename)
+    if not manifest:
+        return url
+    key = f"{package_type}/{package_name}/{filename}"
+    entry = manifest.get("files", {}).get(key)
+    if entry and "path" in entry:
+        return f"/{entry['path'].lstrip('/')}"
+    return url

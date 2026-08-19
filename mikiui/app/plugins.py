@@ -20,9 +20,12 @@ plugins should be installed.  See ``context/PRD.md`` for sandboxing guidance.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..themes import Theme
+
+if TYPE_CHECKING:
+    from ..app.plugin_security import PluginManifest
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +50,22 @@ class Plugin:
     ``depends_on`` to control ordering: a plugin's ``depends_on`` list names
     other plugins that must run before it.  Missing dependencies raise
     ``RuntimeError`` at registration time.
+
+    Security attributes:
+
+    * :attr:`capabilities` — list of capability tokens this plugin requires
+      (e.g. ``["filesystem:read", "network:outbound"]``).  The framework
+      checks these against the app's security policy before registration.
+    * :attr:`manifest` — optional :class:`~mikiui.app.plugin_security.PluginManifest`
+      describing the plugin.  When absent the framework builds one from
+      module attributes.
     """
 
     name: str = "plugin"
     depends_on: list[str] = []
     _config: dict[str, Any] | None = None
+    capabilities: list[str] = []
+    manifest: PluginManifest | None = None
 
     def configure(self, config: dict[str, Any]) -> None:
         """Optional configuration hook.

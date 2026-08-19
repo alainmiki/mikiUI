@@ -53,11 +53,15 @@ class Tr(Component):
 
 
 class Th(Component):
-    """A styled ``<th>`` element."""
+    """A styled ``<th>`` element.
+
+    ``scope`` defaults to ``"col"`` for screen-reader table navigation.
+    """
 
     tag = "th"
 
-    def __init__(self, *children: Any, **attrs: Any) -> None:
+    def __init__(self, *children: Any, scope: str = "col", **attrs: Any) -> None:
+        attrs.setdefault("scope", scope)
         attrs.setdefault("class_", "miki-th")
         super().__init__(*children, **attrs)
 

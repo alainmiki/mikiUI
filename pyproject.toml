@@ -45,7 +45,7 @@ build-backend = "setuptools.build_meta"
 include = ["mikiui*", "mikiui_app_plugins*"]
 
 [tool.setuptools.package-data]
-mikiui = ["runtime/*.js", "runtime/*.css"]
+mikiui = ["runtime/**/*.js", "runtime/**/*.css", "runtime/themes/**/*.css", "runtime/**/*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

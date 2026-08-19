@@ -22,8 +22,6 @@ class Component(Element):
     tag = "div"
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
-        # Preserve a per-instance tag even if a subclass overrode it dynamically.
-        self.tag = self.__class__.tag
         super().__init__(*children, **attrs)
 
     @classmethod

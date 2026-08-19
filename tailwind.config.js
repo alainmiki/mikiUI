@@ -5,7 +5,7 @@ module.exports = {
     "mikiui/runtime/themes/*.css",
     "mikiui/components/**/*.py",
     "mikiui/widgets/**/*.py",
-    "mikiui/build/tailwind/**/*.py"
+    "mikiui/build/tailwind/*.py", "mikiui/build/tailwind/**/*.py"
   ],
   "theme": {
     "extend": {}

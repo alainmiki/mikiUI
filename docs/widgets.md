@@ -629,17 +629,20 @@ LCDNumber(value=42, digits=6)
 
 ### Chart
 
-A chart widget (line, bar, pie).
+A chart component for inline SVG line, bar, or pie charts.
 
 ```python
 from mikiui.components import Chart
 
 Chart(
-    type="line",
-    data=[10, 20, 15, 25, 30],
-    labels=["Mon", "Tue", "Wed", "Thu", "Fri"],
+    series=[10, 20, 15, 25, 30],
+    kind="line",           # "line" | "bar" | "pie" (default: "bar")
+    width=320,
+    height=160,
 )
 ```
+
+Internally uses `RawHtml` to render SVG elements without HTML escaping.
 
 ---
 
@@ -695,7 +698,7 @@ DockablePanel("Properties", Div("Property values"), closable=True, floatable=Tru
 
 ### SplitView
 
-A resizable split view with two panes.
+A resizable split view with two panes (widget-level layout component).
 
 ```python
 from mikiui.widgets import SplitView
@@ -706,6 +709,11 @@ SplitView(
     is_horizontal=True,
 )
 ```
+
+**Note:** The `EditorArea` component (`mikiui.components`) is a separate VS Code-like
+multi-tab editor with `EditorGroup` and `EditorTab` companions. It was previously
+named `SplitView` in `components/splitview/` but was renamed to resolve a
+name collision with this layout widget.
 
 ---
 

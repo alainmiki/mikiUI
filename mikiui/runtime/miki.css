@@ -20,34 +20,27 @@
   --miki-muted: #64748b;
   --miki-text-muted: #64748b;
 }
+
+@layer base, components, utilities;
 @import url("./miki_components.css");
 @import url("./miki_utilities.css");
 
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: var(--miki-bg);
-  color: var(--miki-fg);
-  line-height: 1.5;
-  transition: background var(--miki-transition, 0.15s ease), color var(--miki-transition, 0.15s ease);
+@layer base {
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--miki-bg); color: var(--miki-fg); line-height: 1.5; transition: background var(--miki-transition, 0.15s ease), color var(--miki-transition, 0.15s ease); }
+  main, .miki-container { max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 1rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.1rem; }
+  h5 { font-size: 1rem; }
+  h6 { font-size: 0.875rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--miki-accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 }
 
-main, .miki-container { max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem; }
-
-h1 { font-size: 1.9rem; margin: 0 0 1rem; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.25rem; }
-h4 { font-size: 1.1rem; }
-h5 { font-size: 1rem; }
-h6 { font-size: 0.875rem; }
-p { margin: 0 0 1rem; }
-
-a { color: var(--miki-accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-/* ---- Buttons ---- */
+@layer components {
 button, .miki-btn {
   font: inherit;
   padding: 0.5rem 0.9rem;
@@ -215,7 +208,8 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 /* ---- Calendar ---- */
 .miki-calendar { max-width: 320px; }
 .miki-calendar table { max-width: 320px; }
-tr { display: table-row; }
+/* removed global tr reset */
+
 
 /* ---- FilePicker ---- */
 .miki-filepicker { display: flex; align-items: center; gap: 0.5rem; }
@@ -676,41 +670,7 @@ tr { display: table-row; }
   padding: 0.75rem;
 }
 
-/* ---- Collapsible Panel ---- */
-  margin: 0;
-}
-.miki-dock-toggle {
-  cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--miki-text-muted);
-  background: none;
-  border: none;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.miki-dock-toggle:hover {
-  color: var(--miki-accent);
-}
-.miki-dock-handle {
-  cursor: move;
-  color: var(--miki-text-muted);
-  font-family: monospace;
-  font-size: 1rem;
-  opacity: 0.6;
-}
-.miki-dock-handle:hover {
-  opacity: 1;
-  color: var(--miki-accent);
-}
-.miki-dock-body {
-  flex: 1;
-  overflow: auto;
-  padding: 0.75rem;
-}
+
 
 /* ---- ProgressDialog ---- */
 .miki-progressdialog {
@@ -1065,6 +1025,7 @@ nav {
     flex-direction: row;
     font-size: 6px;
   }
+}
 
 @media (max-width: 640px) {
   .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {

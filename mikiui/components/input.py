@@ -64,6 +64,10 @@ class Input(Component):
             attrs["aria-busy"] = "true"
         if disabled:
             attrs["aria-disabled"] = "true"
+        if attrs.get("required") and "aria-required" not in attrs:
+            attrs["aria-required"] = "true"
+        if state == "invalid" and "aria-invalid" not in attrs:
+            attrs["aria-invalid"] = "true"
 
         super().__init__(*children, **attrs)
 
@@ -150,7 +154,7 @@ class Textarea(Component):
         resize = attrs.pop("resize", "both")
         auto_expand = attrs.pop("auto_expand", False)
 
-        attrs.setdefault("class", "miki-textarea")
+        attrs.setdefault("class_", "miki-textarea")
         attrs.setdefault("rows", 4)
 
         resize_classes = {
@@ -163,6 +167,11 @@ class Textarea(Component):
 
         if auto_expand:
             attrs["x_bind:style.height"] = "'auto'; this.scrollHeight + 'px'"
+
+        if attrs.get("required") and "aria-required" not in attrs:
+            attrs["aria-required"] = "true"
+        if attrs.get("state") == "invalid" and "aria-invalid" not in attrs:
+            attrs["aria-invalid"] = "true"
 
         super().__init__(*children, **attrs)
 
@@ -186,10 +195,13 @@ class Checkbox(Input):
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("type", "checkbox")
-        attrs.setdefault("class", "miki-checkbox-input")
+        attrs.setdefault("class_", "miki-checkbox-input")
 
         label = children[0] if children else ""
-        super().__init__(label, **attrs)
+        if label:
+            super().__init__(label, **attrs)
+        else:
+            super().__init__(**attrs)
 
     @classmethod
     def toggle(cls, *children: Any, **attrs: Any) -> Any:
@@ -235,10 +247,13 @@ class Radio(Input):
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("type", "radio")
-        attrs.setdefault("class", "miki-radio-input")
+        attrs.setdefault("class_", "miki-radio-input")
 
         label = children[0] if children else ""
-        super().__init__(label, **attrs)
+        if label:
+            super().__init__(label, **attrs)
+        else:
+            super().__init__(**attrs)
 
     @classmethod
     def group(
@@ -305,10 +320,13 @@ class Slider(Input):
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("type", "range")
-        attrs.setdefault("class", "miki-slider miki-slider-input")
+        attrs.setdefault("class_", "miki-slider miki-slider-input")
 
         label = children[0] if children else ""
-        super().__init__(label, **attrs)
+        if label:
+            super().__init__(label, **attrs)
+        else:
+            super().__init__(**attrs)
 
     @classmethod
     def named(
@@ -372,7 +390,7 @@ class Switch(Input):
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("type", "checkbox")
-        attrs.setdefault("class", "miki-switch-input")
+        attrs.setdefault("class_", "miki-switch-input")
 
         super().__init__(*children, **attrs)
 
@@ -439,11 +457,14 @@ class Select(Component):
     def __init__(self, *options: Any, **attrs: Any) -> None:
         name = attrs.pop("name", "")
         searchable = attrs.pop("searchable", False)
-        attrs.pop("multiple", False)  # consumed to prevent it from reaching <select>
+        multiple = attrs.pop("multiple", False)
 
         user_classes = attrs.pop("class_", "")
         attrs["class_"] = f"miki-select {user_classes}".strip()
         attrs.setdefault("name", name)
+
+        if multiple:
+            attrs["multiple"] = True
 
         if searchable:
             attrs["data-miki-searchable"] = "true"
@@ -492,7 +513,7 @@ class Upload(Component):
         label: str = "Upload",
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-upload")
+        attrs.setdefault("class_", "miki-upload")
 
         input_id = f"miki-upload-{name}"
 

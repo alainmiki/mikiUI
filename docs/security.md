@@ -382,6 +382,78 @@ Use this checklist when deploying a MikiUI app:
 
 ---
 
+## 11. Plugin Security
+
+MikiUI validates every plugin before it is loaded or registered.  The framework
+enforces a configurable security policy at both discovery and registration time.
+
+### PluginValidator
+
+``PluginValidator`` runs three checks:
+
+1. **Identity check** — plugin name is non-empty and matches its manifest.
+2. **Capability check** — declared capabilities are not in the blocked list.
+3. **AST vetting** — source code is parsed and scanned for dangerous patterns
+   (``subprocess``, ``eval``, ``os.system``, ``shutil.rmtree``, etc.).
+4. **Import scanning** — only allow-listed top-level modules may be imported.
+
+### PluginSecurityConfig
+
+```python
+from mikiui.app import PluginSecurityConfig
+
+config = PluginSecurityConfig(
+    allow_untrusted=False,         # only builtin/entry-point plugins
+    allowed_imports=[],            # empty = default safe list (stdlib + mikiui)
+    blocked_imports=["subprocess"], # always blocked, even if in allowed_imports
+    blocked_capabilities=["filesystem:write"],
+    allow_filesystem_write=False,
+    allow_network=True,
+    vet_ast=True,                  # enable AST scanning
+    max_plugin_size_bytes=0,       # 0 = no limit
+)
+```
+
+### Default safe imports
+
+When ``allowed_imports`` is empty, the following top-level modules are allowed:
+
+- Python stdlib (``os``, ``json``, ``logging``, etc.)
+- ``mikiui`` and ``mikiui_app_plugins``
+- Common web/plugin deps: ``fastapi``, ``starlette``, ``pydantic``, ``uvicorn``,
+  ``aiofiles``, ``jinja2``, ``yaml``, ``toml``, ``dotenv``
+
+### Built-in plugin modules
+
+The built-in plugin modules ``session``, ``notifications``, ``api``, and
+``demo`` are always allowed in the safe list.
+
+### Applying the policy
+
+```python
+from mikiui.app import MikiApp, PluginSecurityConfig
+
+app = MikiApp(title="Secure App")
+app.set_plugin_security_config(config)
+```
+
+The policy is automatically applied to:
+- ``app.use(plugin)`` — manual registration
+- ``auto_load(app)`` — automatic discovery and registration
+
+### Violations
+
+A plugin that fails validation raises ``PluginSecurityViolation`` and is **not
+registered**.  The exception is logged at warning level during ``auto_load``
+so that a single bad plugin does not break the whole app.
+
+### Plugin manifest
+
+Plugins can declare a structured manifest for identity and capability
+declarations.  See ``docs/plugins.md`` for the manifest schema.
+
+---
+
 ## 11. Reporting Security Issues
 
 If you find a security vulnerability, please report it privately to

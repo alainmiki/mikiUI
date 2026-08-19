@@ -24,7 +24,7 @@ class LoginForm(Component):
     def __init__(
         self, action: str = "/login", signup_url: str = "/signup", **attrs: Any
     ) -> None:
-        attrs.setdefault("class", "miki-loginform")
+        attrs.setdefault("class_", "miki-loginform")
         attrs.setdefault("method", "post")
         attrs.setdefault("action", action)
         attrs.setdefault("hx_post", action)
@@ -71,7 +71,7 @@ class SignupForm(Component):
     def __init__(
         self, action: str = "/signup", login_url: str = "/login", **attrs: Any
     ) -> None:
-        attrs.setdefault("class", "miki-signupform")
+        attrs.setdefault("class_", "miki-signupform")
         attrs.setdefault("method", "post")
         attrs.setdefault("action", action)
         attrs.setdefault("hx_post", action)

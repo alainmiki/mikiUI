@@ -1,4 +1,4 @@
-"""VS Code-like SplitView editor area component.
+"""VS Code-like editor area component (``EditorArea``).
 
 A recursive grid-based editor area with multiple resizable groups, each
 containing a tab bar and content panels. Supports drag-and-drop between
@@ -29,9 +29,9 @@ component falls back to inline embedding automatically.
 
 Example
 -------
->>> from mikiui.components import SplitView, EditorGroup, EditorTab
+>>> from mikiui.components import EditorArea, EditorGroup, EditorTab
 >>>
->>> SplitView(
+>>> EditorArea(
 ...     EditorGroup(
 ...         [EditorTab("main.py", "print('hello')"), EditorTab("readme.md", "# README")],
 ...         active=0,
@@ -52,8 +52,6 @@ from typing import Any
 from ..base import Component
 from ..button import Button
 from ..html import Div, Section, Span
-
-
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _STATIC_DIR = os.path.join(_THIS_DIR, "static")
 _CSS_PATH = os.path.join(_STATIC_DIR, "splitview.css")
@@ -231,7 +229,7 @@ class EditorGroup(Component):
         super().__init__(tabbar, content_container, **attrs)
 
 
-class SplitView(Component):
+class EditorArea(Component):
     """VS Code-like editor area with multiple resizable groups.
 
     Arranges editor groups in a recursive grid layout. Each group has its own
@@ -281,14 +279,14 @@ class SplitView(Component):
             raise ValueError("SplitView requires 1, 2, or 4 children")
 
         if len(groups) == 4:
-            top_row = SplitView(
+            top_row = EditorArea(
                 groups[0],
                 groups[1],
                 orientation="horizontal",
                 min_size=min_size,
                 separator_width=separator_width,
             )
-            bottom_row = SplitView(
+            bottom_row = EditorArea(
                 groups[2],
                 groups[3],
                 orientation="horizontal",
@@ -344,7 +342,7 @@ class SplitView(Component):
                 )
             )
         else:
-            from ..html import Style, Script
+            from ..html import Script, Style
 
             if css_content:
                 asset_children.append(Style(css_content, id="miki-splitview-css"))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from ..engine.dom import RawHtml
 from .base import Component
 from .html import Div, Svg
 
@@ -28,6 +29,7 @@ class Chart(Component):
         **attrs: Any,
     ) -> None:
         attrs.setdefault("role", "img")
+        attrs.setdefault("aria-label", "Chart")
         user_class = attrs.pop("class_", "")
         attrs["class_"] = f"miki-chart {user_class}".strip()
         if not series:
@@ -51,8 +53,10 @@ class Chart(Component):
         for i, v in enumerate(series):
             x = gap + i * (bw + gap)
             bh = (v / maxv) * (h - 10)
-            rects.append(f'<rect x="{x:.1f}" y="{h - bh:.1f}" width="{bw:.1f}" height="{bh:.1f}" class="miki-chart-bar"></rect>')
-        return Svg("".join(rects), viewBox=f"0 0 {w} {h}", width=w, height=h)
+            rects.append(RawHtml(
+                f'<rect x="{x:.1f}" y="{h - bh:.1f}" width="{bw:.1f}" height="{bh:.1f}" class="miki-chart-bar"></rect>'
+            ))
+        return Svg(*rects, viewBox=f"0 0 {w} {h}", width=w, height=h)
 
     @staticmethod
     def _line(series: list[float], w: int, h: int) -> Svg:
@@ -64,7 +68,10 @@ class Chart(Component):
             y = h - (v / maxv) * (h - 10)
             pts.append(f"{x:.1f},{y:.1f}")
         return Svg(
-            f'<polyline points="{" ".join(pts)}" fill="none" stroke="currentColor" class="miki-chart-line"></polyline>',
+            RawHtml(
+                '<polyline points="' + " ".join(pts) + '" '
+                'fill="none" stroke="currentColor" class="miki-chart-line"></polyline>'
+            ),
             viewBox=f"0 0 {w} {h}",
             width=w,
             height=h,
@@ -85,7 +92,11 @@ class Chart(Component):
             y2 = cy + r * math.sin(math.radians(a2))
             large = 1 if frac > 0.5 else 0
             paths.append(
-                f'<path d="M{cx:.1f},{cy:.1f} L{x1:.1f},{y1:.1f} A{r:.1f},{r:.1f} 0 {large} 1 {x2:.1f},{y2:.1f} Z" class="miki-chart-slice"></path>'
+                RawHtml(
+                    f'<path d="M{cx:.1f},{cy:.1f} L{x1:.1f},{y1:.1f} '
+                    f'A{r:.1f},{r:.1f} 0 {large} 1 {x2:.1f},{y2:.1f} Z" '
+                    'class="miki-chart-slice"></path>'
+                )
             )
             angle = a2
-        return Svg("".join(paths), viewBox=f"0 0 {w} {h}", width=w, height=h)
+        return Svg(*paths, viewBox=f"0 0 {w} {h}", width=w, height=h)

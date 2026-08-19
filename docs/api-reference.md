@@ -109,7 +109,67 @@ app.add_head_script("/static/app.js", type="module")
 
 ```python
 app.use(MyPlugin())             # register a plugin
+app.set_plugin_security_config(config)  # set security policy
+app.get_plugin_security_config()        # get current policy
 ```
+
+### Plugin Security API
+
+```python
+from mikiui.app import (
+    PluginSecurityConfig,
+    PluginSecurityViolation,
+    PluginValidator,
+    validate_plugin,
+    load_manifest,
+)
+
+# Configure security policy
+config = PluginSecurityConfig(
+    allow_untrusted=False,      # only builtin/entry-point plugins
+    allowed_imports=[],         # empty = default safe list
+    blocked_imports=["subprocess"],  # always blocked
+    blocked_capabilities=["filesystem:write"],
+    allow_filesystem_write=False,
+    allow_network=True,
+    vet_ast=True,               # scan source for dangerous patterns
+    max_plugin_size_bytes=0,    # 0 = no limit
+)
+
+app.set_plugin_security_config(config)
+
+# Manual validation
+validate_plugin(plugin, config=config)
+
+# Load manifest from module
+manifest = load_manifest(module)
+```
+
+### Plugin Manifest Schema
+
+```python
+from mikiui.app.plugin_security import PluginManifest
+
+manifest = PluginManifest(
+    name="my-plugin",
+    version="1.0.0",
+    description="...",
+    author="...",
+    license="MIT",
+    min_mikiui_version="0.1.0",
+    dependencies=[],
+    capabilities=["ui:render"],
+    homepage="...",
+    repository="...",
+    source="builtin",  # "builtin" | "local" | "entry_point" | "marketplace"
+    checksum="...",
+)
+```
+
+Plugins can expose their manifest as:
+1. Module-level `PLUGIN_MANIFEST` dict
+2. `plugin.json` next to the module file
+3. Module attributes (`__name__`, `__version__`, `__doc__`) as fallback
 
 ### Running
 
@@ -263,6 +323,33 @@ dark_mod = "my_package.plugin:DarkModPlugin"
 
 Install with `pip install my-package` and the plugin is available.
 
+### Marketplace API
+
+```python
+from mikiui.app import (
+    DirectoryIndexSource,
+    PyPIIndexSource,
+    PluginMarketplace,
+    PluginSecurityConfig,
+)
+
+# Local directory index
+source = DirectoryIndexSource("mikiui_plugins")
+market = PluginMarketplace(source)
+
+# Search
+results = market.search("chart")
+for info in results:
+    print(info.name, info.version, info.description)
+
+# Install
+app.set_plugin_security_config(PluginSecurityConfig(allow_untrusted=True))
+plugin = market.install("chart-widget", app)
+
+# Bulk install
+installed = market.install_all(app)
+```
+
 ---
 
 ## Router
@@ -343,14 +430,15 @@ from mikiui.components import (
     # Structure
     Html, Head, Body, Div, Section, Article, Aside, Header, Footer, Main, Nav,
     # Text
-    H1, H2, H3, H4, H5, H6, P, Span, Br, Hr,
+    H1, H2, H3, H4, H5, H6, Heading, P, Paragraph, Span, Br, Hr,
     # Semantic
-    Blockquote, Pre, Code, Mark, Small, Strong, Em, Abbr, Address,
-    Time, Kbd, Var, Samp, Cite,
+    Blockquote, Pre, Preformatted, Code, Mark, Small, Strong, Em, Emphasis,
+    Abbr, Abbreviation, Address, Time, Kbd, Keyboard, Var, Variable, Samp, Sample, Cite, Citation,
     # Media
-    Img, Video, Audio, Canvas, Svg, Picture, Source, Figure, Figcaption,
+    Img, Image, Video, Audio, Canvas, Svg, SVG, Picture, Source, Figure, Figcaption,
     # Lists
-    Ul, Ol, Li, Dl, Dt, Dd,
+    Ul, Ol, Li, Dl, Dt, Dd, UnorderedList, OrderedList, ListItem,
+    DescriptionList, DescriptionTerm, DescriptionDetail,
     # Forms
     Form, Input, Textarea, Select, Option, Optgroup, Button, Label,
     Fieldset, Legend, Checkbox, Radio, Slider, Switch, Upload,
@@ -359,10 +447,39 @@ from mikiui.components import (
     # Interactive
     Dialog, Modal, Details, Summary, DialogTitle, DialogBody, DialogFooter,
     # Navigation
-    A, Menu, MenuItem, Breadcrumbs,
+    A, Anchor, Menu, MenuItem, Breadcrumbs,
     # Misc
     Link, Meta, Script, Style, Title,
 )
+```
+
+**Catalog aliases:** Short-form names like `P` (`<p>`) and long-form aliases like
+`Paragraph` are both available and point to the same class. This applies to:
+`P`/`Paragraph`, `Img`/`Image`, `A`/`Anchor`, `Pre`/`Preformatted`, `Em`/`Emphasis`,
+`Abbr`/`Abbreviation`, `Cite`/`Citation`, `Kbd`/`Keyboard`, `Var`/`Variable`,
+`Samp`/`Sample`, `Svg`/`SVG`, `Ul`/`UnorderedList`, `Ol`/`OrderedList`, `Li`/`ListItem`,
+`Dl`/`DescriptionList`, `Dt`/`DescriptionTerm`, `Dd`/`DescriptionDetail`.
+
+### `Heading`
+
+The `Heading` component dynamically selects the HTML tag based on the `level` parameter:
+
+```python
+from mikiui.components import Heading
+
+Heading("Section Title", level=2)  # renders as <h2>Section Title</h2>
+```
+
+### `RawHtml`
+
+A low-level escape hatch for trusted HTML content. Use with caution — the
+caller is responsible for ensuring content is safe. Used internally by
+`Chart` for inline SVG, and by icon components.
+
+```python
+from mikiui import RawHtml
+RawHtml('<rect width="10" height="10" />').to_html()
+# '<rect width="10" height="10" />'
 ```
 
 ### Common Component Signatures
@@ -383,7 +500,12 @@ Button(
 ```
 
 Class methods: `Button.group(*buttons)`, `Button.icon_button(icon, aria_label)`,
+`Button.toggle(icon_on, icon_off, aria_label_on, aria_label_off, *, pressed=True)`,
 `SubmitButton()`, `IconButton(icon, aria_label)`.
+
+The `Button.toggle` class method creates a toggle button with two icon states.
+The `pressed` keyword (default `True`) sets the initial toggle state and is
+reflected in `aria-pressed` and `data-miki-state` for accessibility.
 
 **`Input`**
 
@@ -515,12 +637,18 @@ DataGrid(
 
 ```python
 Chart(
-    type="line",       # line | bar | pie
-    data=[10, 20, 30],
-    labels=["A", "B", "C"],
+    series=[10, 20, 30],    # list of numeric values
+    kind="bar",             # line | bar | pie (default: "bar")
+    width=320,              # SVG viewport width in px
+    height=160,             # SVG viewport height in px
+    class_=None,            # additional CSS classes
     **attrs,
 )
 ```
+
+The SVG content inside `Chart` is rendered using `RawHtml` to prevent HTML escaping.
+If `series` is empty, renders a placeholder `(no data)` message with role `"img"`
+and `aria-label="Chart"` for accessibility.
 
 **`MediaPlayer`**
 
@@ -557,7 +685,7 @@ DockablePanel(
 )
 ```
 
-**`SplitView`**
+**`SplitView`** *(widgets)*
 
 ```python
 SplitView(
@@ -567,6 +695,11 @@ SplitView(
     **attrs,
 )
 ```
+
+A 2-pane resizable layout splitter (widget-level). Note: the editor-area
+component `EditorArea` (formerly `SplitView` in `components/splitview/`)
+is a separate, VS Code-like multi-tab editor. Both are intentionally named
+differently to avoid the previous name collision.
 
 **`TabbedPanel`**
 

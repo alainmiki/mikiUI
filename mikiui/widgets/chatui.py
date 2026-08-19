@@ -17,7 +17,7 @@ class ChatUI(Component):
     tag = "div"
 
     def __init__(self, messages: list[dict], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-chat")
+        attrs.setdefault("class_", "miki-chat")
         attrs.setdefault("role", "log")
         attrs.setdefault("aria_live", "polite")
         attrs.setdefault("data-miki-chat", "true")

@@ -1,3 +1,4 @@
+@layer utilities {
 /* Background utilities */
 .bg-primary { background-color: var(--miki-success); }
 .bg-secondary { background-color: var(--miki-warning); }
@@ -66,3 +67,4 @@
 .toast-secondary { background-color: var(--miki-warning); color: var(--miki-fg); }
 .toast-accent { background-color: var(--miki-accent); color: var(--miki-fg); }
 .toast-error { background-color: var(--miki-error); color: var(--miki-fg); }
+}

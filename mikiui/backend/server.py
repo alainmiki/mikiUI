@@ -103,6 +103,13 @@ def _make_endpoint(miki_app: MikiApp, route: RouteDef):
         if auth_result is not None:
             return auth_result
 
+        # Notify plugins of every incoming request (analytics, auth, etc.).
+        for plugin in miki_app.plugins:
+            try:
+                plugin.on_request(request)
+            except Exception:
+                logger.exception("Plugin %r on_request failed; skipping.", getattr(plugin, "name", plugin))
+
         path_params = dict(request.path_params) if hasattr(request, "path_params") else {}
         nodes, ctx = await miki_app.invoke(route, request, path_params)
         is_partial = request.headers.get("HX-Request") is not None
@@ -131,6 +138,7 @@ def create_app(
     miki_app: MikiApp,
     runtime: str = "local",
     cors_origins: list[str] | None = None,
+    runtime_dir: str | None = None,
 ) -> FastAPI:
     """Create a FastAPI ASGI app from a MikiApp.
 
@@ -165,11 +173,22 @@ def create_app(
     for plugin_name, paths in plugin_asset_paths:
         register_plugin_assets(plugin_name, paths)
 
-    # Mount runtime static files
+    # Mount runtime static files with cache headers for production
     if os.path.isdir(_RUNTIME_DIR):
+        from starlette.staticfiles import StaticFiles as _SF
+        from starlette.responses import FileResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        class _CachingStaticFiles(_SF):
+            async def get_response(self, path: str, scope):
+                response = await super().get_response(path, scope)
+                if hasattr(response, "headers"):
+                    response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+                return response
+
         app.mount(
             "/_miki/runtime",
-            StaticFiles(directory=_RUNTIME_DIR),
+            _CachingStaticFiles(directory=_RUNTIME_DIR, html=False),
             name="miki-runtime",
         )
 
@@ -180,7 +199,7 @@ def create_app(
             mount_name = "miki-static-" + url_path.replace("/", "-").strip("-")
             app.mount(
                 url_path,
-                StaticFiles(directory=abs_path),
+                _CachingStaticFiles(directory=abs_path, html=False),
                 name=mount_name,
             )
 

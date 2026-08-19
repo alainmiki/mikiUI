@@ -44,7 +44,7 @@ class Card(Component):
         classes = f"miki-card miki-card-{variant}"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "region")
 
         children: list[Any] = []
@@ -93,7 +93,7 @@ class Carousel(Component):
         classes = "miki-carousel"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "region")
         attrs.setdefault("aria_label", "Image carousel")
         attrs.setdefault("data-miki-carousel", "true")
@@ -177,7 +177,7 @@ class Pagination(Component):
         classes = "miki-pagination"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "navigation")
         attrs.setdefault("aria_label", "Pagination")
 
@@ -283,7 +283,7 @@ class Avatar(Component):
         classes = f"miki-avatar miki-avatar-{size}"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
 
         children: list[Any] = [
             Img(src=src, alt=alt or "User", class_="miki-avatar-image")
@@ -324,7 +324,7 @@ class Badge(Component):
         classes = f"miki-badge miki-badge-{variant} miki-badge-{size}"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "status")
 
         super().__init__(text, **attrs)
@@ -355,7 +355,7 @@ class Progress(Component):
         classes = f"miki-progress miki-progress-{variant}"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
 
         pct = max(0, min(100, (value / max_val) * 100)) if max_val > 0 else 0
 

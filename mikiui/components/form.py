@@ -16,11 +16,10 @@ class Form(Component):
 
     tag = "form"
 
-    def __init__(self, *children: Any, layout: str = "vertical", **attrs: Any) -> None:
-        if layout == "inline":
-            attrs.setdefault("class_", "miki-form-inline")
-        else:
-            attrs.setdefault("class_", "miki-form")
+    def __init__(self, *children: Any, layout: str = "vertical", novalidate: bool = True, **attrs: Any) -> None:
+        attrs.setdefault("class_", "miki-form-inline" if layout == "inline" else "miki-form")
+        if novalidate:
+            attrs.setdefault("novalidate", True)
         super().__init__(*children, **attrs)
 
 
@@ -31,26 +30,6 @@ class Label(Component):
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("class_", "miki-label")
-        super().__init__(*children, **attrs)
-
-
-class Select(Component):
-    """A styled ``<select>`` element."""
-
-    tag = "select"
-
-    def __init__(self, *children: Any, **attrs: Any) -> None:
-        attrs.setdefault("class_", "miki-select")
-        super().__init__(*children, **attrs)
-
-
-class Option(Component):
-    """An ``<option>`` element."""
-
-    tag = "option"
-
-    def __init__(self, *children: Any, **attrs: Any) -> None:
-        attrs.setdefault("class_", "miki-option")
         super().__init__(*children, **attrs)
 
 

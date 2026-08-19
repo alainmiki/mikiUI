@@ -120,6 +120,11 @@ class I18nText:
         text = _translator(self.key, self.default) if _translator else self.default
         return str(text)
 
+    def format(self, **kwargs: Any) -> str:
+        """Resolve the translation and format it with ``str.format(**kwargs)``."""
+        text = _translator(self.key, self.default) if _translator else self.default
+        return str(text).format(**kwargs)
+
     def __repr__(self) -> str:
         return f"I18nText(key={self.key!r}, default={self.default!r})"
 
@@ -143,10 +148,26 @@ class Text:
         return html.escape(str(self.content), quote=False)
 
 
+class RawHtml:
+    """A node containing raw, unescaped HTML.
+
+    Used by components that need to emit trusted HTML (e.g. inline SVG in
+    charts). The caller is responsible for ensuring the content is safe.
+    """
+
+    __slots__ = ("content",)
+
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+    def to_html(self) -> str:
+        return str(self.content)
+
+
 def _render_child(child: Any) -> str:
     if child is None or child is False:
         return ""
-    if isinstance(child, (Element, Text, I18nText)):
+    if isinstance(child, (Element, Text, I18nText, RawHtml)):
         return child.to_html()
     if isinstance(child, (list, tuple)):
         return "".join(_render_child(c) for c in child)
@@ -170,7 +191,6 @@ class Element:
     tag: str = "div"
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
-        self.tag = self.__class__.tag if self.__class__ is not Element else self.tag
         self.children: list[Any] = list(children)
         self.attrs: dict[str, Any] = attrs
 
@@ -219,10 +239,10 @@ class Element:
 
 
 def render(node: Any) -> str:
-    """Render any node (Element/Text/I18nText/str/list) to an HTML string."""
+    """Render any node (Element/Text/I18nText/RawHtml/str/list) to an HTML string."""
     if node is None or node is False:
         return ""
-    if isinstance(node, (Element, Text, I18nText)):
+    if isinstance(node, (Element, Text, I18nText, RawHtml)):
         return node.to_html()
     if isinstance(node, (list, tuple)):
         return "".join(_render_child(c) for c in node)
@@ -233,9 +253,11 @@ def normalize(node: Any) -> list[Any]:
     """Normalize a route handler return value into a list of renderable nodes."""
     if node is None or node is False:
         return []
+    if isinstance(node, (Element, Text, I18nText, RawHtml)):
+        return [node]
     if isinstance(node, (list, tuple)):
         out: list[Any] = []
         for child in node:
             out.extend(normalize(child))
         return out
-    return [node]
+    return [Text(node)]

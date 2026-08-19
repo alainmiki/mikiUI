@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from mikiui import H1, H2, MikiApp, P
 from mikiui.components import Button, Div
-from mikiui.components.splitview import EditorGroup, EditorTab, SplitView
+SplitView = EditorArea
 
 app = MikiApp(title="MikiUI SplitView Demo", lang="en")
 app.set_theme("dark")

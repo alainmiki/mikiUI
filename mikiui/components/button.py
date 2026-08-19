@@ -52,8 +52,8 @@ class Button(Component):
     >>> # Loading button
     >>> Button("Saving...", loading=True)
 
-    >>> # Outline button
-    >>> Button("Delete", variant="outline", variant="danger")
+    >>> # Outline button in danger style
+    >>> Button("Delete", variant="outline", class_="miki-btn-danger")
     """
 
     tag = "button"
@@ -149,7 +149,7 @@ class Button(Component):
 
         Returns an icon-only button.
         """
-        attrs.setdefault("class", "miki-btn-icon-only")
+        attrs.setdefault("class_", "miki-btn-icon-only")
         attrs.setdefault("aria-label", aria_label)
 
         return cls(icon, **attrs)
@@ -174,7 +174,7 @@ class Button(Component):
         """
         from .html import Div
 
-        attrs.setdefault("class", f"miki-btn-group miki-btn-group-{direction}")
+        attrs.setdefault("class_", f"miki-btn-group miki-btn-group-{direction}")
         return Div(*buttons, **attrs)
 
     @classmethod
@@ -184,6 +184,8 @@ class Button(Component):
         icon_off: str,
         aria_label_on: str,
         aria_label_off: str,
+        *,
+        pressed: bool = True,
         **attrs: Any,
     ) -> Any:
         """Create a toggle button (click to switch between two icon states).
@@ -197,6 +199,8 @@ class Button(Component):
             Icon names for each state.
         aria_label_on, aria_label_off : str
             Accessible labels for each state.
+        pressed : bool
+            Initial toggle state (default ``True``).
         **attrs : Additional attributes.
 
         Returns a toggle button (wrapped in a ``<span class="miki-toggle-btn">``).
@@ -207,8 +211,8 @@ class Button(Component):
             "data-miki-icon-off": icon_off,
             "data-miki-aria-label-on": aria_label_on,
             "data-miki-aria-label-off": aria_label_off,
-            "aria-pressed": "true",
-            "data-miki-state": "on",
+            "aria-pressed": str(pressed).lower(),
+            "data-miki-state": "on" if pressed else "off",
         }
         user_classes = attrs.pop("class_", "")
         user_classes = f"miki-toggle-btn {user_classes}".strip()
@@ -237,7 +241,7 @@ class IconButton(Button):
     def __init__(self, icon: str, aria_label: str, **attrs: Any) -> None:
         attrs.setdefault("aria-label", aria_label)
         attrs.setdefault("type", "button")
-        attrs.setdefault("class", "miki-btn-icon-only")
+        attrs.setdefault("class_", "miki-btn-icon-only")
 
         icon_span = Span(icon, class_="miki-btn-icon-content")
         super().__init__(icon_span, **attrs)

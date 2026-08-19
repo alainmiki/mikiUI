@@ -208,7 +208,7 @@ class Icon(Component):
         classes = "miki-icon"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
 
         attrs.setdefault("xmlns", "http://www.w3.org/2000/svg")
         attrs.setdefault("width", str(size))

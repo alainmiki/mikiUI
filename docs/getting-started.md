@@ -164,6 +164,67 @@ mikiui desktop --width 1280 --height 800  # Window size
   UI patterns.
 - **Styling**: See [Styling Guide](styling.md) for Tailwind, Bootstrap, and
   theme customization.
-- **Plugins**: Learn about the plugin system in [Plugins Guide](plugins.md).
+- **Plugins**: Learn about the plugin system in [Plugins Guide](plugins.md),
+  including the security model (manifest validation, AST vetting, import
+  allow-list) and the marketplace client.
+- **Security**: Read [Security Guide](security.md) for plugin security
+  configuration and the [Plugin Security](#plugin-security) section below.
 - **API**: Consult [API Reference](api-reference.md) for full method signatures.
 - **Deployment**: Read [Deployment Guide](deployment.md) for production setups.
+
+## Plugin Security
+
+MikiUI validates every plugin before it is loaded or registered. By default,
+plugins from local directories or the marketplace are blocked unless you
+explicitly trust them.
+
+### Quick configuration
+
+```python
+from mikiui import MikiApp
+from mikiui.app import PluginSecurityConfig
+
+app = MikiApp(title="My App")
+
+# Default: only builtin and entry-point plugins are allowed.
+# To allow local/marketplace plugins:
+app.set_plugin_security_config(
+    PluginSecurityConfig(
+        allow_untrusted=True,
+        vet_ast=True,
+        blocked_capabilities=["filesystem:write"],
+    )
+)
+```
+
+### What gets checked
+
+1. **Manifest identity** — plugin name matches its manifest
+2. **Capabilities** — declared capabilities are not globally blocked
+3. **AST vetting** — source code is scanned for dangerous patterns
+   (`subprocess`, `eval`, `os.system`, etc.)
+4. **Import allow-list** — only safe modules may be imported
+
+Plugins that fail any check raise `PluginSecurityViolation` and are **not
+registered**.
+
+### Marketplace install
+
+```python
+from mikiui.app import (
+    DirectoryIndexSource,
+    PluginMarketplace,
+    PluginSecurityConfig,
+)
+
+source = DirectoryIndexSource("mikiui_plugins")
+market = PluginMarketplace(source)
+
+app = MikiApp(title="My App")
+app.set_plugin_security_config(PluginSecurityConfig(allow_untrusted=True))
+
+plugin = market.install("chart-widget", app)
+```
+
+See [Plugins Guide](plugins.md) and [Security Guide](security.md) for full
+details.

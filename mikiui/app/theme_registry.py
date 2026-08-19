@@ -43,6 +43,24 @@ class ThemeRegistry:
         self._parent_registry: ThemeRegistry | None = parent_registry
         self._inheritance: dict[str, str] = {}
 
+    def _parent_get(self, name: str) -> Theme | None:
+        """Look up a theme in the parent registry if available."""
+        if self._parent_registry is None:
+            return None
+        getter = getattr(self._parent_registry, "get", None)
+        if callable(getter):
+            return getter(name)
+        return None
+
+    def _parent_list(self) -> list[str]:
+        """List all theme names from the parent registry."""
+        if self._parent_registry is None:
+            return []
+        lister = getattr(self._parent_registry, "list_all", None)
+        if callable(lister):
+            return lister()
+        return []
+
     def register(
         self, theme: Theme, *, override: bool = False, propagate_global: bool = False
     ) -> None:
@@ -106,10 +124,9 @@ class ThemeRegistry:
         if name in self._registry:
             return self._resolve(name, self._registry[name])
         # Check parent
-        if self._parent_registry:
-            parent_theme = self._parent_registry.get(name)
-            if parent_theme:
-                return parent_theme
+        parent_theme = self._parent_get(name)
+        if parent_theme:
+            return parent_theme
         return None
 
     def _resolve(self, name: str, theme: Theme) -> Theme:
@@ -149,8 +166,9 @@ class ThemeRegistry:
         if name not in self._registry:
             parent = self._parent_registry.get(name) if self._parent_registry else None
             if parent is None:
+                available = sorted(set(self.list_registered()) | set(self._parent_registry.list_all() if self._parent_registry else []))
                 raise ValueError(
-                    f"Unknown theme: {name!r}. Available: {self.list_all()}"
+                    f"Unknown theme: {name!r}. Available: {', '.join(available)}"
                 )
         self._active = name
 
@@ -165,8 +183,7 @@ class ThemeRegistry:
     def list_all(self) -> list[str]:
         """Return all registered theme names (including parent)."""
         names = set(self._registry.keys())
-        if self._parent_registry:
-            names.update(self._parent_registry.list_all())
+        names.update(self._parent_list())
         return sorted(names)
 
     def list_registered(self) -> list[str]:

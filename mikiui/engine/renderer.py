@@ -80,17 +80,15 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     """Build theme injection data.
 
     Returns a dict with:
-    - links: CSS <link> tags (framework CSS, CDN or local)
-    - inline_css: <style> blocks (color theme + user CSS)
+    - links: CSS <link> tags (framework CSS, color theme CSS, CDN or local)
     - body_attrs: additional body attributes (classes/data attributes)
-    - variables: CSS :root style block with --miki-* variables
+    - variables: CSS :root style block with --miki-* variable overrides
     """
     from ..themes import _RUNTIME_DIR, get_theme
 
     theme = get_theme(theme_name)
     result: dict[str, Any] = {
         "links": [],
-        "inline_css": [],
         "body_attrs": "",
         "variables": "",
         "js_tags": "",
@@ -99,57 +97,40 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     if theme is None:
         return result
 
-    # Framework CSS links (Tailwind, Bootstrap, or custom CSS file).
-    # Color themes (framework=None) are inlined below; they do NOT need a <link>.
+    # Build the URL for the theme CSS file.
+    def _theme_href(css_path: str | None) -> str | None:
+        if not css_path:
+            return None
+        if css_path.startswith("http"):
+            return css_path
+        if os.path.isabs(css_path):
+            rel_path = os.path.relpath(css_path, os.path.join(_RUNTIME_DIR, "themes"))
+            return f"/_miki/runtime/themes/{rel_path}"
+        return css_path
+
+    # Color theme CSS is served as a static file via /_miki/runtime/themes/<name>.css
+    theme_css_url = None
+    if theme.css_path and os.path.isfile(theme.css_path):
+        theme_css_url = _theme_href(theme.css_path)
+    elif theme.framework is None or theme.framework == "css":
+        theme_css_url = f"/_miki/runtime/themes/{_esc(theme_name)}.css"
+
+    if theme_css_url:
+        result["links"].append(_style_tag(theme_css_url))
+
+    # Framework CSS links (Tailwind, Bootstrap)
     if theme.framework == "tailwind":
         if theme.cdn_url:
             result["links"].append(_style_tag(theme.cdn_url))
-        elif theme.css_path:
-            href = theme.css_path
-            if os.path.isabs(theme.css_path):
-                rel_path = os.path.relpath(theme.css_path, os.path.join(_RUNTIME_DIR, "themes"))
-                href = f"/_miki/runtime/themes/{rel_path}"
-            if theme.css_path.startswith("http"):
-                href = theme.css_path
-            result["links"].append(_style_tag(href))
     elif theme.framework == "bootstrap":
         if theme.cdn_url:
             result["links"].append(_style_tag(theme.cdn_url))
         if theme.js_url:
             result["js_tags"] = _script_tag(theme.js_url)
-        if theme.css_path:
-            href = theme.css_path
-            if os.path.isabs(theme.css_path):
-                rel_path = os.path.relpath(theme.css_path, os.path.join(_RUNTIME_DIR, "themes"))
-                href = f"/_miki/runtime/themes/{rel_path}"
-            if theme.css_path.startswith("http"):
-                href = theme.css_path
-            result["links"].append(_style_tag(href))
-    elif theme.framework is None or theme.framework == "css":
-        if theme.css_path:
-            href = theme.css_path
-            if os.path.isabs(theme.css_path):
-                rel_path = os.path.relpath(theme.css_path, os.path.join(_RUNTIME_DIR, "themes"))
-                href = f"/_miki/runtime/themes/{rel_path}"
-            if theme.css_path.startswith("http"):
-                href = theme.css_path
-            result["links"].append(_style_tag(href))
-    else:
-        if theme.cdn_url:
-            result["links"].append(_style_tag(theme.cdn_url))
-
-    # Color-theme / custom inline CSS (merges with base miki.css).
-    # Color themes (framework=None) are always inlined; framework themes
-    # may also provide inline CSS in addition to their <link> tag above.
-    color_css = theme.css()
-    if color_css:
-        result["inline_css"].append(f"<style id=\"miki-theme\">{color_css}</style>")
 
     # Body classes/data attributes
     extra = list(theme.extra_classes) or []
     data_attrs = ""
-    # For Tailwind (and DaisyUI) frameworks we expose a data-theme attribute
-    # so frameworks that use it (like DaisyUI) can switch palettes.
     if theme.framework == "tailwind":
         data_attrs = f" data-theme=\"mikiui-{_esc(theme_name)}\""
     if extra:

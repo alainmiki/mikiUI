@@ -5,41 +5,31 @@
   --miki-accent-hover: #d946ef;
   --miki-border: #4b5563;
   --miki-border-hover: #6b7280;
-
   --miki-surface: #3b2a7a;
   --miki-surface-hover: #4c3a8c;
   --miki-surface-active: #5b4a9e;
-
   --miki-input-bg: #4b5563;
   --miki-input-border: #6b7280;
   --miki-input-focus: #e779c1;
-
   --miki-text-muted: #9ca3af;
   --miki-text-secondary: #d1d5db;
-
-  --miki-yellow: #facc15;
-  --miki-orange: #fb923c;
-  --miki-red: #ef4444;
-  --miki-magenta: #e779c1;
-  --miki-violet: #8b5cf6;
-  --miki-blue: #3b82f6;
-  --miki-cyan: #06b6d4;
-  --miki-green: #22c55e;
-
+  --miki-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --miki-shadow-lg: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3);
+  --miki-shadow-xl: 0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04);
+  --miki-radius: 0.5rem;
+  --miki-radius-lg: 0.75rem;
+  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   --miki-success: #22c55e;
   --miki-success-hover: #16a34a;
   --miki-warning: #facc15;
   --miki-warning-hover: #eab308;
   --miki-error: #ef4444;
   --miki-error-hover: #dc2626;
-
-  --miki-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
-  --miki-shadow-lg: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3);
-
-  --miki-radius: 0.5rem;
-  --miki-radius-lg: 0.75rem;
-
-  --miki-transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  --miki-dock-width: 300px;
+  --miki-dock-height: 300px;
+  --miki-float-width: 40vw;
+  --miki-float-height: 50vh;
 
   color-scheme: dark;
 }
+

@@ -205,6 +205,12 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 /* ---- Tabs ---- */
 [role="tablist"] { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--miki-border); margin-bottom: 1rem; }
 [role="tab"] { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; }
+
+  --miki-shadow-xl: 0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04);
+  --miki-dock-width: 300px;
+  --miki-dock-height: 300px;
+  --miki-float-width: 40vw;
+  --miki-float-height: 50vh;
 .miki-tab-active { border-bottom-color: var(--miki-accent); color: var(--miki-accent); }
 
 /* ---- ListView ---- */

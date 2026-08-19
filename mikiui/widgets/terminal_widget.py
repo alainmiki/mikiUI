@@ -16,7 +16,7 @@ class TerminalWidget(Component):
     tag = "pre"
 
     def __init__(self, lines: list[str] | str = "", **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-terminal")
+        attrs.setdefault("class_", "miki-terminal")
         attrs.setdefault("role", "log")
         attrs.setdefault("aria_live", "polite")
         if isinstance(lines, str):

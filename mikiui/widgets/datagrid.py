@@ -81,6 +81,7 @@ from typing import Any
 
 from ..components import Button, Div, Input, Option, Select, Span, Table, Tbody, Td, Th, Thead, Tr
 from ..components.base import Component
+from ..engine import _
 
 
 class DataGrid(Component):
@@ -116,7 +117,7 @@ class DataGrid(Component):
         htmx_target: str | None = None,
         **attrs: Any,
     ) -> None:
-        attrs.setdefault("class", "miki-datagrid")
+        attrs.setdefault("class_", "miki-datagrid")
         attrs.setdefault("role", "grid")
         attrs.setdefault("data-miki-datagrid", "true")
 
@@ -146,7 +147,7 @@ class DataGrid(Component):
                     options.append(Option(f, value=f))
                 select = Select(*options, name="search_field", class_="miki-search-field-select")
                 search_children.append(select)
-            search_input = Input(type="search", placeholder="Search...", **{"data-miki-search": "true"})
+            search_input = Input(type="search", placeholder=_("search_placeholder", "Search..."), **{"data-miki-search": "true"})
             search_children.append(search_input)
             search_div = Div(*search_children, class_="miki-datagrid-search")
             children.append(search_div)
@@ -158,7 +159,7 @@ class DataGrid(Component):
 
         table_attrs: dict[str, Any] = {}
         if height:
-            table_attrs["class"] = "miki-datagrid-scrollable"
+            table_attrs["class_"] = "miki-datagrid-scrollable"
             table_attrs.setdefault("style", f"max-height: {height}px;")
 
         table = Table(thead, tbody, **table_attrs)
@@ -166,9 +167,12 @@ class DataGrid(Component):
 
         if pagination:
             total_pages = max(1, (len(self.rows) + self.page_size - 1) // self.page_size)
-            prev_btn = Button("Previous", **{"data-miki-page": "prev"})
-            page_info = Span(f"Page {page + 1} of {total_pages}", **{"data-miki-page-info": "true"})
-            next_btn = Button("Next", **{"data-miki-page": "next"})
+            prev_btn = Button(_("pagination_prev", "Previous"), **{"data-miki-page": "prev"})
+            page_info = Span(
+                f"{_('pagination_page', 'Page')} {page + 1} {_('pagination_of', 'of')} {total_pages}",
+                **{"data-miki-page-info": "true"},
+            )
+            next_btn = Button(_("pagination_next", "Next"), **{"data-miki-page": "next"})
             pagination_div = Div(
                 prev_btn, page_info, next_btn, class_="miki-datagrid-pagination", **{"data-miki-pagination": "true"}
             )
@@ -204,7 +208,7 @@ class DataGrid(Component):
                 if opts.get("filterable", False):
                     th_attrs["class_"] += " miki-th-filter"
                     filter_input = Input(
-                        type="search", placeholder=f"Filter {label}...", **{"data-miki-filter": "true"}
+                        type="search", placeholder=_("filter_placeholder", "Filter {col}").format(col=label), **{"data-miki-filter": "true"}
                     )
                     headers.append(Th(label, filter_input, **th_attrs))
                 else:
@@ -219,7 +223,7 @@ class DataGrid(Component):
                 if opts.get("filterable", False):
                     th_attrs["class_"] += " miki-th-filter"
                     filter_input = Input(
-                        type="search", placeholder=f"Filter {label}...", **{"data-miki-filter": "true"}
+                        type="search", placeholder=_("filter_placeholder", "Filter {col}").format(col=label), **{"data-miki-filter": "true"}
                     )
                     headers.append(Th(label, sort_indicator, filter_input, **th_attrs))
                 else:

@@ -50,7 +50,7 @@ class Hero(Component):
         classes = f"miki-hero miki-hero-{variant} miki-hero-{align}"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
 
         if image:
             style = attrs.get("style")
@@ -98,7 +98,7 @@ class Footer(Component):
         classes = "miki-footer"
         if class_:
             classes += f" {class_}"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "contentinfo")
 
         children: list[Any] = list(content)
@@ -139,7 +139,7 @@ class Sidebar(Component):
             classes += f" {class_}"
         if mobile:
             classes += " miki-sidebar-mobile"
-        attrs.setdefault("class", classes)
+        attrs.setdefault("class_", classes)
         attrs.setdefault("role", "complementary")
 
         # Set width via style

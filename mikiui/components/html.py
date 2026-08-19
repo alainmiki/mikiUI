@@ -77,6 +77,9 @@ class P(Component):
     tag = "p"
 
 
+Paragraph = P
+
+
 class Span(Component):
     tag = "span"
 
@@ -129,6 +132,9 @@ class Pre(Component):
     tag = "pre"
 
 
+Preformatted = Pre
+
+
 class Blockquote(Component):
     tag = "blockquote"
 
@@ -145,12 +151,18 @@ class Em(Component):
     tag = "em"
 
 
+Emphasis = Em
+
+
 class Mark(Component):
     tag = "mark"
 
 
 class Abbr(Component):
     tag = "abbr"
+
+
+Abbreviation = Abbr
 
 
 class Address(Component):
@@ -165,10 +177,16 @@ class Kbd(Component):
     tag = "kbd"
 
 
+Keyboard = Kbd
+
+
 class A(Component):
     """Anchor / hyperlink. Add ``hx_get`` for SPA-style partial navigation."""
 
     tag = "a"
+
+
+Anchor = A
 
 
 class Ul(Component):
@@ -183,6 +201,11 @@ class Li(Component):
     tag = "li"
 
 
+UnorderedList = Ul
+OrderedList = Ol
+ListItem = Li
+
+
 class Dl(Component):
     tag = "dl"
 
@@ -195,12 +218,20 @@ class Dd(Component):
     tag = "dd"
 
 
+DescriptionList = Dl
+DescriptionTerm = Dt
+DescriptionDetail = Dd
+
+
 class Menu(Component):
     tag = "menu"
 
 
 class Img(Component):
     tag = "img"
+
+
+Image = Img
 
 
 class Video(Component):
@@ -223,6 +254,9 @@ class Svg(Component):
     tag = "svg"
 
 
+SVG = Svg
+
+
 class Figure(Component):
     tag = "figure"
 
@@ -235,9 +269,18 @@ class Cite(Component):
     tag = "cite"
 
 
+Citation = Cite
+
+
 class Var(Component):
     tag = "var"
 
 
+Variable = Var
+
+
 class Samp(Component):
     tag = "samp"
+
+
+Sample = Samp

@@ -12,7 +12,7 @@ from .backend import create_app
 # Re-export every public component at the top level so apps can do
 # `from mikiui import Div, Button` (see context/plan.md API examples).
 from .components import *  # noqa: F401,F403
-from .engine import _, render, render_fragment, render_page, set_translator
+from .engine import _, RawHtml, render, render_fragment, render_page, set_translator
 from .router import Router
 from .themes import Theme, get_theme, list_themes, register_theme
 
@@ -31,6 +31,7 @@ __all__ = [
     "render_page",
     "render_fragment",
     "_",
+    "RawHtml",
     "set_translator",
     "create_app",
     "components",

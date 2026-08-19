@@ -17,7 +17,7 @@ class KanbanBoard(Component):
     tag = "div"
 
     def __init__(self, columns: dict[str, list], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-kanban")
+        attrs.setdefault("class_", "miki-kanban")
         attrs.setdefault("role", "list")
         attrs.setdefault("data-miki-kanban", "true")
         column_nodes = []

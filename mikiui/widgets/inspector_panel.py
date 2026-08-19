@@ -20,7 +20,7 @@ class InspectorPanel(Component):
     tag = "div"
 
     def __init__(self, obj: Any, **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-inspector")
+        attrs.setdefault("class_", "miki-inspector")
         attrs.setdefault("role", "region")
         try:
             items = vars(obj)

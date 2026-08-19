@@ -17,7 +17,7 @@ class PropertyGrid(Component):
     tag = "table"
 
     def __init__(self, items: dict[str, Any], **attrs: Any) -> None:
-        attrs.setdefault("class", "miki-property-grid")
+        attrs.setdefault("class_", "miki-property-grid")
         attrs.setdefault("role", "grid")
         thead = Thead(Tr(Td("Property"), Td("Value"), role="row"))
         body_rows = [
