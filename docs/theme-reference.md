@@ -36,81 +36,38 @@ Each theme is a CSS file that sets these custom properties:
 | `--miki-font` | `system-ui` | Font family |
 | `--miki-size` | `1rem` | Base font size |
 
-## Framework Themes
+## CSS Frameworks
 
-Framework themes change how CSS is loaded and processed.
+Framework selection controls how styles are delivered. It is separate from
+the color theme.
 
-| Name | Framework | CDN | Local |
-|------|-----------|-----|-------|
-| `tailwind` | Tailwind CSS 3.4 | Yes | Yes |
-| `bootstrap` | Bootstrap 5.3 | Yes | Yes |
+| Framework | Description | Node.js Required |
+|-----------|-------------|-----------------|
+| `plain` | Plain CSS — loads `miki.css` + color theme CSS | No |
+| `tailwind` | Tailwind CSS — CDN or local JIT build | Yes |
 
-### Using Framework Themes
-
-The easiest way is during project creation:
-
-```bash
-mikiui new myapp --framework tailwind
-mikiui new myapp --framework bootstrap
-```
-
-Or on an existing project:
+### Setting the Framework
 
 ```python
 from mikiui import MikiApp
 
 app = MikiApp()
 
-# Tailwind (CDN in dev, local build in prod)
-app.set_theme("tailwind")
+# Plain CSS (default)
+app.set_style_framework("plain")
+app.set_theme("dark")
 
-# Bootstrap (CDN)
-app.set_theme("bootstrap")
-```
+# Tailwind — CDN mode (instant, no build)
+app.set_style_framework("tailwind", mode="cdn")
+app.set_theme("dark")
 
-### Tailwind
+# Tailwind — local JIT mode (production)
+app.set_style_framework("tailwind", mode="local")
+app.set_theme("dark")
 
-In development, Tailwind CSS is loaded from the jsDelivr CDN so classes
-work immediately without a build step.
-
-In production, run:
-
-```bash
-mikiui build --target web --theme tailwind
-```
-
-This compiles only the classes you actually use into a single CSS file.
-
-### DaisyUI
-
-DaisyUI is a Tailwind plugin that provides pre-built component classes.
-Enable it with:
-
-```bash
-mikiui install tailwind daisyui
-mikiui build --target web --theme tailwind --daisyui
-```
-
-DaisyUI themes are automatically bridged to MikiUI themes. When you set a
-MikiUI color theme, the matching DaisyUI palette is applied:
-
-```python
-app.set_theme("dark")  # Uses mikiui-dark DaisyUI theme
-```
-
-### Bootstrap
-
-Bootstrap CSS and JS are loaded from the jsDelivr CDN by default. For
-offline use, serve local files:
-
-```python
-from mikiui import MikiApp
-
-app = MikiApp()
-
-app.add_head_link("/static/bootstrap.min.css", rel="stylesheet")
-app.add_head_script("/static/bootstrap.bundle.min.js")
-app.set_theme("bootstrap")
+# Tailwind + DaisyUI
+app.set_style_framework("tailwind", mode="cdn", daisyui=True)
+app.set_theme("dracula")
 ```
 
 ## Custom Themes
@@ -157,7 +114,7 @@ app = MikiApp()
 tailwind_theme = Theme(
     name="my-tailwind",
     framework="tailwind",
-    cdn_url="https://cdn.jsdelivr.net/npm/tailwindcss@3/dist/tailwind.min.css",
+    cdn_url="https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css",
     variables={
         "--miki-accent": "#dc2626",
     },
@@ -195,7 +152,7 @@ app.set_theme("plugin-theme")
 from mikiui.themes import list_themes, get_theme, register_theme
 
 # List all registered themes
-list_themes()  # ['light', 'dark', 'dracula', 'solarized-dark', 'tailwind', 'bootstrap']
+list_themes()  # ['light', 'dark', 'dracula', 'solarized-dark', ...]
 
 # Get a theme object
 theme = get_theme("dark")
@@ -208,11 +165,10 @@ register_theme(Theme(name="my-theme", ...))
 
 During development, MikiUI injects the correct CSS links into every page:
 
-- **Tailwind dev:** CDN link (instant, no build required)
-- **Tailwind prod:** local compiled CSS from `_miki/runtime/themes/tailwind.css`
-- **Bootstrap dev:** CDN links for CSS + JS
-- **Bootstrap prod:** CDN links (or local paths if configured)
-- **Plain CSS:** user-provided `<link>` tags
+- **Plain CSS:** `miki.css` + color theme CSS
+- **Tailwind CDN:** Tailwind CSS from jsDelivr CDN
+- **Tailwind local:** `/_miki/runtime/themes/tailwind.css`
+- **DaisyUI:** DaisyUI CSS from jsDelivr CDN
 
 ## MikiApp Theme API
 
@@ -221,15 +177,17 @@ from mikiui import MikiApp
 
 app = MikiApp()
 
-# Set active theme
+# Set active color theme
 app.set_theme("dark")
+
+# Set CSS framework
+app.set_style_framework("tailwind", mode="cdn", daisyui=True)
 
 # Get current theme name
 print(app.theme)  # "dark"
 
-# Get theme configuration
-config = app.theme_config()
-# {"name": "dark", "framework": None, "variables": {...}, ...}
+# Get current framework
+print(app.style_framework)  # "tailwind"
 
 # Add extra head links
 app.add_head_link("/static/custom.css", rel="stylesheet")
@@ -248,5 +206,4 @@ app.set_head_meta("description", "My MikiUI app")
 | `mikiui new myapp` (choose 1) | Tailwind | Yes |
 | `mikiui new myapp --framework tailwind` | Tailwind | Yes |
 | `mikiui new myapp --framework daisyui` | Tailwind + DaisyUI | Yes |
-| `mikiui new myapp --framework bootstrap` | Bootstrap | No |
 | `mikiui new myapp --framework plain` | Plain CSS | No |

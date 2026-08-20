@@ -1,12 +1,19 @@
 # Theming Guide
 
 MikiUI themes control the visual appearance of your application. There are
-two types of themes:
+two independent concepts:
 
-1. **Color themes** — light, dark, dracula, solarized-dark
-2. **Framework themes** — Tailwind CSS, Bootstrap
+1. **Color themes** — light, dark, dracula, solarized-dark, etc. Control the
+   actual color palette via CSS variables.
+2. **CSS frameworks** — `plain` or `tailwind`. Control how styles are
+   processed and delivered.
 
-You can use a color theme alone, or combine it with a framework theme.
+You mix and match them independently:
+
+```python
+app.set_theme("dark")                    # color theme
+app.set_style_framework("tailwind")      # CSS framework
+```
 
 ## Built-in Color Themes
 
@@ -38,14 +45,15 @@ When you set a theme, MikiUI:
 2. Sets `data-miki-theme="{name}"` on the `<body>` tag
 3. If a framework theme is active, injects the framework CSS links
 
-## Framework Themes
+## CSS Frameworks
 
-Framework themes change the CSS processing pipeline:
+Framework selection controls how styles are delivered. It is separate from
+the color theme.
 
-| Theme | What it does |
-|-------|-------------|
+| Framework | What it does |
+|-----------|-------------|
+| `plain` | Loads `miki.css` + color theme CSS (default) |
 | `tailwind` | Loads Tailwind CSS (CDN in dev, compiled in prod) |
-| `bootstrap` | Loads Bootstrap 5 CSS + JS (CDN by default) |
 
 ### Choosing a framework
 
@@ -60,8 +68,27 @@ Or specify it directly:
 
 ```bash
 mikiui new myapp --framework tailwind
-mikiui new myapp --framework bootstrap
 mikiui new myapp --framework plain
+```
+
+Or in code:
+
+```python
+from mikiui import MikiApp
+
+app = MikiApp()
+
+# Plain CSS (default)
+app.set_style_framework("plain")
+
+# Tailwind — CDN mode
+app.set_style_framework("tailwind", mode="cdn")
+
+# Tailwind — local JIT mode
+app.set_style_framework("tailwind", mode="local")
+
+# Tailwind + DaisyUI
+app.set_style_framework("tailwind", mode="cdn", daisyui=True)
 ```
 
 ### Tailwind + DaisyUI
@@ -70,6 +97,12 @@ DaisyUI extends Tailwind with pre-built component themes. Enable it with:
 
 ```bash
 mikiui install tailwind daisyui
+```
+
+Or in code:
+
+```python
+app.set_style_framework("tailwind", mode="cdn", daisyui=True)
 ```
 
 DaisyUI themes are automatically bridged to MikiUI color themes. When you
@@ -119,7 +152,7 @@ app = MikiApp()
 my_tailwind = Theme(
     name="my-tailwind",
     framework="tailwind",
-    cdn_url="https://cdn.jsdelivr.net/npm/tailwindcss@3/dist/tailwind.min.css",
+    cdn_url="https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css",
     variables={
         "--miki-accent": "#f472b6",
     },
@@ -134,11 +167,18 @@ app.set_theme("my-tailwind")
 ┌─────────────────────────────────────────────────────────┐
 │  Page <head>                                            │
 │                                                         │
-│  1. Framework CSS link (Tailwind CDN, Bootstrap CDN)    │
-│  2. Base miki.css (always loaded)                       │
-│  3. <style id="miki-theme">...</style> (color theme)   │
-│  4. Custom CSS links (user files)                       │
-│  5. HTMX + Alpine.js scripts                            │
+│  Plain CSS mode:                                        │
+│    1. miki.css (base styles)                            │
+│    2. <style id="miki-theme">...</style> (color theme) │
+│    3. Custom CSS links                                  │
+│                                                         │
+│  Tailwind mode:                                         │
+│    1. Tailwind CSS (CDN or local)                       │
+│    2. DaisyUI CSS (if enabled)                          │
+│    3. data-theme="mikiui-{name}" on <body>             │
+│                                                         │
+│  Both modes:                                            │
+│    4. HTMX + Alpine.js scripts                          │
 └─────────────────────────────────────────────────────────┘
 ```
 

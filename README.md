@@ -15,17 +15,16 @@ mikiui desktop        # native desktop window
 
 ## Styling
 
-MikiUI supports three styling frameworks. Choose one during project creation:
+MikiUI supports two styling frameworks. Choose one during project creation:
 
 ```bash
 mikiui new myapp
-# Follow the prompts to choose Tailwind, Bootstrap, or plain CSS
+# Follow the prompts to choose Tailwind or plain CSS
 ```
 
 | Framework | Description | Node.js Required |
 |-----------|-------------|-----------------|
 | `tailwind` | Tailwind CSS + optional DaisyUI | Yes |
-| `bootstrap` | Bootstrap 5 (CDN or local) | No |
 | `plain` | Plain CSS, no framework | No |
 
 ### Tailwind CSS
@@ -49,19 +48,6 @@ Add DaisyUI:
 mikiui install tailwind daisyui
 ```
 
-### Bootstrap
-
-```bash
-cd myapp
-mikiui dev           # Works out of the box (CDN)
-```
-
-Use local files:
-
-```bash
-mikiui install bootstrap
-```
-
 ### Plain CSS
 
 ```bash
@@ -74,7 +60,7 @@ mikiui dev           # No extra setup needed
 - **Components** — all HTML elements as Python classes (Button, Input, Form, Table, Dialog, Tabs, etc.)
 - **Widgets** — high-level composite UI (DataGrid, MediaPlayer, DockablePanel, IDE Editor, ThemeSwitcher, etc.)
 - **Themes** — 4 built-in themes (light, dark, solarized-dark, dracula) with custom theme support
-- **Styling** — Tailwind CSS, Bootstrap, or plain CSS
+- **Styling** — Tailwind CSS or plain CSS
 - **Plugins** — extend with custom themes, components, and widgets
 - **Desktop** — native pywebview window or system browser fallback
 - **Full-stack** — FastAPI backend with HTMX + Alpine.js runtime
@@ -93,7 +79,6 @@ mikiui dev           # No extra setup needed
 | `mikiui tailwind dev` | Watch and rebuild Tailwind CSS |
 | `mikiui tailwind build` | Production Tailwind build |
 | `mikiui install tailwind` | Install Tailwind + npm deps |
-| `mikiui install bootstrap` | Register Bootstrap theme |
 
 ## Running Your App
 

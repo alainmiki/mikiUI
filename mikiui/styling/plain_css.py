@@ -1,6 +1,6 @@
 """Plain-CSS helpers for the MikiUI styling system.
 
-Used when the user opts out of Tailwind and Bootstrap.
+Used when the user opts out of Tailwind.
 """
 
 from __future__ import annotations

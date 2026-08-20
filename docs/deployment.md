@@ -294,6 +294,81 @@ Recommended options:
 
 ---
 
+## Static Assets
+
+### Runtime Assets
+
+MikiUI serves framework runtime files (HTMX, Alpine.js, `miki.css`, theme CSS)
+under `/_miki/runtime/`. In development, these are served directly from the
+package. In production builds, they are copied to `dist/_miki/runtime/` and
+can be served by any static file server or CDN.
+
+### Component and Widget Static Files
+
+Components and widgets can ship their own static assets (CSS, JS, images) in a
+`static/` directory inside their package. MikiUI discovers these automatically
+and mounts them under `/_miki/`:
+
+```
+/_miki/components/<package_name>/static/...
+/_miki/widgets/<package_name>/static/...
+```
+
+The web build (`mikiui build --target web`) copies these assets into
+`dist/_miki/components/` and `dist/_miki/widgets/` so the exported site is
+fully self-contained.
+
+### Project Static Directory
+
+Any `static/` directory in your project root is automatically mounted at
+`/static`. Files placed there are served as-is:
+
+```
+static/
+  styles.css      -> /static/styles.css
+  images/logo.png -> /static/images/logo.png
+```
+
+This is created automatically by `mikiui new plain` and works without any
+additional configuration.
+
+### Custom Static Mounts
+
+For additional static directories, use `app.mount_static()`:
+
+```python
+app.mount_static("/media", "./media")
+app.mount_static("/uploads", "/var/www/uploads")
+```
+
+### Cache Headers
+
+Static files are served with conditional cache headers:
+
+- **Content-hashed files** (filename contains a hex hash segment, e.g.
+  `app.abc123.css`): `Cache-Control: public, max-age=31536000, immutable`
+- **All other files**: `Cache-Control: public, max-age=3600`
+
+This ensures that versioned assets are cached aggressively while unversioned
+files can be updated within an hour.
+
+### Reverse Proxy Static Optimization
+
+When deploying behind Nginx or Caddy, you can offload static asset serving from
+the Python process:
+
+```nginx
+location /_miki/ {
+    alias /opt/myapp/dist/_miki/;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    add_header X-Content-Type-Options nosniff;
+}
+```
+
+For mobile (Capacitor) deployments, the entire `dist/_miki/` tree is copied
+into the Cordova/Capacitor `www/` directory during the mobile build.
+
 ## Performance Tuning
 
 ### Workers

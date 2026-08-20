@@ -2,11 +2,11 @@
 
 This module is the single entry-point for the MikiUI styling lifecycle:
 
-1. **Framework selection** — user picks Tailwind, Bootstrap, or plain CSS.
+1. **Framework selection** — user picks Tailwind or plain CSS.
 2. **Prerequisite checks** — Node.js detection for Tailwind; warn or abort.
 3. **Setup** — write config files, install npm deps (Tailwind), or register
-   Bootstrap CDN/local paths in the theme registry.
-4. **Runtime injection** — return the correct ``<link>`` / ``<script>`` tags
+   plain CSS theme in the theme registry.
+4. **Runtime injection** — return the correct ``<link>`` / ``<style>`` tags
    for the current mode (dev vs. prod).
 
 Security note: no secrets (API keys, tokens, private keys) are read, stored,
@@ -29,7 +29,6 @@ from typing import Any
 
 class Framework(str, Enum):
     TAILWIND = "tailwind"
-    BOOTSTRAP = "bootstrap"
     PLAIN = "plain"
 
 
@@ -138,17 +137,6 @@ class TailwindConfig:
 
 
 @dataclass
-class BootstrapConfig:
-    """Bootstrap-specific styling configuration."""
-
-    framework: Framework = Framework.BOOTSTRAP
-    use_cdn: bool = True
-    local_css_path: str = ""
-    local_js_path: str = ""
-    custom_css_paths: list[str] = field(default_factory=list)
-
-
-@dataclass
 class PlainCssConfig:
     """Plain-CSS (no framework) configuration."""
 
@@ -193,7 +181,6 @@ class StylingSystem:
         self.mode = mode
         self._framework: Framework | None = None
         self._tailwind: TailwindConfig | None = None
-        self._bootstrap: BootstrapConfig | None = None
         self._plain: PlainCssConfig | None = None
         self._errors: list[str] = []
 
@@ -213,7 +200,7 @@ class StylingSystem:
         Parameters
         ----------
         framework:
-            One of ``"tailwind"``, ``"bootstrap"``, ``"plain"``, or
+            One of ``"tailwind"``, ``"plain"``, or
             ``"daisyui"``.
         project_dir:
             Project root directory.
@@ -234,7 +221,7 @@ class StylingSystem:
         """Auto-detect the styling framework from project files.
 
         Looks for ``tailwind.config.js``, ``package.json`` with Tailwind
-        deps, or ``bootstrap`` references to guess the framework.
+        deps, or plain CSS references to guess the framework.
 
         Parameters
         ----------
@@ -288,10 +275,6 @@ class StylingSystem:
         return self._tailwind
 
     @property
-    def bootstrap_config(self) -> BootstrapConfig | None:
-        return self._bootstrap
-
-    @property
     def plain_config(self) -> PlainCssConfig | None:
         return self._plain
 
@@ -300,15 +283,11 @@ class StylingSystem:
         return list(self._errors)
 
     # -- public API -----------------------------------------------------------
-
     def auto_setup(
         self,
         framework: str = "tailwind",
         daisyui: bool = False,
         theme: str = "light",
-        bootstrap_use_cdn: bool = True,
-        bootstrap_local_css: str = "",
-        bootstrap_local_js: str = "",
         custom_css: list[str] | None = None,
     ) -> dict[str, Any]:
         """Detect prerequisites and set up the selected framework.
@@ -316,17 +295,11 @@ class StylingSystem:
         Parameters
         ----------
         framework:
-            One of ``"tailwind"``, ``"bootstrap"``, ``"plain"``, or ``"daisyui"``.
+            One of ``"tailwind"``, ``"plain"``, or ``"daisyui"``.
         daisyui:
             Enable DaisyUI (Tailwind only, also implied by ``"daisyui"`` framework).
         theme:
             Active color theme name.
-        bootstrap_use_cdn:
-            Use CDN for Bootstrap (ignored for other frameworks).
-        bootstrap_local_css:
-            Path to local ``bootstrap.min.css`` (Bootstrap only, when ``bootstrap_use_cdn`` is ``False``).
-        bootstrap_local_js:
-            Path or URL to Bootstrap JS bundle (Bootstrap only).
         custom_css:
             Additional CSS file paths (all frameworks).
 
@@ -362,14 +335,6 @@ class StylingSystem:
                 custom_css=custom_css,
                 report=report,
             )
-        elif fw == Framework.BOOTSTRAP:
-            self._setup_bootstrap(
-                use_cdn=bootstrap_use_cdn,
-                custom_css=custom_css,
-                report=report,
-                local_css_path=bootstrap_local_css,
-                local_js_path=bootstrap_local_js,
-            )
         else:
             self._plain = PlainCssConfig(custom_css_paths=list(custom_css))
 
@@ -397,12 +362,6 @@ class StylingSystem:
                 mode=effective_mode,
                 project_dir=self.project_dir,
             )
-        if self._framework == Framework.BOOTSTRAP:
-            return _bootstrap_runtime_html(
-                config=self._bootstrap,
-                mode=effective_mode,
-                project_dir=self.project_dir,
-            )
         return _plain_runtime_html(config=self._plain, project_dir=self.project_dir)
 
     def get_css_files(self) -> list[str]:
@@ -410,8 +369,6 @@ class StylingSystem:
         files: list[str] = []
         if self._framework == Framework.TAILWIND:
             files.extend(self._collect_tailwind_css_files())
-        elif self._framework == Framework.BOOTSTRAP:
-            files.extend(self._collect_bootstrap_css_files())
         if self._plain:
             files.extend(self._plain.custom_css_paths)
         return files
@@ -492,49 +449,9 @@ class StylingSystem:
             framework="tailwind",
             css_path=css_path,
             tailwind_config={"daisyui": daisyui},
+            color_theme=theme,
         )
         register_theme(theme_obj)
-
-    def _setup_bootstrap(
-        self,
-        use_cdn: bool,
-        custom_css: list[str],
-        report: dict[str, Any],
-        local_css_path: str = "",
-        local_js_path: str = "",
-    ) -> None:
-        from ..styling.bootstrap import register_bootstrap_theme
-
-        register_bootstrap_theme(
-            use_cdn=use_cdn,
-            local_css=local_css_path,
-            local_js=local_js_path,
-            custom_css=custom_css,
-        )
-
-        self._bootstrap = BootstrapConfig(
-            use_cdn=use_cdn,
-            local_css_path=local_css_path,
-            local_js_path=local_js_path,
-            custom_css_paths=list(custom_css),
-        )
-        if use_cdn:
-            report["instructions"] = [
-                "Bootstrap will be loaded from the jsDelivr CDN.",
-                "To use local files, set bootstrap_use_cdn=False and provide local_css_path.",
-            ]
-        else:
-            if not local_css_path:
-                report["warnings"].append(
-                    "bootstrap_use_cdn=False but local_css_path not set. "
-                    "Bootstrap CSS will not be loaded. "
-                    "Set local_css_path to your bootstrap.min.css."
-                )
-            report["instructions"] = [
-                f"Bootstrap CSS: {local_css_path or '(not set — will not load)'}",
-                f"Bootstrap JS:  {local_js_path or '(not set)'}",
-                "Add custom CSS files via the custom_css parameter.",
-            ]
 
     # -- private: CSS file collection -----------------------------------------
 
@@ -548,18 +465,6 @@ class StylingSystem:
             files.append(str(built_css))
         if self._tailwind:
             files.extend(self._tailwind.custom_css_paths)
-        return files
-
-    def _collect_bootstrap_css_files(self) -> list[str]:
-        files: list[str] = []
-        if self._bootstrap and not self._bootstrap.use_cdn:
-            local = self._bootstrap.local_css_path
-            if local:
-                resolved = (self.project_dir / local).resolve()
-                if resolved.is_file():
-                    files.append(str(resolved))
-        if self._bootstrap:
-            files.extend(self._bootstrap.custom_css_paths)
         return files
 
 
@@ -577,10 +482,9 @@ def _tailwind_runtime_html(
         return ""
 
     parts: list[str] = []
-    use_cdn = config.use_cdn or mode == StylingMode.DEV
 
-    if use_cdn:
-        cdn_url = "https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css"
+    if config.use_cdn:
+        cdn_url = "https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css"
         parts.append(f'<link rel="stylesheet" href="{cdn_url}">')
         if config.daisyui:
             daisyui_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css"
@@ -592,34 +496,6 @@ def _tailwind_runtime_html(
         built_css = project_dir / "_miki" / "runtime" / "themes" / "tailwind.css"
         if built_css.is_file() and not tailwind_css.is_file():
             parts.append('<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
-
-    for css_path in config.custom_css_paths:
-        parts.append(f'<link rel="stylesheet" href="{css_path}">')
-
-    return "\n    ".join(parts)
-
-
-def _bootstrap_runtime_html(
-    config: BootstrapConfig | None,
-    mode: StylingMode,
-    project_dir: Path,
-) -> str:
-    """Generate the <link> / <script> tags for Bootstrap mode."""
-    if config is None:
-        return ""
-
-    parts: list[str] = []
-
-    if config.use_cdn:
-        css_cdn = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        js_cdn = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        parts.append(f'<link rel="stylesheet" href="{css_cdn}">')
-        parts.append(f'<script src="{js_cdn}"></script>')
-    else:
-        if config.local_css_path:
-            parts.append(f'<link rel="stylesheet" href="{config.local_css_path}">')
-        if config.local_js_path:
-            parts.append(f'<script src="{config.local_js_path}"></script>')
 
     for css_path in config.custom_css_paths:
         parts.append(f'<link rel="stylesheet" href="{css_path}">')
@@ -650,6 +526,5 @@ __all__ = [
     "detect_node",
     "require_node",
     "TailwindConfig",
-    "BootstrapConfig",
     "PlainCssConfig",
 ]

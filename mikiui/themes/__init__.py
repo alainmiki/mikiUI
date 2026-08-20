@@ -1,14 +1,14 @@
 """MikiUI theme system.
 
-Provides infrastructure for color themes and framework themes (Tailwind, Bootstrap, plain CSS).
+Provides infrastructure for color themes and framework themes (Tailwind, plain CSS).
 Themes can be registered via plugins or directly on the app.
 
 The system distinguishes:
-- **Framework themes**: Tailwind, Bootstrap, or plain CSS – these define how styles are processed.
-- **Color themes**: light, dark, dracula – these define color variables (`--miki-*`).
+- **Framework themes**: Tailwind — defines how styles are processed.
+- **Color themes**: light, dark, dracula — these define color variables (`--miki-*`).
 
 A project can use framework + color themes together: the framework provides the CSS pipeline
-(Tailwind JIT, Bootstrap, or our base CSS), and the color theme provides the actual color palette.
+(Tailwind JIT, or our base CSS), and the color theme provides the actual color palette.
 
 For Tailwind users wanting JIT builds:
 ```
@@ -47,25 +47,11 @@ COLOR_THEMES: dict[str, str] = {
     "valentine": "valentine.css",
 }
 
-# Framework themes – users can opt into Tailwind, Bootstrap, or plain CSS.
-_FRAMEWORK_THEMES: dict[str, dict[str, Any]] = {
-    "tailwind": {
-        "cdn": "https://unpkg.com/tailwindcss@3.4.1/dist/tailwind.min.css",
-        "daisyui": "https://unpkg.com/daisyui@5/dist/daisyui.min.css",
-        "entry": "tailwind.css",  # Path relative to runtime dir
-    },
-    "bootstrap": {
-        "cdn": "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
-        "js": "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
-    },
-}
-
-# Cache of all registered themes
 _theme_registry: dict[str, Theme] = {}
 
 
 def _load_builtin_themes() -> None:
-    """Populate the registry with default color themes and framework themes.
+    """Populate the registry with default color themes.
 
     Only loads builtins, preserving any user/plugin-registered themes already
     in the registry.  Safe to call multiple times (idempotent).
@@ -75,16 +61,6 @@ def _load_builtin_themes() -> None:
             name=name,
             source="builtin-color",
             css_path=os.path.join(THEME_DIR, filename),
-        )
-
-    # Framework themes (cdn-based or local tailwind build output)
-    for fn, cfg in _FRAMEWORK_THEMES.items():
-        _theme_registry[fn] = Theme(
-            name=fn,
-            source="builtin-framework",
-            framework=fn,
-            cdn_url=cfg.get("cdn"),
-            js_url=cfg.get("js"),
         )
 
 
@@ -99,19 +75,20 @@ class Theme:
     source: str
         Where the theme came from: "builtin-color", "builtin-framework", "plugin", "custom".
     framework: str | None
-        One of "tailwind", "bootstrap", "css", or None.
+        One of "tailwind", "css", or None.
     css_path: str | None
         Local path to a CSS file (loaded inline or served as asset).
     cdn_url: str | None
         Optional CDN URL for framework CSS.
-    js_url: str | None
-        Optional CDN URL for framework JS (e.g., Bootstrap bundle).
     tailwind_config: dict
         Optional Tailwind config merging with MikiUI defaults.
     variables: dict
         CSS custom property overrides like ``{"--miki-bg": "#fff"}``.
     extra_classes: list[str]
         CSS classes to add to ``<body>``.
+    color_theme: str | None
+        For framework themes, the active color theme name (e.g. "light", "dark").
+        Used to generate the correct DaisyUI data-theme attribute.
     """
 
     name: str
@@ -123,6 +100,7 @@ class Theme:
     tailwind_config: dict[str, Any] | None = None
     variables: dict[str, str] = field(default_factory=dict)
     extra_classes: list[str] = field(default_factory=list)
+    color_theme: str | None = None
 
     def css(self) -> str:
         """Return the CSS content (inline if css_path exists, otherwise empty)."""

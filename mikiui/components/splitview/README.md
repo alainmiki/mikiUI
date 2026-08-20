@@ -141,7 +141,7 @@ SplitView(
 The component uses scoped CSS classes under `.miki-editor-area` and `.miki-splitview`. The theme system works automatically:
 
 - Color themes (light, dark, dracula, solarized-dark) are inlined as CSS variables
-- Framework themes (tailwind, bootstrap) use CDN or local CSS links
+- Framework themes (tailwind) use CDN or local CSS links
 - The dark theme is applied by default in the demo
 
 ## JavaScript Behavior

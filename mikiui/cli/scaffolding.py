@@ -12,11 +12,10 @@ from pathlib import Path
 
 from ..styling import StylingSystem, normalize_framework
 
-UI_FRAMEWORKS: list[str] = ["tailwind", "bootstrap", "daisyui", "plain"]
+UI_FRAMEWORKS: list[str] = ["tailwind", "daisyui", "plain"]
 
 FRAMEWORK_DESCRIPTIONS: dict[str, str] = {
     "tailwind": "Tailwind CSS — utility-first, JIT compilation (requires Node.js)",
-    "bootstrap": "Bootstrap 5 — CDN or local files + custom CSS",
     "plain": "Plain CSS — no framework, just your own styles",
 }
 
@@ -78,7 +77,6 @@ You can change the CSS framework by editing `app.py` and changing the
 `set_theme` call, or by running `mikiui install`:
 
 - `mikiui install tailwind` — set up Tailwind CSS
-- `mikiui install bootstrap` — use Bootstrap CDN
 - `plain` — no framework, just custom CSS files
 """
 
@@ -93,7 +91,6 @@ def framework_config(framework: str) -> str:
     return {
         "tailwind": 'app.set_theme("tailwind")\n',
         "daisyui": 'app.set_theme("tailwind")\n',
-        "bootstrap": 'app.set_theme("bootstrap")\n',
         "plain": 'app.set_theme("light")\n',
     }.get(framework, 'app.set_theme("light")\n')
 
@@ -130,19 +127,6 @@ mikiui dev           # Start dev server
 mikiui tailwind dev  # Watch & rebuild CSS (in another terminal)
 mikiui build --target web --daisyui  # Build for production
 ```""",
-        "bootstrap": """### Bootstrap
-
-Bootstrap is loaded from the jsDelivr CDN by default.
-
-To use local Bootstrap files instead:
-```bash
-mikiui install bootstrap
-```
-
-Add your own custom CSS in `static/` and reference it in `app.py`:
-```python
-app.add_head_link("/static/my-styles.css", rel="stylesheet")
-```""",
         "plain": """### Plain CSS
 
 No CSS framework is used. Add your own CSS files in `static/` and
@@ -161,7 +145,7 @@ def _prompt_framework() -> str:
     Returns
     -------
     str
-        One of ``"tailwind"``, ``"bootstrap"``, ``"plain"``.
+        One of ``"tailwind"``, ``"plain"``.
     """
     print("\nSelect a CSS framework for your MikiUI project:\n")
     for i, fw in enumerate(UI_FRAMEWORKS, start=1):
@@ -199,11 +183,11 @@ def scaffold(
     directory:
         Parent directory (defaults to the current working directory).
     framework:
-        CSS framework: ``"tailwind"``, ``"bootstrap"``, ``"plain"``.
+        CSS framework: ``"tailwind"``, ``"plain"``.
     interactive:
         If ``True``, prompt the user to select a framework interactively.
     custom_css:
-        Extra CSS file paths to add for Bootstrap/plain CSS projects.
+        Extra CSS file paths to add for plain CSS projects.
 
     Returns
     -------
@@ -269,18 +253,6 @@ def scaffold(
             daisyui=daisyui_enabled,
         )
         ss.auto_setup(framework="tailwind", theme="light", daisyui=daisyui_enabled)
-
-    elif effective_framework == "bootstrap":
-        static_dir = target / "static"
-        static_dir.mkdir(exist_ok=True)
-        (static_dir / "custom.css").write_text(
-            "/* Add your custom CSS here */\n", encoding="utf-8"
-        )
-        ss.auto_setup(
-            framework="bootstrap",
-            bootstrap_use_cdn=True,
-            custom_css=["/static/custom.css"],
-        )
 
     else:
         static_dir = target / "static"

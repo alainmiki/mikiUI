@@ -94,20 +94,6 @@ class TestThemeSwitcherCustomThemes:
         assert 'value="my-theme-2"' in html
         assert 'value="light"' not in html
 
-    def test_filter_framework_tailwind(self):
-        app = _make_app()
-        widget = ThemeSwitcher(app, filter_framework="tailwind")
-        html = widget.to_html()
-        assert 'value="tailwind"' in html
-        assert 'value="dark"' not in html
-
-    def test_filter_framework_excludes_others(self):
-        app = _make_app()
-        widget = ThemeSwitcher(app, filter_framework="bootstrap")
-        html = widget.to_html()
-        assert 'value="bootstrap"' in html
-        assert 'value="light"' not in html
-
     def test_empty_themes_list(self):
         app = _make_app()
         widget = ThemeSwitcher(app, themes=[])

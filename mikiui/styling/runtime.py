@@ -7,11 +7,10 @@ the HTML rendering layer.  It converts framework configs into the
 Mode handling:
 
 * **dev mode** — Tailwind falls back to CDN so styles load immediately even
-  before a local Tailwind build is set up.  Bootstrap uses the CDN.
+  before a local Tailwind build is set up.
   ``mikiui tailwind dev`` runs the watcher alongside the dev server.
 * **prod mode** — Tailwind serves the compiled ``tailwind.css`` from
-  ``_miki/runtime/themes/``.  Bootstrap CDN is still acceptable; for
-  fully offline builds, users should switch to local mode.
+  ``_miki/runtime/themes/``.
 
 Security note: no secrets or API keys are read or emitted here.
 """
@@ -19,12 +18,12 @@ Security note: no secrets or API keys are read or emitted here.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from .system import (
     Framework,
     StylingMode,
     StylingSystem,
-    _bootstrap_runtime_html,
     _plain_runtime_html,
     _tailwind_runtime_html,
 )
@@ -50,7 +49,7 @@ def get_runtime_css(
         An optional :class:`~mikiui.styling.system.StylingSystem` instance.
         If provided, *framework* and *mode* are read from it.
     framework:
-        One of ``"tailwind"``, ``"bootstrap"``, ``"plain"``.  Ignored if
+        One of ``"tailwind"`` or ``"plain"``.  Ignored if
         *styling_system* is given.
     mode:
         ``"dev"`` or ``"prod"``.  Ignored if *styling_system* is given.
@@ -84,14 +83,6 @@ def get_runtime_css(
             else kwargs.get("tailwind_config")
         )
         return _tailwind_runtime_html(config=config, mode=effective_mode, project_dir=project_dir)
-
-    if effective_fw == Framework.BOOTSTRAP:
-        config = (
-            styling_system.bootstrap_config
-            if styling_system
-            else kwargs.get("bootstrap_config")
-        )
-        return _bootstrap_runtime_html(config=config, mode=effective_mode, project_dir=project_dir)
 
     config = (
         styling_system.plain_config
@@ -135,8 +126,6 @@ def css_head_block(
     str
         HTML string ready for ``<head>`` injection.
     """
-    from .bootstrap import BOOTSTRAP_CDN_CSS, BOOTSTRAP_CDN_JS
-
     custom_css = list(custom_css or [])
     project_dir = Path(project_dir).resolve()
 
@@ -145,7 +134,7 @@ def css_head_block(
     if framework == "tailwind":
         use_cdn = runtime == "cdn" or mode == "dev"
         if use_cdn:
-            cdn = "https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css"
+            cdn = "https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css"
             parts.append(f'<link rel="stylesheet" href="{cdn}">')
             if daisyui:
                 daisy_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css"
@@ -154,15 +143,6 @@ def css_head_block(
             tw = project_dir / "_miki" / "runtime" / "themes" / "tailwind.css"
             if tw.is_file():
                 parts.append('<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css">')
-
-    elif framework == "bootstrap":
-        if runtime == "cdn" or mode == "dev":
-            parts.append(f'<link rel="stylesheet" href="{BOOTSTRAP_CDN_CSS}">')
-            parts.append(f'<script src="{BOOTSTRAP_CDN_JS}"></script>')
-        else:
-            local_css = project_dir / "static" / "bootstrap.min.css"
-            if local_css.is_file():
-                parts.append('<link rel="stylesheet" href="/static/bootstrap.min.css">')
 
     for css_path in custom_css:
         parts.append(f'<link rel="stylesheet" href="{css_path}">')

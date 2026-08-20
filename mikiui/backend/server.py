@@ -16,29 +16,62 @@ import os
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 from ..app import MikiApp, RouteDef
 from ..app.routes import resolve_title
-from ..app.static_assets import discover, get_asset_mounts, init_defaults, register_plugin_assets
+from ..app.static_assets import (
+    CachingStaticFiles,
+    discover,
+    get_asset_mounts,
+    init_defaults,
+    register_package_root,
+    register_plugin_assets,
+)
 from ..engine.renderer import render_fragment, render_page
-from ..errors import MikiUIError, NotFoundError, error_response
 from ..middleware.error_handler import ErrorHandlerMiddleware, register_exception_handlers
 from ..router.auth_middleware import AuthMiddleware, ensure_auth_strategies
+from ..router.group import _get_route_group
 from ..router.middleware import apply_default_middleware
 from ..router.router import add_pwa_manifest
-from ..router.group import _get_route_group
-from ..router.csrf import CSRFMiddleware
-from ..router.rate_limit import RateLimitMiddleware
-from ..router.auth import AuthRequirement
-from ..router.auth_middleware import resolve_auth_requirement
 from ..runtime.runtime_loader import runtime_scripts
 from .api_routes import add_api_routes
 
 logger = logging.getLogger(__name__)
 
 _RUNTIME_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "runtime"))
+
+
+def _register_app_static_roots(miki_app: MikiApp) -> None:
+    """Register additional package roots from app-registered themes, widgets,
+    components, and plugins so their ``static/`` directories are discovered."""
+    seen: set[str] = set()
+
+    # Scan widget/component registry for module-based static dirs
+    registry = getattr(miki_app, "registry", None)
+    if registry is not None:
+        for name, cls in list(getattr(registry, "_registry", {}).items()):
+            mod = getattr(cls, "__module__", None)
+            if not mod:
+                continue
+            mod_path = mod.replace(".", os.sep) + ".py"
+            if os.path.isfile(mod_path):
+                root = os.path.dirname(os.path.abspath(mod_path))
+                if root not in seen:
+                    seen.add(root)
+                    register_package_root(root)
+
+    # Scan theme registry for theme css_path-based static dirs
+    theme_registry = getattr(miki_app, "theme_registry", None)
+    if theme_registry is not None:
+        for theme_name in theme_registry.list_registered():
+            theme = theme_registry.get(theme_name)
+            if theme and getattr(theme, "css_path", None):
+                css_abs = os.path.abspath(theme.css_path)
+                root = os.path.dirname(css_abs)
+                if os.path.isdir(root) and root not in seen:
+                    seen.add(root)
+                    register_package_root(root)
 
 
 def _wrap_endpoint(endpoint: Any, middleware_classes: list[type]) -> Any:
@@ -118,6 +151,7 @@ def _make_endpoint(miki_app: MikiApp, route: RouteDef):
         scripts = getattr(request.app.state, "runtime_scripts", None)
         page_title = resolve_title(route, ctx, miki_app.title)
         head_extra = miki_app.head_extra_html()
+        csp_nonce = getattr(request.state, "csp_nonce", None)
         return HTMLResponse(
             render_page(
                 nodes,
@@ -125,8 +159,12 @@ def _make_endpoint(miki_app: MikiApp, route: RouteDef):
                 lang=miki_app.lang,
                 runtime_scripts=scripts,
                 theme=miki_app.theme,
+                framework=miki_app.style_framework,
+                style_mode=miki_app.style_mode,
+                daisyui=miki_app.style_daisyui,
                 favicon=miki_app.favicon,
                 head_extra=head_extra,
+                csp_nonce=csp_nonce,
             )
         )
 
@@ -158,7 +196,7 @@ def create_app(
     init_defaults()
 
     # Collect plugin static assets
-    plugin_asset_paths: list[tuple[str, str]] = []
+    plugin_asset_paths: list[tuple[str, list[str]]] = []
     for plugin in miki_app.plugins:
         if hasattr(plugin, "assets"):
             try:
@@ -175,31 +213,49 @@ def create_app(
 
     # Mount runtime static files with cache headers for production
     if os.path.isdir(_RUNTIME_DIR):
-        from starlette.staticfiles import StaticFiles as _SF
-        from starlette.responses import FileResponse
-        from starlette.middleware.base import BaseHTTPMiddleware
-
-        class _CachingStaticFiles(_SF):
-            async def get_response(self, path: str, scope):
-                response = await super().get_response(path, scope)
-                if hasattr(response, "headers"):
-                    response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-                return response
-
         app.mount(
             "/_miki/runtime",
-            _CachingStaticFiles(directory=_RUNTIME_DIR, html=False),
+            CachingStaticFiles(directory=_RUNTIME_DIR, html=False),
             name="miki-runtime",
         )
 
-    # Mount discovered component/widget/plugin static files
+    # Discover static directories from built-in roots
+    discover()
+
+    # Auto-discover static directories from user-registered themes, widgets,
+    # components, and plugins so custom packages can ship their own assets.
+    _register_app_static_roots(miki_app)
+
+    # Re-discover after registering app-specific roots
+    discover()
+
+    # Mount discovered component/widget/plugin/theme static files
     asset_mounts = get_asset_mounts()
     for url_path, abs_path in asset_mounts.items():
         if os.path.isdir(abs_path):
             mount_name = "miki-static-" + url_path.replace("/", "-").strip("-")
             app.mount(
                 url_path,
-                _CachingStaticFiles(directory=abs_path, html=False),
+                CachingStaticFiles(directory=abs_path, html=False),
+                name=mount_name,
+            )
+
+    # Mount the user project's static/ directory if present
+    project_static = os.path.join(os.getcwd(), "static")
+    if os.path.isdir(project_static):
+        app.mount(
+            "/static",
+            CachingStaticFiles(directory=project_static, html=False),
+            name="miki-project-static",
+        )
+
+    # Mount any extra static dirs registered via MikiApp.mount_static()
+    for url_path, abs_path in getattr(miki_app, "_static_mounts", []):
+        if os.path.isdir(abs_path):
+            mount_name = "miki-user-static-" + url_path.replace("/", "-").strip("-")
+            app.mount(
+                url_path,
+                CachingStaticFiles(directory=abs_path, html=False),
                 name=mount_name,
             )
 

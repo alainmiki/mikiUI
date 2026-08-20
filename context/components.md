@@ -141,7 +141,7 @@ This catalog defines all base components (HTML elements) and advanced widgets/pa
 ---
 
 ## Notes
-- All components are **Python classes** returning HTML + Tailwind/Bootstrap styling.
+- All components are **Python classes** returning HTML + Tailwind/plain-CSS styling.
 - Widgets are **composite classes** built from base components.
 - Accessibility (ARIA roles, keyboard navigation) is mandatory.
 - Internationalization hooks must be available in all components/widgets.

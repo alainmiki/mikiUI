@@ -44,7 +44,7 @@ After mobile work is unblocked, follow the implementation order in `context/mobi
 - Use Python for core framework logic.
 - Use FastAPI for backend routes and WebSocket/SSE.
 - Use HTMX + Alpine.js for runtime interactivity.
-- TailwindCSS as default styling, Bootstrap optional.
+- TailwindCSS as default styling, plain CSS as alternative.
 - Ensure accessibility and internationalization.
 - Provide testing utilities and DevTools integration.
 - Implement CLI commands (`new`, `dev`, `build`).

@@ -15,6 +15,12 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+from typing import Any
+
+from starlette.responses import Response
+from starlette.staticfiles import StaticFiles as _StarletteStaticFiles
+from starlette.types import Scope
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +40,29 @@ _ABS_TO_URL: dict[str, str] = {}
 # Plugin-registered mounts preserved across discover() calls.
 _PLUGIN_MOUNTS: dict[str, str] = {}
 _PLUGIN_ABS_TO_URL: dict[str, str] = {}
+
+# Matches filenames that look content-hashed, e.g. app.abc123.css, app.min.js
+_HASHED_FILENAME_RE = re.compile(r"\.[a-f0-9]{6,}\.")
+
+
+class CachingStaticFiles(_StarletteStaticFiles):
+    """StaticFiles subclass with conditional cache headers.
+
+    Files whose names contain a hex hash segment (e.g. ``app.abc123.css``)
+    receive ``Cache-Control: public, max-age=31536000, immutable``.
+    All other files receive ``max-age=3600`` so users can update them without
+    waiting for a year-long browser cache to expire.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if not hasattr(response, "headers"):
+            return response
+        if _HASHED_FILENAME_RE.search(path):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers.setdefault("Cache-Control", "public, max-age=3600")
+        return response
 
 
 def register_package_root(abs_path: str) -> None:
@@ -235,10 +264,18 @@ def register_plugin_assets(plugin_name: str, asset_paths: list[str]) -> None:
 
         # Deduplicate by absolute path so the same directory isn't mounted twice
         if abs_path in _PLUGIN_ABS_TO_URL:
-            existing_plugin = _PLUGIN_MOUNTS.get(_PLUGIN_ABS_TO_URL[abs_path], "").split("/_miki/plugins/")[-1].split("/")[0] if _PLUGIN_ABS_TO_URL.get(abs_path) else ""
+            existing_url = _PLUGIN_ABS_TO_URL.get(abs_path, "")
+            existing_plugin = (
+                existing_url.split("/_miki/plugins/")[-1].split("/")[0]
+                if existing_url
+                else ""
+            )
             logger.warning(
-                "Plugin %r asset path %s collides with previously registered path from plugin %r. Skipping.",
-                plugin_name, abs_path, existing_plugin
+                "Plugin %r asset path %s collides with previously registered "
+                "path from plugin %r. Skipping.",
+                plugin_name,
+                abs_path,
+                existing_plugin,
             )
             continue
 
@@ -261,10 +298,16 @@ __all__ = [
     "resolve_static_path",
     "init_defaults",
     "register_plugin_assets",
+    "CachingStaticFiles",
 ]
 
 
-def get_versioned_asset_url(package_type: str, package_name: str, filename: str, manifest: dict[str, Any] | None = None) -> str:
+def get_versioned_asset_url(
+    package_type: str,
+    package_name: str,
+    filename: str,
+    manifest: dict[str, Any] | None = None,
+) -> str:
     """Return a cache-busted asset URL if a manifest is provided.
 
     Parameters

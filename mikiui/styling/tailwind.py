@@ -1,4 +1,4 @@
-"""Tailwind CSS helpers for the MikiUI styling system.
+"""Tailwind CSS v4 + DaisyUI v5 helpers for the MikiUI styling system.
 
 This module is a thin facade over :mod:`mikiui.build.tailwind` that adds
 Node.js detection, npm install orchestration, and user-facing messaging.
@@ -12,14 +12,12 @@ from typing import Any
 
 
 def npm_dependencies(daisyui: bool = False) -> dict[str, str]:
-    """Return the npm packages required for Tailwind (+ optional DaisyUI)."""
+    """Return the npm packages required for Tailwind v4 (+ optional DaisyUI v5)."""
     deps = {
-        "tailwindcss": "^3.4.0",
-        "autoprefixer": "^10.4.0",
-        "postcss": "^8.4.0",
+        "tailwindcss": "^4.1.7",
     }
     if daisyui:
-        deps["daisyui"] = "^4.12.0"
+        deps["daisyui"] = "^5.0.0"
     return deps
 
 
@@ -29,7 +27,7 @@ def tailwind_config(
     content: list[str] | None = None,
     extend: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Generate a complete Tailwind CSS configuration."""
+    """Generate a complete Tailwind v4 configuration."""
     content_paths = list(content or []) + [
         "mikiui/runtime/miki.css",
         "mikiui/runtime/themes/*.css",
@@ -64,8 +62,8 @@ def tailwind_config(
 
 
 def daisyui_config(theme: str = "dark") -> dict[str, Any]:
-    """Build a DaisyUI theme bridge from a MikiUI color theme."""
-    from ..themes import get_theme
+    """Build a DaisyUI v5 theme bridge from a MikiUI color theme."""
+    from mikiui.themes import get_theme
 
     t = get_theme(theme)
     if t is None:
@@ -95,23 +93,21 @@ def write_config(
     theme: str = "light",
     daisyui: bool = False,
 ) -> str:
-    """Write a ``tailwind.config.js``."""
+    """Write a ``tailwind.config.js`` for Tailwind v4."""
     import json
 
-    from ..build.tailwind import tailwind_config
-    from .system import detect_node
+    from mikiui.build.tailwind import tailwind_config
 
     config = tailwind_config(theme=theme, daisyui=daisyui)
 
     if path.endswith(".js"):
-        text = "/** @type {import('tailwindcss').Config} */\nmodule.exports = "
+        text = "export default "
         text += json.dumps(config, indent=2) + ";\n"
     elif path.endswith(".json"):
         text = json.dumps(config, indent=2) + "\n"
     else:
         text = json.dumps(config, indent=2) + "\n"
 
-    from pathlib import Path
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
@@ -125,7 +121,7 @@ def write_postcss_config(path: str) -> str:
         return str(p)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(
-        "module.exports = {\n  plugins: {\n    tailwindcss: {},\n    autoprefixer: {},\n  },\n};\n",
+        "export default {\n  plugins: {\n    tailwindcss: {},\n    autoprefixer: {},\n  },\n};\n",
         encoding="utf-8",
     )
     return str(p)
@@ -181,7 +177,7 @@ def install_deps(
 
 
 def daisyui_bridge(theme_name: str = "light") -> dict[str, Any]:
-    """Build a DaisyUI theme bridge from a MikiUI color theme.
+    """Build a DaisyUI v5 theme bridge from a MikiUI color theme.
 
     Reads the CSS custom properties from the MikiUI theme and maps them
     to DaisyUI variable names.
@@ -196,7 +192,7 @@ def daisyui_bridge(theme_name: str = "light") -> dict[str, Any]:
     dict[str, Any]
         A DaisyUI theme dict keyed by ``f"mikiui-{theme_name}"``.
     """
-    from ..themes import get_theme
+    from mikiui.themes import get_theme
 
     t = get_theme(theme_name)
     if t is None:

@@ -8,7 +8,7 @@ This demo covers:
 - Layout patterns (Navbar, Sidebar, Footer, Drawer, Hero, etc.)
 - Drag-drop and sorting interactions
 - HTMX partial updates
-- Theme switching (tailwind, bootstrap, dark, light)
+- Theme switching (tailwind, dark, light)
 """
 
 from __future__ import annotations
@@ -48,8 +48,10 @@ from mikiui.widgets import (
 from mikiui.widgets.layout_widgets import Sidebar
 
 app = MikiApp(title="MikiUI Demo App 1.  ")
-app.set_theme("dracula")
-# app.set_style_framework("tailwind")
+app.set_theme("cupcake")
+app.set_style_framework("plain")
+# To use Tailwind instead:
+# app.set_style_framework("tailwind", mode="cdn", daisyui=False)
 
 @app.route("/")
 def home():

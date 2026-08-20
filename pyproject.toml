@@ -94,6 +94,7 @@ exclude = [
     "build/",
     "dist/",
     "*.egg-info",
+    "package.json",
 ]
 
 [tool.ruff.lint]

@@ -67,7 +67,7 @@ def test_theme_to_dict():
 
 
 def test_theme_with_framework():
-    """Theme can specify a framework (tailwind, bootstrap, css)."""
+    """Theme can specify a framework (tailwind, css)."""
     t = Theme(
         name="custom-tailwind",
         source="custom",
@@ -81,10 +81,11 @@ def test_theme_with_framework():
 
 
 def test_render_page_with_tailwind_framework():
-    """Rendering with Tailwind theme should inject CDN link."""
-    page = render_page(Div("test"), title="Test", theme="tailwind")
-    assert 'data-miki-theme="tailwind"' in page
-    assert "tailwind.min.css" in page or "tailwindcss" in page
+    """Rendering with framework=tailwind should inject CDN link and skip miki.css."""
+    page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind")
+    assert "miki.css" not in page
+    assert "tailwind.min.css" in page
+    assert 'data-theme="mikiui-dark"' in page
 
 
 # --- MikiApp theme integration ------------------------------------------------
@@ -302,7 +303,7 @@ def test_component_library_link():
 
     link = component_library_link("daisyui")
     assert "daisyui" in link.lower()
-    assert "<script" in link
+    assert "<link" in link
     assert component_library_link("nonexistent") == ""
 
 

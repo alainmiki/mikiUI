@@ -193,3 +193,86 @@ All aliases are exported from `mikiui.components` and re-exported from `mikiui`.
 
 - **`AUDIT_REPORT.md`**: Complete audit report with all 18 issues documented,
   status tracking (P0–P3), and a detailed changelog of all fixes.
+
+### Static Files & Build System
+
+#### Production-Ready Static File Serving
+
+- **`mikiui/app/static_assets.py`**:
+  - Added `CachingStaticFiles` class (moved out of `backend/server.py`) with
+    conditional cache headers: `immutable, max-age=31536000` for content-hashed
+    filenames (e.g. `app.abc123.css`), `max-age=3600` for all others.
+  - `register_plugin_assets()` collision warning message refactored for readability.
+  - `get_versioned_asset_url()` signature split across multiple lines for PEP 8.
+  - Exports `CachingStaticFiles` for use by backend and tests.
+
+- **`mikiui/backend/server.py`**:
+  - **P0**: Auto-mounts the project's `static/` directory at `/static` if present,
+    fixing the broken `mikiui new plain` scaffold.
+  - **P0**: `build_web()` now copies `mikiui/components/*/static/` and
+    `mikiui/widgets/*/static/` into `dist/_miki/`, making static-exported sites
+    self-contained.
+  - **P1**: New `_register_app_static_roots()` scans the app's `WidgetRegistry`
+    and `ThemeRegistry` for module/css paths and auto-registers their parent
+    directories, so custom themes, widgets, components, and plugins get their
+    `static/` folders discovered and mounted automatically.
+  - Removed inline `_CachingStaticFiles` class definition; uses the shared
+    `CachingStaticFiles` from `static_assets.py` instead.
+  - Cleaned up unused imports (`StaticFiles`, `JSONResponse`, `MikiUIError`,
+    `NotFoundError`, `error_response`, `CSRFMiddleware`, `RateLimitMiddleware`,
+    `AuthRequirement`, `resolve_auth_requirement`).
+
+- **`mikiui/app/app.py`**:
+  - **P1**: Added `MikiApp.mount_static(url_path, directory)` — public API to
+    mount arbitrary static directories without dropping to raw FastAPI.
+  - **P1**: Added `MikiApp.asset_url(package_type, package_name, filename)` —
+    resolves `/_miki/...` URLs for components, widgets, plugins, and themes.
+  - Added `_static_mounts: list[tuple[str, str]]` to track user-registered mounts.
+  - Fixed `TYPE_CHECKING` guard for `Router` import to satisfy type checkers.
+
+- **`mikiui/build/web_build.py`**:
+  - **P0**: Static export now copies component/widget/plugin/theme static assets
+    into `dist/_miki/`, including all `.css` theme files from `runtime/themes/`.
+  - **P1**: Component/widget/theme assets are included in `manifest.json` with
+    content hashes for cache busting.
+  - **P3**: Added `_render_parameterized_routes()` and `_load_route_manifest()`
+    to support `route-manifest.json` — a JSON file mapping parameterized routes
+    to example path values for static export.
+  - **Mobile compatibility**: Changed runtime asset copying from a hardcoded
+    `_RUNTIME_ASSETS` list to a directory scan, so new bridge JS files
+    (`backend_bridge.js`, `capacitor_bridge.js`, etc.) are automatically
+    included when added to `mikiui/runtime/`.
+  - Removed unused `config_path` variable in `_build_tailwind`.
+
+- **`mikiui/router/middleware.py`**:
+  - **P2**: Dev-mode CSP now strips `'unsafe-inline'` from `style-src` when a
+    nonce is present, replacing it with `'nonce-<value>'`. The renderer adds
+    `nonce` attributes to inline `<style>` tags for CSS variables.
+  - Added missing `typing.Any` import.
+
+- **`mikiui/engine/renderer.py`**:
+  - **P2**: `render_page()` and `_theme_styles()` now accept `csp_nonce` and
+    apply it to inline `<style>` tags for CSS variables.
+  - Added `framework`, `style_mode`, `daisyui` parameters to `_theme_styles()`
+    and `render_page()` so Tailwind/DaisyUI configuration flows from the app.
+  - Fixed base CSS logic: Tailwind framework skips loading `miki.css` to avoid
+    duplication; plain CSS and color themes load it normally.
+  - Removed unused `_RUNTIME_DIR` import from `themes`.
+
+- **`mikiui/build/__init__.py`**:
+  - **P3**: Now imports `optimize` from `optimizer.py` (real CSS/JS minification)
+    instead of the inline blank-line-stripping stub.
+
+- **`package.json`**:
+  - Removed orphaned Vite scripts and `vite` devDependency.
+  - Added accurate Tailwind CLI scripts (`tailwind:build`, `tailwind:watch`).
+  - Updated `tailwindcss` to `^4.1.7` and `daisyui` to `^5.0.0`.
+
+#### Verification
+
+- All 134 existing tests pass.
+- `ruff check` passes on all changed files.
+- `mypy` shows no new errors introduced by these changes.
+- Integration tests confirm: `mount_static()`, `asset_url()`, project `static/`
+  auto-mount, component asset copying in web build, and custom package static
+  directory discovery all work correctly.

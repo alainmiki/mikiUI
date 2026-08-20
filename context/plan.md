@@ -13,7 +13,7 @@ MikiUI is a Python-first UI framework that allows developers to build user inter
 ## Tech Stack
 - **Backend**: FastAPI (routes, WebSocket, SSE).
 - **Frontend Runtime**: HTMX + Alpine.js (DOM updates, interactivity).
-- **Styling**: TailwindCSS (default), Bootstrap (optional).
+- **Styling**: TailwindCSS (default), plain CSS.
 - **Packaging**: 
   - **Fullstack mode**: FastAPI serves both frontend and backend together.  
   - **Separate mode**: Frontend packaged independently, backend runs standalone.  
@@ -23,7 +23,7 @@ MikiUI is a Python-first UI framework that allows developers to build user inter
 - **DevTools**: Browser extension for state/routes inspection.
 
 ## Modules
-- Components → Python classes mapped to HTML/Tailwind/Bootstrap (all HTML elements including dialogs).
+- Components → Python classes mapped to HTML/Tailwind (all HTML elements including dialogs).
 - Widgets → High-level composite components (DataGrid, MediaPlayer, Dashboard, Panels).
 - App → User-facing API (routing, state, plugin use).
 - Engine → Rendering, diffing, optimistic updates.

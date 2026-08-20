@@ -18,6 +18,7 @@ Security headers added:
 from __future__ import annotations
 
 import secrets
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -66,7 +67,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         csp = self._csp or ""
         if nonce:
             csp = csp.replace("script-src 'self'", f"script-src 'self' 'nonce-{nonce}'")
-            csp = csp.replace("style-src 'self' 'unsafe-inline'", f"style-src 'self' 'unsafe-inline' 'nonce-{nonce}'")
+            csp = csp.replace("style-src 'self' 'unsafe-inline'", f"style-src 'self' 'nonce-{nonce}'")
         response.headers.setdefault("Content-Security-Policy", csp)
         if self._hsts:
             is_https = (

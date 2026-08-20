@@ -9,7 +9,7 @@ for HTMX partial updates that swap a fragment in place.
 The renderer supports three layers of theming:
 
 1. **Framework CSS** (optional): Loaded via `<link>` from CDN or local path.
-   Enables Tailwind or Bootstrap. The framework may also include JS (Bootstrap bundle).
+   Enables Tailwind.
 
 2. **Base MikiUI CSS** (`miki.css`): Always loads. Uses CSS custom properties
    (`--miki-*`) for colors, spacing, radius, etc. This allows themes to change
@@ -55,7 +55,7 @@ BASE_TEMPLATE = """<!doctype html>
   {runtime_scripts}
   {js_tags}
 </head>
-<body data-miki-theme="{active_theme}"{body_class_attr}>
+<body {theme_attr}{body_class_attr}>
 {body}
 </body>
 </html>
@@ -76,15 +76,34 @@ def _script_tag(src: str, defer: bool = True, type_: str | None = None) -> str:
     return f'  <script src="{_esc(src)}" {attrs}></script>'
 
 
-def _theme_styles(theme_name: str) -> dict[str, Any]:
+def _theme_styles(
+    theme_name: str,
+    framework: str | None = None,
+    style_mode: str = "cdn",
+    daisyui: bool = False,
+    csp_nonce: str | None = None,
+) -> dict[str, Any]:
     """Build theme injection data.
+
+    Parameters
+    ----------
+    theme_name:
+        The color/framework theme name.
+    framework:
+        Optional explicit framework override (``"plain"``, ``"tailwind"``).
+        When ``None``, the theme's own ``framework`` field is used.
+    style_mode:
+        Tailwind only. ``"cdn"`` uses public CDN URLs; ``"local"`` serves
+        files from ``_miki/runtime/themes/``.
+    daisyui:
+        Tailwind only. Whether DaisyUI is enabled.
 
     Returns a dict with:
     - links: CSS <link> tags (framework CSS, color theme CSS, CDN or local)
     - body_attrs: additional body attributes (classes/data attributes)
     - variables: CSS :root style block with --miki-* variable overrides
     """
-    from ..themes import _RUNTIME_DIR, get_theme
+    from ..themes import get_theme
 
     theme = get_theme(theme_name)
     result: dict[str, Any] = {
@@ -92,10 +111,13 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
         "body_attrs": "",
         "variables": "",
         "js_tags": "",
+        "theme_obj": theme,
     }
 
     if theme is None:
         return result
+
+    effective_fw = framework or getattr(theme, "framework", None)
 
     # Build the URL for the theme CSS file.
     def _theme_href(css_path: str | None) -> str | None:
@@ -104,35 +126,47 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
         if css_path.startswith("http"):
             return css_path
         if os.path.isabs(css_path):
-            rel_path = os.path.relpath(css_path, os.path.join(_RUNTIME_DIR, "themes"))
-            return f"/_miki/runtime/themes/{rel_path}"
+            filename = os.path.basename(css_path)
+            return f"/_miki/runtime/themes/{_esc(filename)}"
         return css_path
 
     # Color theme CSS is served as a static file via /_miki/runtime/themes/<name>.css
     theme_css_url = None
-    if theme.css_path and os.path.isfile(theme.css_path):
+    if effective_fw == "tailwind":
+        pass
+    elif theme.css_path and os.path.isfile(theme.css_path):
         theme_css_url = _theme_href(theme.css_path)
-    elif theme.framework is None or theme.framework == "css":
+    elif theme.framework is None or theme.framework == "css" or effective_fw == "plain":
         theme_css_url = f"/_miki/runtime/themes/{_esc(theme_name)}.css"
 
     if theme_css_url:
         result["links"].append(_style_tag(theme_css_url))
 
-    # Framework CSS links (Tailwind, Bootstrap)
-    if theme.framework == "tailwind":
-        if theme.cdn_url:
-            result["links"].append(_style_tag(theme.cdn_url))
-    elif theme.framework == "bootstrap":
-        if theme.cdn_url:
-            result["links"].append(_style_tag(theme.cdn_url))
-        if theme.js_url:
-            result["js_tags"] = _script_tag(theme.js_url)
+    # Framework CSS links (Tailwind)
+    if effective_fw == "tailwind":
+        if style_mode == "local":
+            result["links"].append(
+                '<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css" media="all" />'
+            )
+            if daisyui:
+                result["links"].append(
+                    '<link rel="stylesheet" '
+                    'href="https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css" '
+                    'media="all" />'
+                )
+        else:
+            cdn_url = "https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css"
+            result["links"].append(_style_tag(cdn_url))
+            if daisyui:
+                daisyui_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css"
+                result["links"].append(_style_tag(daisyui_cdn))
 
     # Body classes/data attributes
     extra = list(theme.extra_classes) or []
     data_attrs = ""
-    if theme.framework == "tailwind":
-        data_attrs = f" data-theme=\"mikiui-{_esc(theme_name)}\""
+    if effective_fw == "tailwind":
+        color_name = getattr(theme, "color_theme", None) or theme_name
+        data_attrs = f" data-theme=\"mikiui-{_esc(color_name)}\""
     if extra:
         result["body_attrs"] = f" class=\"{ _esc(' '.join(extra)) }\"{data_attrs}"
     elif data_attrs:
@@ -141,7 +175,8 @@ def _theme_styles(theme_name: str) -> dict[str, Any]:
     # CSS variables layer (overrides theme settings)
     if theme.variables:
         vars_css = ":root { " + "; ".join(f"{_esc(k)}: {_esc(v)}" for k, v in theme.variables.items()) + " }"
-        result["variables"] = f"<style>{vars_css}</style>"
+        nonce_attr = f' nonce="{_esc(csp_nonce)}"' if csp_nonce else ""
+        result["variables"] = f"<style{nonce_attr}>{vars_css}</style>"
 
     return result
 
@@ -165,8 +200,11 @@ def render_page(
     runtime_scripts: Iterable[str] | None = None,
     theme: str = "light",
     framework: str | None = None,
+    style_mode: str = "cdn",
+    daisyui: bool = False,
     favicon: str | None = None,
     icon: str | None = None,
+    csp_nonce: str | None = None,
 ) -> str:
     """Wrap a component tree in a full HTML document.
 
@@ -182,15 +220,21 @@ def render_page(
         Iterable of JS script URLs or inline script content. If ``None``, uses the
         default runtime (HTMX + Alpine) from the local bundled files.
     theme
-        Theme name (e.g. "light", "dark", "tailwind"). Use ``app.set_theme()``
+        Color theme name (e.g. "light", "dark", "dracula"). Use ``app.set_theme()``
         at runtime or set ``app.theme`` before render.
+    framework
+        Styling framework override. One of ``"plain"``, ``"tailwind"``, or ``None``.
+        If ``None``, falls back to the theme's configured framework, and for
+        backward compatibility ``"tailwind"`` theme name implies Tailwind.
+    style_mode
+        Tailwind only. ``"cdn"`` uses public CDN; ``"local"`` serves a locally
+        built CSS file from ``_miki/runtime/themes/``.
+    daisyui
+        Tailwind only. Whether to include DaisyUI CSS.
     favicon
         Path to favicon.ico or PNG (relative to app root or CDN URL).
     icon
         Desktop window icon (for pywebview; path to .ico/.png file).
-    framework
-        Optional override for the framework CSS. If ``None``, uses the theme's
-        configured framework. Set to "tailwind" or "bootstrap" to force a framework.
 
     Returns
     -------
@@ -208,12 +252,33 @@ def render_page(
     if favicon:
         favicon_tag = f"  <link rel=\"icon\" href=\"{_esc(favicon)}\" type=\"image/png\" />"
 
-    # Resolve framework override or use theme's framework
-    theme_data = _theme_styles(theme)
+    # Resolve framework from explicit parameter or theme registry.
+    theme_data = _theme_styles(
+        theme,
+        framework=framework,
+        style_mode=style_mode,
+        daisyui=daisyui,
+        csp_nonce=csp_nonce,
+    )
+    active_theme_obj = theme_data.get("theme_obj")
+
+    effective_framework = framework
+    if effective_framework is None and active_theme_obj:
+        effective_framework = getattr(active_theme_obj, "framework", None)
+
+    # Determine which base CSS to load:
+    # - Tailwind framework: framework CSS is injected via theme links/CDN,
+    #   so skip loading the base miki.css to avoid duplication.
+    # - Plain CSS / color themes: load the base miki.css stylesheet.
+    if effective_framework == "tailwind":
+        base_css = ""
+        theme_attr = f'data-theme="mikiui-{_esc(theme)}"'
+    else:
+        base_css = _style_tag("/_miki/runtime/miki.css")
+        theme_attr = f'data-miki-theme="{_esc(theme)}"'
 
     # Build the HEAD content
     links = "\n".join(theme_data.get("links", []))
-    base_css = _style_tag("/_miki/runtime/miki.css")
     inline = "\n".join(theme_data.get("inline_css", []))
     vars_css = theme_data.get("variables", "")
     js_tags = "\n".join(theme_data.get("js_tags", []))
@@ -224,15 +289,15 @@ def render_page(
         html_lang=_esc(lang),
         page_title=_esc(title),
         favicon=favicon_tag,
-        theme_links=links,
         base_css=base_css,
+        theme_links=links,
         theme_inline_css=inline,
         theme_vars=vars_css,
+        theme_attr=theme_attr,
         body_class_attr=theme_data.get("body_attrs", ""),
         head_extra=head_extra,
         runtime_scripts=scripts,
         js_tags=js_tags,
-        active_theme=_esc(theme),
         body=body,
     )
 

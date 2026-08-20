@@ -105,6 +105,48 @@ app.add_head_link("/static/custom.css", rel="stylesheet")
 app.add_head_script("/static/app.js", type="module")
 ```
 
+### Static Files
+
+```python
+# Mount an arbitrary directory for static serving
+app.mount_static("/uploads", "./uploads")
+
+# Resolve a framework asset URL
+url = app.asset_url("components", "splitview", "splitview.css")
+# -> "/_miki/components/splitview/static/splitview.css"
+```
+
+**`mount_static` signature:**
+
+```python
+def mount_static(self, url_path: str, directory: str, *, name: str | None = None) -> MikiApp
+```
+
+Mounts *directory* under *url_path*. The directory is served automatically when
+the app is built or run. Raises `NotADirectoryError` if the path does not exist.
+
+**`asset_url` signature:**
+
+```python
+def asset_url(self, package_type: str, package_name: str, filename: str) -> str
+```
+
+Build the URL for a static asset served by the framework. `package_type` is one
+of `"components"`, `"widgets"`, `"plugins"`, or `"themes"`.
+
+### Styling Framework
+
+```python
+app.set_style_framework("tailwind", mode="local", daisyui=True)
+app.set_style_framework("plain")
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `framework` | `str` | `"plain"` | `"plain"` or `"tailwind"` |
+| `mode` | `str` | `"cdn"` | Tailwind only: `"cdn"` or `"local"` |
+| `daisyui` | `bool` | `False` | Tailwind only: enable DaisyUI |
+
 ### Plugins
 
 ```python
@@ -197,6 +239,9 @@ app.shutdown()                           # call plugin shutdown hooks
 | `app.theme` | `str` | Active theme name |
 | `app.title` | `str` | Global page title |
 | `app.lang` | `str` | HTML language attribute |
+| `app.style_framework` | `str` | Active styling framework (`"plain"` or `"tailwind"`) |
+| `app.style_mode` | `str` | Tailwind mode (`"cdn"` or `"local"`) |
+| `app.style_daisyui` | `bool` | Whether DaisyUI is enabled |
 
 ---
 

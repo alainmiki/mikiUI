@@ -19,7 +19,7 @@ def _scaffold_in_temp(framework: str = "tailwind") -> str:
 
 def test_ui_frameworks_list():
     """UI_FRAMEWORKS should include all supported frameworks."""
-    assert set(UI_FRAMEWORKS) == {"tailwind", "bootstrap", "daisyui", "plain"}
+    assert set(UI_FRAMEWORKS) == {"tailwind", "daisyui", "plain"}
 
 
 def test_framework_config_returns_valid_python():
@@ -51,12 +51,6 @@ def test_scaffold_daisyui_includes_config():
         assert "postcss.config.js" in files
 
 
-def test_scaffold_bootstrap_no_tailwind_config():
-    """Bootstrap framework should NOT include tailwind.config.js."""
-    for _, _, files in _scaffold_in_temp("bootstrap"):
-        assert "tailwind.config.js" not in files
-
-
 def test_scaffold_plain_no_tailwind_config():
     """Plain framework should NOT include tailwind.config.js."""
     for _, _, files in _scaffold_in_temp("plain"):
@@ -67,7 +61,6 @@ def test_scaffold_sets_correct_theme():
     """Each framework should set the correct theme in the generated app."""
     expected = {
         "tailwind": '"tailwind"',
-        "bootstrap": '"bootstrap"',
         "daisyui": '"tailwind"',
         "plain": '"light"',
     }
@@ -88,8 +81,8 @@ def test_scaffold_raises_for_invalid_framework():
 
 def test_scaffold_creates_readme_with_framework():
     """README should mention the framework."""
-    for _, readme, _ in _scaffold_in_temp("bootstrap"):
-        assert "bootstrap" in readme.lower()
+    for _, readme, _ in _scaffold_in_temp("tailwind"):
+        assert "tailwind" in readme.lower()
 
 
 def test_scaffold_creates_requirements():

@@ -95,14 +95,18 @@ A typical MikiUI project looks like this:
 myapp/
   app.py               # Your MikiUI application (routes + components)
   requirements.txt     # Python dependencies
-  static/              # Custom CSS, images, fonts
+  static/              # Custom CSS, images, fonts (auto-mounted at /static)
   .mikiui.json         # Project configuration
   tailwind.config.js   # Tailwind config (if using Tailwind)
   postcss.config.js    # PostCSS config (if using Tailwind)
   package.json         # Node.js dependencies (if using Tailwind)
 ```
 
-For **Bootstrap** or **plain CSS** projects, the Tailwind files are omitted.
+The `static/` directory is created automatically when you run `mikiui new` with
+the `plain` framework. Any file placed in `static/` is served at
+`/static/<path>` with no extra configuration.
+
+For **plain CSS** projects, the Tailwind files are omitted.
 
 ### Framework Choice
 
@@ -111,7 +115,6 @@ When you run `mikiui new`, you choose a CSS framework:
 | Framework | Description | Requires Node.js |
 |-----------|-------------|-----------------|
 | `tailwind` | Tailwind CSS utility classes | Yes |
-| `bootstrap` | Bootstrap 5 components | No |
 | `plain` | Custom CSS only | No |
 
 ## Running in Dev Mode
@@ -162,8 +165,9 @@ mikiui desktop --width 1280 --height 800  # Window size
   element mappings.
 - **Widgets**: Browse [Widget Catalog](widgets.md) for high-level composite
   UI patterns.
-- **Styling**: See [Styling Guide](styling.md) for Tailwind, Bootstrap, and
-  theme customization.
+- **Styling**: See [Styling Guide](styling.md) for Tailwind and theme customization.
+- **Static Files**: See [Deployment Guide](deployment.md#static-assets) for
+  component static assets, custom mounts, and cache headers.
 - **Plugins**: Learn about the plugin system in [Plugins Guide](plugins.md),
   including the security model (manifest validation, AST vetting, import
   allow-list) and the marketplace client.

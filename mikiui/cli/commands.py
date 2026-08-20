@@ -73,7 +73,7 @@ def _safe_resolve(app: str | None) -> str:
 def install(
     packages: list[str] = typer.Argument(
         None,
-        help="Styling packages to install: tailwind, daisyui, bootstrap (default: tailwind daisyui)",
+        help="Styling packages to install: tailwind, daisyui (default: tailwind daisyui)",
     ),
     dev: bool = typer.Option(False, "--dev", help="Install as dev dependencies"),
 ) -> None:
@@ -84,22 +84,18 @@ def install(
       mikiui install tailwind daisyui
       mikiui install tailwind --dev
 
-    For Bootstrap users:
-      mikiui install bootstrap        # registers Bootstrap CDN theme
-
     Writes ``package.json`` (if missing), ``tailwind.config.js`` +
     ``postcss.config.js``, and runs ``npm install`` when Node.js is available.
     """
     from ..styling.tailwind import install_deps, write_config, write_postcss_config
 
-    valid = {"tailwind", "daisyui", "bootstrap"}
+    valid = {"tailwind", "daisyui"}
     pkgs = [p for p in (packages or ["tailwind", "daisyui"]) if p in valid]
     if not pkgs:
         pkgs = ["tailwind", "daisyui"]
 
     use_tailwind = "tailwind" in pkgs
     use_daisyui = "daisyui" in pkgs
-    use_bootstrap = "bootstrap" in pkgs
     project_dir = Path.cwd()
 
     if use_tailwind or use_daisyui:
@@ -123,17 +119,8 @@ def install(
             raise typer.Exit(code=1)
         typer.echo(result.get("message", ""))
 
-    if use_bootstrap:
-        from ..styling.bootstrap import register_bootstrap_theme
-        register_bootstrap_theme(use_cdn=True)
-        typer.echo("[green]✓ Bootstrap theme registered (CDN mode).[/green]")
-        typer.echo(
-            "  To use local Bootstrap files, set the path in your app:\n"
-            "    app.add_head_link('/static/bootstrap.min.css', rel='stylesheet')"
-        )
-
-    if not (use_tailwind or use_daisyui or use_bootstrap):
-        typer.echo("Nothing to install. Choose from: tailwind, daisyui, bootstrap")
+    if not (use_tailwind or use_daisyui):
+        typer.echo("Nothing to install. Choose from: tailwind, daisyui")
 
     typer.echo("[green]✓ Styling setup complete.[/green]")
 
@@ -162,7 +149,6 @@ def new(
 
     Examples:
       mikiui new myapp
-      mikiui new myapp --framework bootstrap
       mikiui new myapp --framework plain --dir /tmp
     """
     if framework is None:
@@ -202,11 +188,7 @@ def new(
                 "  mikiui install tailwind daisyui  # enable DaisyUI\n"
                 "  mikiui tailwind dev               # watch CSS (in another terminal)\n"
                 if fw == "daisyui"
-                else (
-                    "  mikiui install bootstrap  # use local Bootstrap files\n"
-                    if fw == "bootstrap"
-                    else ""
-                )
+                else ""
             )
         )
     )
@@ -290,7 +272,7 @@ def build(
       mikiui build --target web                # plain web build (miki.css)
       mikiui build --target desktop            # desktop launcher
 
-    Note: CSS framework assets (Tailwind, Bootstrap, DaisyUI) are bundled
+    Note: CSS framework assets (Tailwind, DaisyUI) are bundled
     from the CDN by default; for offline use, set the theme runtime to ``local``.
 
     Examples:
@@ -318,18 +300,23 @@ def build(
         raise typer.Exit(code=1)
 
     # Tailwind/DaisyUI styling build (happens before/with the web build).
-    if theme == "tailwind" or (daisyui and theme is None):
+    app_framework = getattr(miki_app, "style_framework", "plain")
+    app_style_mode = getattr(miki_app, "style_mode", "cdn")
+    app_daisyui = getattr(miki_app, "style_daisyui", False)
+    effective_daisyui = daisyui or app_daisyui
+
+    if app_framework == "tailwind" and not skip_tailwind:
         from ..build.tailwind import build_css, register_built_theme
 
         typer.echo("[cyan]Building Tailwind CSS[/cyan] (scanning components/widgets)...")
         css_path = build_css(
             theme=getattr(miki_app, "theme", "light"),
-            daisyui=daisyui,
+            daisyui=effective_daisyui,
             out=os.path.join(out_dir, "_miki", "runtime", "themes", "tailwind.css"),
             optimize=optimize_css,
             watch=watch,
         )
-        register_built_theme("built-tailwind", css_path, daisyui=daisyui)
+        register_built_theme("built-tailwind", css_path, daisyui=effective_daisyui)
         typer.echo(f"[green]✓ Tailwind CSS built:[/green] {css_path}")
         if watch:
             typer.echo("[dim]Watching for changes (Ctrl-C to stop)...[/dim]")
@@ -345,7 +332,15 @@ def build(
     if target == "desktop":
         report = build_desktop(miki_app, out_dir=f"{out_dir}_desktop", app_spec=spec)
     else:
-        report = build_web(miki_app, mode=mode, out_dir=out_dir, theme=theme, daisyui=daisyui, optimize=optimize_css)
+        report = build_web(
+            miki_app,
+            mode=mode,
+            out_dir=out_dir,
+            theme=theme,
+            framework=app_framework,
+            style_mode=app_style_mode,
+            daisyui=effective_daisyui,
+        )
         asset_paths = [
             os.path.join(out_dir, "_miki", "runtime", a)
             for a in (
@@ -354,7 +349,7 @@ def build(
                 "htmx_runtime.js",
                 "alpine_runtime.js",
                 "miki_ui.js",
-                "miki.css",
+                "history_router.js",
             )
         ]
         optimize(asset_paths, level="balanced")

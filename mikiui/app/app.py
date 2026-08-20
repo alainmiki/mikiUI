@@ -12,12 +12,15 @@ import html as _html
 import logging
 import os
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..app.plugin_security import PluginSecurityConfig, PluginValidator
 from ..app.static_assets import register_plugin_assets
 from ..engine.dom import normalize
 from ..router.group import RouteGroup, RouteGroupBuilder
+
+if TYPE_CHECKING:
+    from ..router.router import Router
 from ..themes import Theme
 from .plugins import Plugin
 from .routes import RouteDef, invoke_route
@@ -48,6 +51,9 @@ class MikiApp:
         self.state: AppState = AppState()
         self.plugins: list[Plugin] = []
         self.theme: str = "light"
+        self.style_framework: str = "plain"
+        self.style_mode: str = "cdn"
+        self.style_daisyui: bool = False
         self.favicon: str | None = favicon or "/_miki/runtime/mikiui-icon.png"
         self.desktop_icon: str | None = desktop_icon
         self.splash_screen: str | None = splash_screen
@@ -57,6 +63,7 @@ class MikiApp:
         self._head_scripts: str = ""
         self._not_found_handler: Callable | None = None
         self._error_pages: dict[int, Callable] = {}
+        self._static_mounts: list[tuple[str, str]] = []
 
         # New registries
         self.registry: WidgetRegistry = WidgetRegistry()
@@ -210,6 +217,67 @@ class MikiApp:
         router.mount(self)
         return self
 
+    def mount_static(self, url_path: str, directory: str, *, name: str | None = None) -> MikiApp:
+        """Mount an arbitrary directory for static file serving.
+
+        The directory is served under *url_path* when the app is built or run.
+        This is the beginner-friendly alternative to dropping down to raw
+        FastAPI ``app.mount()`` after ``create_app()``.
+
+        Parameters
+        ----------
+        url_path:
+            URL prefix (e.g. ``"/static"`` or ``"/media"``).
+        directory:
+            Absolute or relative path to the directory to serve.
+        name:
+            Optional mount name.  Auto-generated from *url_path* if omitted.
+
+        Example
+        -------
+        >>> app.mount_static("/uploads", "./uploads")
+        >>> app.add_head_link("/uploads/logo.png", rel="icon")
+        """
+        abs_path = os.path.abspath(directory)
+        if not os.path.isdir(abs_path):
+            raise NotADirectoryError(
+                f"Cannot mount static directory: {abs_path!r} does not exist or is not a directory."
+            )
+        self._static_mounts.append((url_path.rstrip("/"), abs_path))
+        return self
+
+    def asset_url(
+        self,
+        package_type: str,
+        package_name: str,
+        filename: str,
+    ) -> str:
+        """Build the URL for a static asset served by the framework.
+
+        Parameters
+        ----------
+        package_type:
+            One of ``"components"``, ``"widgets"``, ``"plugins"``, or ``"themes"``.
+        package_name:
+            The package or plugin name (e.g. ``"splitview"``).
+        filename:
+            The asset filename (e.g. ``"splitview.css"``).
+
+        Returns
+        -------
+        str
+            URL path to the asset, e.g.
+            ``/_miki/components/splitview/static/splitview.css``.
+
+        Example
+        -------
+        >>> app.asset_url("components", "splitview", "splitview.css")
+        '/_miki/components/splitview/static/splitview.css'
+        """
+        from ..app.static_assets import get_asset_url
+
+        return get_asset_url(package_type, package_name, filename)
+
     def route_group(self, prefix: str) -> RouteGroupBuilder:
         """Create a route group with shared prefix, auth, and middleware.
 
@@ -252,6 +320,40 @@ class MikiApp:
             raise ValueError(f"Unknown theme: {name!r}. Available: {available}")
         self.theme = name
         self.theme_registry.set_active(name)
+        return self
+
+    def set_style_framework(
+        self,
+        framework: str,
+        mode: str = "cdn",
+        daisyui: bool = False,
+    ) -> MikiApp:
+        """Set the CSS styling framework.
+
+        Parameters
+        ----------
+        framework:
+            One of ``"plain"`` or ``"tailwind"``.
+        mode:
+            Tailwind only. One of ``"cdn"`` (use public CDN) or ``"local"``
+            (serve a locally built CSS file from ``_miki/runtime/themes/``).
+        daisyui:
+            Tailwind only. Enable DaisyUI component classes.
+        """
+        framework = framework.lower().strip()
+        if framework not in ("plain", "tailwind"):
+            raise ValueError(
+                f"Unknown style framework {framework!r}. Choose from: plain, tailwind"
+            )
+        if framework == "plain":
+            self.style_framework = "plain"
+            self.style_mode = "cdn"
+            self.style_daisyui = False
+            return self
+
+        self.style_framework = "tailwind"
+        self.style_mode = "cdn" if mode == "cdn" else "local"
+        self.style_daisyui = bool(daisyui)
         return self
 
     def set_favicon(
@@ -317,7 +419,7 @@ class MikiApp:
 
         Example
         -------
-        >>> app.add_head_link("/static/bootstrap.min.css", rel="stylesheet")
+        >>> app.add_head_link("/static/custom.css", rel="stylesheet")
         >>> app.add_head_link("/static/app.js", rel="modulepreload")
         """
         tag = {"href": href, "rel": rel}
@@ -336,7 +438,7 @@ class MikiApp:
 
         Example
         -------
-        >>> app.add_head_script("/static/bootstrap.bundle.min.js")
+        >>> app.add_head_script("/static/app.js")
         >>> app.add_head_script("/static/app.js", type="module")
         """
         tag = f'<script src="{_esc(src)}"'
@@ -493,7 +595,12 @@ class MikiApp:
         return list(get_asset_mounts().values())
 
     # -- invocation ------------------------------------------------------------
-    async def invoke(self, route: RouteDef, request: Any = None, path_params: dict[str, Any] | None = None) -> tuple[list[Any], Any]:
+    async def invoke(
+        self,
+        route: RouteDef,
+        request: Any = None,
+        path_params: dict[str, Any] | None = None,
+    ) -> tuple[list[Any], Any]:
         """Call a route handler and return ``(normalized_nodes, ctx)``.
 
         The returned ``ctx`` (which may be ``None``) carries ``ctx.meta`` so the
