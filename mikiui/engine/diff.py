@@ -28,15 +28,25 @@ def diff(old: Any, new: Any) -> list[Swap]:
 
     Only elements carrying an ``id`` are diffed (HTMX swaps are id-targeted).
     Two elements with the same id but different serialized HTML produce a swap.
+    Added and removed elements are also reported.
     """
     old_by_id = _index(old)
     new_by_id = _index(new)
     swaps: list[Swap] = []
+    seen_ids: set[str] = set()
+
     for id_, node in new_by_id.items():
+        seen_ids.add(id_)
         if id_ not in old_by_id:
+            swaps.append(Swap(target_id=id_, html=render(node), swap="beforeend"))
             continue
         if render(node) != render(old_by_id[id_]):
-            swaps.append(Swap(target_id=id_, html=render(node)))
+            swaps.append(Swap(target_id=id_, html=render(node), swap="outerHTML"))
+
+    for id_, node in old_by_id.items():
+        if id_ not in seen_ids:
+            swaps.append(Swap(target_id=id_, html="", swap="outerHTML"))
+
     return swaps
 
 

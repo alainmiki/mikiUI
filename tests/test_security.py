@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from mikiui import MikiApp
@@ -85,7 +86,7 @@ def test_session_cleanup_expired():
     )
     app.use(session)
 
-    token = app.create_session("user1")
+    app.create_session("user1")
     # Lifetime is 0, so token is immediately expired
     removed = app.cleanup_expired()
     assert removed >= 1
@@ -581,3 +582,145 @@ def test_websocket_origin_validation():
         ws.send_text("hello")
         data = ws.receive_text()
         assert data == "hello"
+
+
+def test_websocket_auth_rejects_invalid_token():
+    """WebSocket with validate_token should reject invalid tokens."""
+    from fastapi import APIRouter
+    from fastapi.testclient import TestClient
+
+    from mikiui.backend.websocket import ConnectionManager, mount_websocket
+
+    def validate_token(token: str) -> str | None:
+        if token == "valid-token":
+            return "user1"
+        return None
+
+    manager = ConnectionManager(validate_token=validate_token)
+
+    async def handler(ws, mgr):
+        await ws.send_text("connected")
+
+    router = APIRouter()
+    mount_websocket(router, "/ws", handler, manager=manager)
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+    fastapi_app.include_router(router)
+
+    client = TestClient(fastapi_app)
+    # Valid token via query param should connect
+    with client.websocket_connect("/ws?token=valid-token") as ws:
+        data = ws.receive_text()
+        assert data == "connected"
+
+    # Invalid token should be rejected
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect("/ws?token=invalid"):
+            pass
+    assert exc_info.value.code == 4007
+
+
+def test_websocket_auth_warns_without_validator():
+    """WebSocket with auth header but no validator should be rejected."""
+    from fastapi import APIRouter
+    from fastapi.testclient import TestClient
+
+    from mikiui.backend.websocket import ConnectionManager, mount_websocket
+
+    manager = ConnectionManager()
+
+    async def handler(ws, mgr):
+        await ws.send_text("connected")
+
+    router = APIRouter()
+    mount_websocket(router, "/ws2", handler, manager=manager)
+
+    app = MikiApp()
+    fastapi_app = create_app(app)
+    fastapi_app.include_router(router)
+
+    client = TestClient(fastapi_app)
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect("/ws2", headers={"Authorization": "Bearer some-token"}):
+            pass
+    assert exc_info.value.code == 4007
+
+
+# ---------------------------------------------------------------------------
+# AST Obfuscation Detection Tests
+# ---------------------------------------------------------------------------
+
+def test_ast_detects_obfuscated_eval():
+    """AST vetter should catch getattr(obj, 'ev' + 'al') patterns."""
+    import ast
+
+    from mikiui.app.plugin_security import _check_obfuscated_call
+
+    source = "getattr(obj, 'ev' + 'al')"
+    tree = ast.parse(source)
+    call_node = tree.body[0].value
+    violations = _check_obfuscated_call(call_node)
+    assert len(violations) == 1
+    assert "eval" in violations[0]
+
+
+def test_ast_detects_obfuscated_exec():
+    """AST vetter should catch getattr(obj, 'exec') patterns."""
+    import ast
+
+    from mikiui.app.plugin_security import _check_obfuscated_call
+
+    source = "getattr(obj, 'exec')"
+    tree = ast.parse(source)
+    call_node = tree.body[0].value
+    violations = _check_obfuscated_call(call_node)
+    assert len(violations) == 1
+    assert "exec" in violations[0]
+
+
+def test_ast_detects_obfuscated_compile():
+    """AST vetter should catch __getattribute__('compile') patterns."""
+    import ast
+
+    from mikiui.app.plugin_security import _check_obfuscated_call
+
+    source = "obj.__getattribute__('compile')"
+    tree = ast.parse(source)
+    call_node = tree.body[0].value
+    violations = _check_obfuscated_call(call_node)
+    assert len(violations) == 1
+    assert "compile" in violations[0]
+
+
+def test_ast_safe_getattr_not_flagged():
+    """Non-dangerous getattr calls should not be flagged."""
+    import ast
+
+    from mikiui.app.plugin_security import _check_obfuscated_call
+
+    source = "getattr(obj, 'normal_attr')"
+    tree = ast.parse(source)
+    call_node = tree.body[0].value
+    violations = _check_obfuscated_call(call_node)
+    assert len(violations) == 0
+
+
+def test_ast_resolve_string_constant():
+    """_resolve_string_arg should handle plain string constants."""
+    import ast
+
+    from mikiui.app.plugin_security import _resolve_string_arg
+
+    tree = ast.parse("'hello'")
+    assert _resolve_string_arg(tree.body[0].value) == "hello"
+
+
+def test_ast_resolve_string_concatenation():
+    """_resolve_string_arg should handle string concatenation via BinOp."""
+    import ast
+
+    from mikiui.app.plugin_security import _resolve_string_arg
+
+    tree = ast.parse("'ev' + 'al'")
+    assert _resolve_string_arg(tree.body[0].value) == "eval"

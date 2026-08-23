@@ -682,3 +682,59 @@ def test_autoload_standalone_plugin_dir(tmp_path):
         sys.path.pop(0)
         sys.modules.pop("myplugins", None)
         sys.modules.pop("myplugins.extra", None)
+
+
+# ---------------------------------------------------------------------------
+# ThemeRegistry parent activation tests
+# ---------------------------------------------------------------------------
+
+def test_theme_registry_set_active_unknown_raises():
+    """set_active raises ValueError for unregistered themes."""
+    from mikiui.app.theme_registry import ThemeRegistry
+
+    class FakeTheme:
+        def __init__(self, name):
+            self.name = name
+
+    class _GlobalProxy:
+        def get(self, name):
+            return None
+        def list_all(self):
+            return []
+
+    reg = ThemeRegistry(parent_registry=_GlobalProxy())
+    with pytest.raises(ValueError, match="Unknown theme"):
+        reg.set_active("nonexistent")
+
+
+def test_theme_registry_set_active_local_then_parent_fallback():
+    """set_active finds themes registered locally, then via parent."""
+    from mikiui.app.theme_registry import ThemeRegistry
+
+    class FakeTheme:
+        def __init__(self, name):
+            self.name = name
+            self.source = "test"
+
+    class _GlobalProxy:
+        def __init__(self):
+            self.themes = {"global-theme": FakeTheme("global-theme")}
+
+        def get(self, name):
+            return self.themes.get(name)
+
+        def list_all(self):
+            return list(self.themes.keys())
+
+    reg = ThemeRegistry(parent_registry=_GlobalProxy())
+    # Register a local theme
+    local = FakeTheme("local-theme")
+    reg.register(local, override=True)
+
+    # Local theme should be found
+    reg.set_active("local-theme")
+    assert reg.active_name() == "local-theme"
+
+    # Parent theme should also be found
+    reg.set_active("global-theme")
+    assert reg.active_name() == "global-theme"

@@ -6,6 +6,7 @@ No external dependencies required.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -24,7 +25,7 @@ _DEFAULT_KEY_TTL = 3600
 
 
 class _SlidingWindowLimiter:
-    """Thread-safe in-memory sliding window rate limiter with eviction."""
+    """Async-safe in-memory sliding window rate limiter with eviction."""
 
     def __init__(
         self,
@@ -36,22 +37,24 @@ class _SlidingWindowLimiter:
         self._key_ttl = key_ttl
         self._first_access: dict[str, float] = {}
         self._evicted_total = 0
+        self._lock = asyncio.Lock()
 
-    def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, int]:
-        now = time.time()
-        self._evict_expired(now)
-        self._enforce_max_keys(now)
+    async def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, int]:
+        async with self._lock:
+            now = time.time()
+            self._evict_expired(now)
+            self._enforce_max_keys(now)
 
-        window_start = now - window
-        timestamps = self._hits[key]
-        self._hits[key] = [t for t in timestamps if t > window_start]
-        if len(self._hits[key]) >= limit:
-            oldest = self._hits[key][0]
-            retry_after = int(oldest + window - now) + 1
-            return False, retry_after
-        self._hits[key].append(now)
-        self._first_access.setdefault(key, now)
-        return True, 0
+            window_start = now - window
+            timestamps = self._hits[key]
+            self._hits[key] = [t for t in timestamps if t > window_start]
+            if len(self._hits[key]) >= limit:
+                oldest = self._hits[key][0]
+                retry_after = int(oldest + window - now) + 1
+                return False, retry_after
+            self._hits[key].append(now)
+            self._first_access.setdefault(key, now)
+            return True, 0
 
     def _evict_expired(self, now: float) -> None:
         cutoff = now - self._key_ttl
@@ -142,7 +145,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             ip = request.client.host if request.client else "unknown"
             key = f"{ip}:{path}"
 
-        allowed, retry_after = self._limiter.is_allowed(key, limit, window)
+        allowed, retry_after = await self._limiter.is_allowed(key, limit, window)
         if not allowed:
             response = JSONResponse(
                 {"error": "Too many requests", "retry_after": retry_after},

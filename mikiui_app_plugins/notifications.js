@@ -22,13 +22,45 @@ document.addEventListener('alpine:init', () => {
             this.$watch('notifications', () => {
                 this.notifications = this.notifications.slice(-20);
             });
+            this._wsReconnecting = false;
+            this._wsReconnectDelay = 1000;
+            this._wsMaxDelay = 30000;
+            this._wsConnected = false;
             if (typeof WebSocket !== 'undefined') {
                 this.connectWebSocket();
             }
+            this.$on('destroy', () => {
+                this._wsReconnecting = false;
+                if (this._ws) {
+                    this._ws.onclose = null;
+                    this._ws.onerror = null;
+                    this._ws.close();
+                    this._ws = null;
+                }
+            });
+        },
+        _scheduleReconnect() {
+            if (this._wsReconnecting) return;
+            this._wsReconnecting = true;
+            this._wsConnected = false;
+            const delay = Math.min(this._wsReconnectDelay, this._wsMaxDelay);
+            this._wsReconnectDelay = Math.min(this._wsReconnectDelay * 2, this._wsMaxDelay);
+            setTimeout(() => {
+                this._wsReconnecting = false;
+                if (this._wsConnected) return;
+                this.connectWebSocket();
+            }, delay);
         },
         connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const ws = new WebSocket(`${protocol}//${window.location.host}/ws/notifications`);
+            this._ws = ws;
+            this._wsReconnectDelay = 1000;
+            ws.onopen = () => {
+                this._wsConnected = true;
+                this._wsReconnecting = false;
+                this._wsReconnectDelay = 1000;
+            };
             ws.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
@@ -42,6 +74,13 @@ document.addEventListener('alpine:init', () => {
                 } catch (e) {
                     console.error('Notification WS error:', e);
                 }
+            };
+            ws.onerror = (event) => {
+                console.error('Notification WS error:', event);
+            };
+            ws.onclose = (event) => {
+                this._wsConnected = false;
+                this._scheduleReconnect();
             };
         },
         iconForType(type) {

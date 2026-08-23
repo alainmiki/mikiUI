@@ -65,10 +65,10 @@ class RouteGroup:
     ) -> None:
         self._app = app
         self.prefix = prefix.rstrip("/")
-        self.auth = auth
+        self._auth = auth
         self.middleware: list[type] = []
-        self.rate_limit: RateLimitConfig | None = None
-        self.csrf: CSRFConfig | None = None
+        self._rate_limit: RateLimitConfig | None = None
+        self._csrf: CSRFConfig | None = None
 
     def use(self, middleware_cls: type) -> "RouteGroup":
         """Add a middleware class to this group."""
@@ -77,7 +77,7 @@ class RouteGroup:
 
     def auth(self, requirement: AuthRequirement) -> "RouteGroup":
         """Set the auth requirement for this group."""
-        self.auth = requirement
+        self._auth = requirement
         return self
 
     def rate_limit(
@@ -88,7 +88,7 @@ class RouteGroup:
         key_func: Callable[[Any], str] | None = None,
     ) -> "RouteGroup":
         """Enable rate limiting for this group."""
-        self.rate_limit = RateLimitConfig(
+        self._rate_limit = RateLimitConfig(
             limit=limit, window=window, key_func=key_func
         )
         return self
@@ -99,7 +99,7 @@ class RouteGroup:
         exempt_methods: tuple[str, ...] = ("GET", "HEAD", "OPTIONS"),
     ) -> "RouteGroup":
         """Enable CSRF protection for this group."""
-        self.csrf = CSRFConfig(
+        self._csrf = CSRFConfig(
             exempt_paths=exempt_paths, exempt_methods=exempt_methods
         )
         return self
@@ -110,11 +110,11 @@ class RouteGroup:
         Route-level config overrides group-level config.
         """
         if route_auth is None:
-            return self.auth
+            return self._auth
         if isinstance(route_auth, bool):
             if not route_auth:
                 return AuthRequirement(strategy="none")
-            return self.auth or AuthRequirement(strategy="session")
+            return self._auth or AuthRequirement(strategy="session")
         return route_auth
 
 

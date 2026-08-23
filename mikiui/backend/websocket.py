@@ -7,10 +7,13 @@ size limits.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
@@ -51,12 +54,20 @@ class ConnectionManager:
             return None
 
         token = ws.query_params.get("token") or ws.headers.get("Authorization", "").replace("Bearer ", "")
+        auth_header = ws.headers.get("Authorization", "")
         user_id = None
         if self._validate_token:
             user_id = self._validate_token(token) if token else None
             if token and not user_id:
+                logger.warning("WebSocket connection rejected: invalid token")
                 await ws.close(code=4007, reason="Unauthorized")
                 return None
+        elif auth_header:
+            logger.warning(
+                "WebSocket auth header received but no token validator configured"
+            )
+            await ws.close(code=4007, reason="Auth header without validator")
+            return None
 
         if user_id and self._user_counts.get(user_id, 0) >= self._max_connections_per_user:
             await ws.close(code=4009, reason="Connection limit per user exceeded")
@@ -94,14 +105,38 @@ class ConnectionManager:
             except Exception:
                 self.disconnect(ws)
 
-    async def send(self, ws: WebSocket, message: Any) -> None:
-        try:
-            await ws.send_json(message)
-        except Exception:
-            self.disconnect(ws)
+    async def _send_pending(self, message: Any) -> None:
+        for ws in list(self.active):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.disconnect(ws)
+
+    async def heartbeat(self) -> None:
+        for ws in list(self.active):
+            try:
+                await ws.send_text("ping")
+            except Exception:
+                self.disconnect(ws)
 
     def get_user_id(self, ws: WebSocket) -> str | None:
         return getattr(ws.state, "mikiui_user_id", None)
+
+    def get_connection_count(self) -> int:
+        """Return the number of active WebSocket connections."""
+        return len(self.active)
+
+    async def send(self, ws: WebSocket, message: Any) -> None:
+        """Send a text message to a single WebSocket connection."""
+        await ws.send_text(message if isinstance(message, str) else str(message))
+
+    async def ping(self) -> None:
+        """Send a ping message to all active connections."""
+        for ws in list(self.active):
+            try:
+                await ws.send_text("ping")
+            except Exception:
+                self.disconnect(ws)
 
 
 def mount_websocket(
@@ -135,11 +170,48 @@ def mount_websocket(
 
     async def endpoint(ws: WebSocket) -> None:
         user_id = await manager.connect(ws)
-        if user_id is None and ws.headers.get("authorization"):
-            return
+        if user_id is None:
+            # Connection was either rejected (already closed) or accepted
+            # without authentication. Don't proceed if an auth header was
+            # sent but no validator is configured — connect() closes in that case.
+            if ws.headers.get("authorization"):
+                return
+            if manager._validate_token:
+                # Token was required but invalid/rejected; connection already closed
+                return
         try:
-            await handler(ws, manager)
+            await _size_limited_handler(ws, manager, handler, manager._max_message_size)
         except WebSocketDisconnect:
             manager.disconnect(ws)
 
     router.add_api_websocket_route(path, endpoint)
+
+
+async def _size_limited_handler(
+    ws: WebSocket,
+    manager: ConnectionManager,
+    handler: Callable,
+    max_size: int,
+) -> None:
+    """Wrap *handler* to reject messages exceeding *max_size* bytes."""
+    import json as _json
+
+    original_receive = ws.receive_text
+
+    async def _checked_receive_text() -> str:
+        data = await original_receive()
+        if len(data.encode("utf-8")) > max_size:
+            await ws.close(code=1009, reason="Message too large")
+            raise WebSocketDisconnect()
+        return data
+
+    async def _checked_receive_json() -> Any:
+        raw = await _checked_receive_text()
+        if len(raw.encode("utf-8")) > max_size:
+            await ws.close(code=1009, reason="Message too large")
+            raise WebSocketDisconnect()
+        return _json.loads(raw)
+
+    ws.receive_text = _checked_receive_text  # type: ignore[method-assign]
+    ws.receive_json = _checked_receive_json  # type: ignore[method-assign]
+    await handler(ws, manager)

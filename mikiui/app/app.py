@@ -79,6 +79,7 @@ class MikiApp:
 
         self.theme_registry: ThemeRegistry = ThemeRegistry(parent_registry=_GlobalThemeProxy())  # type: ignore[arg-type]
         self._backend_routes: list[dict[str, Any]] = []
+        self._websocket_routes: list[dict[str, Any]] = []
         self._middleware_classes: list[type] = []
         self._route_groups: dict[str, RouteGroup] = {}
         self._auth_strategies: dict[str, Any] = {}
@@ -97,6 +98,12 @@ class MikiApp:
                 self.theme_registry.register(theme, override=True)
 
     # -- routing ---------------------------------------------------------------
+    def _normalize_path(self, path: str) -> str:
+        """Normalize a route path by stripping trailing slashes (except root)."""
+        if path != "/" and path.endswith("/"):
+            return path.rstrip("/")
+        return path
+
     def route(
         self,
         path: str,
@@ -128,6 +135,7 @@ class MikiApp:
             If ``True``, require a valid session token when the APIPlugin is
             active.
         """
+        path = self._normalize_path(path)
         def decorator(fn: Callable) -> Callable:
             upper_methods = tuple(m.upper() for m in methods)
             resolved_name = name or getattr(fn, "__name__", "route")
@@ -511,6 +519,8 @@ class MikiApp:
         # Collect backend routes and middleware from plugins
         if hasattr(plugin, "backend_routes"):
             self._backend_routes.extend(plugin.backend_routes())
+        if hasattr(plugin, "websocket_routes"):
+            self._websocket_routes.extend(plugin.websocket_routes())
         if hasattr(plugin, "middleware_classes"):
             self._middleware_classes.extend(plugin.middleware_classes())
         # Register plugin static assets for server mounting
@@ -573,6 +583,16 @@ class MikiApp:
         returning them from :meth:`Plugin.backend_routes`.
         """
         return list(self._backend_routes)
+
+    def get_websocket_routes(self) -> list[dict[str, Any]]:
+        """Return all WebSocket route definitions from plugins.
+
+        Routes are collected once at :meth:`use` time and cached in
+        ``self._websocket_routes``.  Plugins that need to add WebSocket
+        routes after registration should append to that list directly rather
+        than returning them from :meth:`Plugin.websocket_routes`.
+        """
+        return list(self._websocket_routes)
 
     def get_middleware_classes(self) -> list[type]:
         """Return all middleware classes from plugins.
@@ -668,6 +688,7 @@ class MikiApp:
         return path
 
     def get_route(self, path: str) -> RouteDef | None:
+        path = self._normalize_path(path)
         return self.routes.get(path)
 
     # -- convenience ------------------------------------------------------------

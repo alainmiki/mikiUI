@@ -13,7 +13,7 @@ class Recorder:
     """
 
     def __init__(self) -> None:
-        self._recordings: dict[str, dict] = {}
+        self._recordings: dict[str, dict[str, Any]] = {}
         self._counter = 0
 
     def start(self, name: str) -> str:
@@ -51,11 +51,11 @@ class Recorder:
         rec["status"] = "stopped"
         rec["stopped_at"] = datetime.datetime.now()
 
-    def list_recordings(self) -> list[dict]:
+    def list_recordings(self) -> list[dict[str, Any]]:
         """Return a list of all recording metadata dicts."""
         return list(self._recordings.values())
 
-    def get(self, rec_id: str) -> dict | None:
+    def get(self, rec_id: str) -> dict[str, Any] | None:
         """Return metadata for a recording id, or None if unknown.
 
         Args:

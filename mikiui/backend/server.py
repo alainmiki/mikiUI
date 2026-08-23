@@ -11,6 +11,7 @@ app's global ``title``.
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 from typing import Any
@@ -36,6 +37,7 @@ from ..router.middleware import apply_default_middleware
 from ..router.router import add_pwa_manifest
 from ..runtime.runtime_loader import runtime_scripts
 from .api_routes import add_api_routes
+from .websocket import mount_websocket
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +192,38 @@ def create_app(
         Allowed CORS origins.  When ``None``, CORS middleware is not added.
         Pass ``["*"]`` to allow all origins (development only).
     """
-    app = FastAPI(title=miki_app.title)
+    has_api_plugin = any(
+        getattr(p, "name", None) == "api" for p in miki_app.plugins
+    )
+    ensure_auth_strategies(miki_app)
+
+    # Collect WebSocket routes from plugins (before app construction for lifespan)
+    ws_routes: list[dict[str, Any]] = getattr(miki_app, "get_websocket_routes", lambda: [])()
+    _ws_managers: list[Any] = []
+
+    async def lifespan(app: FastAPI):
+        """Manage startup/teardown for real-time connections."""
+        yield
+        for mgr in _ws_managers:
+            close_all = getattr(mgr, "close_all", None)
+            if close_all is not None:
+                try:
+                    if inspect.iscoroutinefunction(close_all):
+                        await close_all()
+                    else:
+                        close_all()
+                except Exception:
+                    logger.exception("Error closing WebSocket/SSE manager")
+
+    app = FastAPI(title=miki_app.title, lifespan=lifespan)
+
+    # Health-check endpoint for load balancers and monitoring
+    async def _health_check(request: Request) -> HTMLResponse:
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"status": "ok", "app": miki_app.title})
+
+    app.add_api_route("/health", _health_check, methods=["GET"], include_in_schema=False)
 
     # Initialize and discover static assets from components, widgets, and plugins
     init_defaults()
@@ -279,13 +312,9 @@ def create_app(
                 "Authorization",
                 "X-CSRF-Token",
             ],
-            max_age=600,
-        )
+             max_age=600,
+         )
 
-    has_api_plugin = any(
-        getattr(p, "name", None) == "api" for p in miki_app.plugins
-    )
-    ensure_auth_strategies(miki_app)
     for route in miki_app.routes.values():
         if has_api_plugin and route.path.startswith("/api/"):
             continue
@@ -333,6 +362,26 @@ def create_app(
 
     # Custom 404 handler via exception handler (no catch-all route needed;
     # Starlette raises HTTPException(404) when nothing matches).
+
+    # Add plugin-provided WebSocket routes (collected at top for lifespan)
+    if ws_routes:
+        ws_router = APIRouter()
+        for route_def in ws_routes:
+            path = route_def.get("path", "/ws")
+            handler = route_def.get("handler")
+            manager = route_def.get("manager")
+            max_message_size = route_def.get("max_message_size")
+            if handler is not None:
+                mount_websocket(
+                    ws_router,
+                    path,
+                    handler,
+                    manager=manager,
+                    max_message_size=max_message_size,
+                )
+                if manager is not None and manager not in _ws_managers:
+                    _ws_managers.append(manager)
+        app.include_router(ws_router)
 
     # Add plugin-provided middleware
     middleware_classes = getattr(miki_app, "get_middleware_classes", lambda: [])()

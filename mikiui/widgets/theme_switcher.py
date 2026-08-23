@@ -18,6 +18,7 @@ from typing import Any
 
 from ..components import Div, Option, Select
 from ..components.base import Component
+from ..themes import current_theme_name, list_themes
 
 
 class ThemeSwitcher(Component):
@@ -93,17 +94,16 @@ class ThemeSwitcher(Component):
             wrapper_classes += f" {class_}"
         attrs["class_"] = wrapper_classes
 
-        current_theme = getattr(app, "theme", "light")
+        current_theme = current_theme_name(app)
 
         if themes is None:
             try:
                 themes = list(app.theme_registry.list_all())
             except AttributeError:
                 try:
-                    from ..themes import list_themes as _list_themes
-                    themes = _list_themes()
+                    themes = list_themes()
                 except Exception:
-                    themes = ["light", "dark", "dracula", "solarized-dark"]
+                    themes = list_themes()
 
         if filter_framework is not None:
             try:

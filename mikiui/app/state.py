@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 
-class AppState(dict):
+class AppState(dict[str, Any]):
     """Server-side shared state for a MikiUI app."""
 
     def get_or_default(self, key: str, default: Any = None) -> Any:

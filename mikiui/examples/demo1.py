@@ -1,19 +1,15 @@
-"""Demo MikiUI app showcasing all components and widgets with drag-drop, sorting, and interactivity.
+"""Demo MikiUI app showcasing all components and widgets.
 
 Run with: mikiui dev --app mikiui.examples.demo:app
 
-This demo covers:
-- All base HTML components (buttons, forms, tables, dialogs, etc.)
-- All widgets (DataGrid, SplitView, DockablePanel, Card, Carousel, etc.)
-- Layout patterns (Navbar, Sidebar, Footer, Drawer, Hero, etc.)
-- Drag-drop and sorting interactions
-- HTMX partial updates
-- Theme switching (tailwind, dark, light)
+This demo uses only inline styles so it works with the "plain" CSS framework
+(no Tailwind dependency). For Tailwind, swap set_style_framework("plain") for
+set_style_framework("tailwind", mode="cdn").
 """
 
 from __future__ import annotations
 
-from mikiui import H1, H2, Button, Div, MikiApp, P
+from mikiui import H1, H2, H3, Button, Div, MikiApp, P, Span
 from mikiui.components import (
     Form,
     Input,
@@ -47,18 +43,24 @@ from mikiui.widgets import (
 )
 from mikiui.widgets.layout_widgets import Sidebar
 
-app = MikiApp(title="MikiUI Demo App 1.  ")
-app.set_theme("cupcake")
+app = MikiApp(title="MikiUI Demo")
+app.set_theme("dark")
 app.set_style_framework("plain")
-# To use Tailwind instead:
-# app.set_style_framework("tailwind", mode="cdn", daisyui=False)
+
+# Shared inline style helpers
+FLEX_ROW = "display: flex; flex-direction: row"
+FLEX_COL = "display: flex; flex-direction: column"
+FLEX_CENTER = "display: flex; align-items: center; justify-content: space-between"
+CARD = "border: 1px solid var(--miki-border); border-radius: 0.5rem; padding: 1rem"
+PADDING = "padding: 2rem"
+GAP = "gap: 1rem"
+
 
 @app.route("/")
 def home():
-    """Home page with quick navigation."""
     return Div(
         Navbar(
-            brand="MikiUI Demo.",
+            brand="MikiUI Demo",
             links=[
                 ("Home", "/"),
                 ("Data", "/data"),
@@ -71,30 +73,26 @@ def home():
         ),
         Div(
             Div(
-                H1("MikiUI Demo", class_="text-3xl font-bold"),
+                H1("MikiUI Demo", style="font-size: 1.875rem; font-weight: 700; margin: 0"),
                 P(
                     "Python-first UI framework with drag-drop, sorting, and interactivity",
-                    class_="text-gray-400",
+                    style="color: var(--miki-text-muted, #9ca3af); margin: 0.5rem 0 0 0",
                 ),
-                class_="space-y-2 ",
+                style=FLEX_COL + "; gap: 0.5rem",
             ),
             Div(
-                Button("Theme", variant="success", hx_get="/toggle-theme"),
+                Button("Toggle Theme", variant="success", hx_get="/toggle-theme"),
                 Button("Forms", variant="secondary", hx_get="/forms"),
-                Button(
-                    "Data Tables", variant="primary", hx_get="/data"
-                ),
-                Button("theming", variant="ghost", hx_get="/toggle-theme"),
-                class_="flex gap-4 mt-8 pt-3",
+                Button("Data Tables", variant="primary", hx_get="/data"),
+                style=FLEX_ROW + f"; {GAP}; margin-top: 2rem; flex-wrap: wrap",
             ),
-            class_="p-8",
+            style=PADDING,
         ),
     )
 
 
 @app.route("/data")
 def data_demo():
-    """Showcase DataGrid with sorting and filtering."""
     columns = ["Name", "Email", "Role", "Status"]
     rows = [
         ["Alice", "alice@example.com", "Admin", "Active"],
@@ -122,20 +120,20 @@ def data_demo():
                     pagination=True,
                     page_size=3,
                 ),
-                class_="mt-4",
+                style="margin-top: 1rem",
             ),
             H2("Split View with Nested SplitView + Dockable Panel"),
             Div(
                 SplitView(
                     Div(
                         SplitView(
-                            Div("Editor Content", class_="p-4"),
-                            Div("Output Panel", class_="p-4 bg-gray-800/30"),
+                            Div("Editor Content", style="padding: 1rem; height: 100%"),
+                            Div("Output Panel", style="padding: 1rem; height: 100%"),
                             orientation="vertical",
                             min_size=60,
                             resize_mode="vertical",
                         ),
-                        class_="h-full",
+                        style="height: 100%",
                     ),
                     DockablePanel(
                         "Properties",
@@ -153,29 +151,29 @@ def data_demo():
                     min_size=200,
                     resize_mode="horizontal",
                 ),
-                class_="border rounded-lg p-4 h-96",
+                style=CARD + "; height: 24rem",
             ),
             H2("Horizontal Split (min-size=50)"),
             Div(
                 SplitView(
-                    Div("Left Pane", class_="p-4"),
-                    Div("Right Pane", class_="p-4"),
+                    Div("Left Pane", style="padding: 1rem"),
+                    Div("Right Pane", style="padding: 1rem"),
                     orientation="horizontal",
                     min_size=50,
                     resize_mode="horizontal",
                 ),
-                class_="border rounded-lg p-4 h-32",
+                style=CARD + "; height: 8rem",
             ),
             H2("Vertical Split (min-size=60)"),
             Div(
                 SplitView(
-                    Div("Top Pane", class_="p-4"),
-                    Div("Bottom Pane", class_="p-4"),
+                    Div("Top Pane", style="padding: 1rem"),
+                    Div("Bottom Pane", style="padding: 1rem"),
                     orientation="vertical",
                     min_size=60,
                     resize_mode="vertical",
                 ),
-                class_="border rounded-lg p-4 h-32",
+                style=CARD + "; height: 8rem",
             ),
             H2("Kanban Board"),
             Div(
@@ -184,12 +182,12 @@ def data_demo():
                     "In Progress": ["Implement widgets", "Add tests"],
                     "Done": ["Project scaffold", "CLI setup"],
                 }),
-                class_="mt-4",
+                style="margin-top: 1rem",
             ),
             H2("Drag & Drop File Picker"),
             Div(
                 FilePicker(name="upload", label="Drop files here or click to browse", accept="image/*"),
-                class_="mt-4",
+                style="margin-top: 1rem",
             ),
             H2("Tabbed Interface"),
             Div(
@@ -200,7 +198,7 @@ def data_demo():
                         ("Settings", Div("Settings options")),
                     ],
                 ),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
             H2("Collapsible Panel"),
             Div(
@@ -210,7 +208,7 @@ def data_demo():
                     open=True,
                     animate=True,
                 ),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
             H2("Log Viewer"),
             Div(
@@ -223,16 +221,15 @@ def data_demo():
                         "debug: Processing record 12345",
                     ],
                 ),
-                class_="border rounded-lg p-4 font-mono text-sm",
+                style=CARD + "; font-family: ui-monospace, monospace; font-size: 0.875rem",
             ),
-            class_="p-8 space-y-8",
+            style=PADDING + f"; {FLEX_COL}; gap: 2rem",
         ),
     )
 
 
 @app.route("/forms")
 def forms_demo():
-    """Showcase forms with drag-drop and sorting."""
     return Div(
         Navbar(
             brand="MikiUI Demo",
@@ -247,17 +244,13 @@ def forms_demo():
                 Form(
                     Div(
                         Label("Username"),
-                        Input(
-                            type="text", name="username", placeholder="Enter username"
-                        ),
-                        class_="flex flex-col",
+                        Input(type="text", name="username", placeholder="Enter username"),
+                        style=FLEX_COL,
                     ),
                     Div(
                         Label("Email"),
-                        Input(
-                            type="email", name="email", placeholder="user@example.com"
-                        ),
-                        class_="flex flex-col",
+                        Input(type="email", name="email", placeholder="user@example.com"),
+                        style=FLEX_COL,
                     ),
                     Div(
                         Label("Role"),
@@ -267,42 +260,41 @@ def forms_demo():
                             Option("User", value="user"),
                             Option("Guest", value="guest"),
                         ),
-                        class_="flex flex-col",
+                        style=FLEX_COL,
                     ),
                     Div(
                         Label("Status"),
                         Radio("Active", name="status", value="active", checked=True),
                         Radio("Inactive", name="status", value="inactive"),
                         Radio("Pending", name="status", value="pending"),
-                        class_="flex gap-4",
+                        style=FLEX_ROW + f"; {GAP}",
                     ),
                     Div(
                         Label("Slider Value"),
                         Slider(type="range", min=0, max=100, value=50),
-                        class_="flex flex-col w-48",
+                        style=FLEX_COL + "; width: 12rem",
                     ),
                     SubmitButton("Register"),
-                    class_="space-y-4",
+                    style=FLEX_COL + "; gap: 1rem",
                 ),
-                class_="p-4",
+                style="padding: 1rem",
             ),
             H2("Date & Color Pickers"),
             Div(
                 Div(
                     DatePicker(label="Select Date:"),
                     ColorPicker(label="Pick Color:", name="color"),
-                    class_="flex gap-8 items-center",
+                    style=FLEX_ROW + "; gap: 2rem; align-items: center",
                 ),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
-            class_="p-8 space-y-8",
+            style=PADDING + f"; {FLEX_COL}; gap: 2rem",
         ),
     )
 
 
 @app.route("/dialog")
 def dialog_demo():
-    """Showcase dialogs and modals."""
     return Div(
         Navbar(
             brand="MikiUI Demo",
@@ -319,12 +311,12 @@ def dialog_demo():
                     kind="success",
                     buttons=[("OK", "ok"), ("Cancel", "cancel")],
                 ),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
             H2("Progress Dialog"),
             Div(
                 ProgressDialog(title="Installing", message="Please wait...", value=75),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
             H2("Message Box Types"),
             Div(
@@ -333,30 +325,30 @@ def dialog_demo():
                     MessageBox("Warning", "Warning message", kind="warning"),
                     MessageBox("Error", "Error message", kind="error"),
                     MessageBox("Question", "Are you sure?", kind="question"),
-                    class_="grid grid-cols-2 gap-4",
+                    style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem",
                 ),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
             H2("Modal Dialog"),
             Modal(
-                ModalTitle("Modal Title"),
-                ModalBody("This is a modal dialog body."),
-                class_="w-full max-w-md",
+                "This is a modal dialog body.",
+                title="Modal Title",
+                open=False,
             ),
-            class_="p-8 space-y-8",
+            style=PADDING + f"; {FLEX_COL}; gap: 2rem",
         ),
     )
 
+
 @app.route("/toggle-theme")
 def toggle_theme():
-    """Return a random theme button for HTMX partial update."""
     from random import choice
     themes = ["light", "dark", "dracula", "cyberpunk", "retro", "forest", "aqua", "cupcake"]
     return Button(choice(themes), variant="success")
 
+
 @app.route("/advanced")
 def advanced_demo():
-    """Showcase advanced widgets with drag-drop."""
     return Div(
         Navbar(
             brand="MikiUI Demo",
@@ -382,7 +374,7 @@ def advanced_demo():
                     float_width="45vw",
                     float_height="60vh",
                 ),
-                class_="border rounded-lg p-4 h-48",
+                style=CARD + "; height: 12rem",
             ),
             H2("Sidebar with Navigation"),
             Div(
@@ -393,19 +385,19 @@ def advanced_demo():
                         ("Profile", "/profile"),
                         title="Main Menu",
                     ),
-                    class_="w-48",
+                    style="width: 12rem",
                 ),
                 Div(
-                    "Main content area with Rail navigation",
+                    Span("Main content area with Rail navigation"),
                     Rail(
                         ("Home", "/", "home"),
                         ("Settings", "/settings", "settings"),
                         ("Profile", "/profile", "user"),
                         side="left",
                     ),
-                    class_="flex",
+                    style=FLEX_ROW,
                 ),
-                class_="border rounded-lg h-48",
+                style=CARD + "; height: 12rem",
             ),
             H2("Tabbed Panel"),
             Div(
@@ -417,7 +409,7 @@ def advanced_demo():
                     ],
                     closable=True,
                 ),
-                class_="border rounded-lg p-4 h-32",
+                style=CARD + "; height: 8rem",
             ),
             H2("Context Window"),
             Div(
@@ -428,7 +420,7 @@ def advanced_demo():
                     trigger=Button("Show Menu"),
                     position="bottom",
                 ),
-                class_="border rounded-lg p-4",
+                style=CARD,
             ),
             H2("Drawer (Slide-in Panel)"),
             Div(
@@ -438,24 +430,12 @@ def advanced_demo():
                     side="left",
                     open=True,
                 ),
-                class_="border rounded-lg",
+                style=CARD,
             ),
-            class_="p-8 space-y-8",
+            style=PADDING + f"; {FLEX_COL}; gap: 2rem",
         ),
     )
 
 
-# Helper components that need to exist
-
-
-class ModalTitle(Div):
-    tag = "div"
-
-
-class ModalBody(Div):
-    tag = "div"
-
-
-
 if __name__ == "__main__":
-    app.run(desktop=True,reload=True)
+    app.run(desktop=True, reload=True)

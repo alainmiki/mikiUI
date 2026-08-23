@@ -128,13 +128,26 @@ class Plugin:
         return []
 
     def backend_routes(self) -> list[dict[str, Any]]:
-        """Optional: return FastAPI route definitions to mount.
+        """Optional: return FastAPI HTTP route definitions to mount.
 
         Returns
         -------
         list[dict[str, Any]]
             Route definitions with keys: ``path``, ``methods``, ``endpoint``,
             and optional ``include_in_schema``, ``name``, ``tags``.
+        """
+        return []
+
+    def websocket_routes(self) -> list[dict[str, Any]]:
+        """Optional: return WebSocket route definitions to mount.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Route definitions with keys: ``path``, ``handler``,
+            and optional ``include_in_schema``, ``name``, ``tags``,
+            ``manager`` (a ``ConnectionManager`` instance), and
+            ``max_message_size``.
         """
         return []
 

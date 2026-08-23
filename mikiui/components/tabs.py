@@ -165,3 +165,7 @@ class Tabs(Component):
     @property
     def active_tab(self) -> int:
         return int(self.attrs.get("data-active-tab", 0))
+
+    @active_tab.setter
+    def active_tab(self, value: int) -> None:
+        self.attrs["data-active-tab"] = str(value)

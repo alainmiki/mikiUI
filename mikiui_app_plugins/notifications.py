@@ -26,12 +26,14 @@ import logging
 import time
 import uuid
 from collections import defaultdict, deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
 from mikiui.app.plugins import Plugin
+from mikiui.backend.websocket import ConnectionManager
 
 logger = logging.getLogger(__name__)
 
@@ -229,12 +231,28 @@ class NotificationPlugin(Plugin):
         self._queue = NotificationQueue(max_per_user=max_per_user)
         self.default_duration = default_duration
         self.websocket_path = websocket_path
-        self._websocket_manager: Any = None
+        self._websocket_manager: ConnectionManager | None = None
 
     def register(self, app: Any) -> None:
         """Register the notification plugin with the app."""
         app._notification_plugin = self
         app.notifications = self
+
+    def websocket_routes(self) -> list[dict[str, Any]]:
+        """Return WebSocket route definitions for real-time notifications."""
+        if self._websocket_manager is None:
+            self._websocket_manager = ConnectionManager()
+        self_manager = self._websocket_manager
+        return [
+            {
+                "path": self.websocket_path,
+                "handler": self.websocket_handler,
+                "manager": self_manager,
+                "include_in_schema": False,
+                "name": "notification-ws",
+                "tags": ["notifications"],
+            }
+        ]
 
     def configure(self, config: dict[str, Any]) -> None:
         """Configure notification defaults.
@@ -304,6 +322,11 @@ class NotificationPlugin(Plugin):
             Auto-dismiss duration in milliseconds.
         """
         self.notify("*", message, type=type, duration=duration)
+
+    async def broadcast_websocket(self, message: dict[str, Any]) -> None:
+        """Push a WebSocket message to all active notification connections."""
+        if self._websocket_manager is not None:
+            await self._websocket_manager.broadcast(message)
 
     def get_notifications(
         self, user_id: str, *, unread_only: bool = True
@@ -410,6 +433,10 @@ class NotificationPlugin(Plugin):
     async def websocket_handler(self, websocket: WebSocket, manager: Any) -> None:
         """WebSocket handler for real-time notifications.
 
+        The connection has already been accepted by
+        :func:`mount_websocket`'s endpoint; here we only retrieve the
+        authenticated user_id and enter the message loop.
+
         Parameters
         ----------
         websocket:
@@ -417,9 +444,9 @@ class NotificationPlugin(Plugin):
         manager:
             The ConnectionManager instance.
         """
-        user_id = await manager.connect(websocket)
+        user_id = manager.get_user_id(websocket)
         if user_id is None:
-            return
+            user_id = "anonymous"
         try:
             # Send any pending notifications
             pending = self.get_notifications(user_id)
@@ -439,6 +466,9 @@ class NotificationPlugin(Plugin):
                 except json.JSONDecodeError:
                     pass
         except WebSocketDisconnect:
+            manager.disconnect(websocket)
+        except Exception:
+            logger.exception("WebSocket handler error")
             manager.disconnect(websocket)
 
     def assets(self) -> list[str]:

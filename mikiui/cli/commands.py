@@ -305,7 +305,7 @@ def build(
     app_daisyui = getattr(miki_app, "style_daisyui", False)
     effective_daisyui = daisyui or app_daisyui
 
-    if app_framework == "tailwind" and not skip_tailwind:
+    if app_framework == "tailwind":
         from ..build.tailwind import build_css, register_built_theme
 
         typer.echo("[cyan]Building Tailwind CSS[/cyan] (scanning components/widgets)...")

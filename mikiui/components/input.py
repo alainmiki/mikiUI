@@ -280,7 +280,7 @@ class Radio(Input):
         from .html import Div
         radios = []
         for val, label in options:
-            checked = attrs.pop("checked", value == val)
+            checked = attrs.get("checked", value == val)
             radios.append(
                 Label(
                     cls(type="radio", name=name, value=val, checked=checked),

@@ -19,9 +19,11 @@ class OptimisticUpdater:
         self.app = app
 
     async def update(self, route, request: Any = None) -> str:
-        nodes = await self.app.invoke(route, request)
-        # For partial requests we still return the rendered fragment; the diff
-        # is available to callers that want targeted swaps instead.
+        result = await self.app.invoke(route, request)
+        if isinstance(result, tuple):
+            nodes = result[0]
+        else:
+            nodes = result
         return render_fragment(nodes)
 
     @staticmethod

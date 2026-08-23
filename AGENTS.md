@@ -33,6 +33,7 @@ Build order / dependency direction: `components` → `widgets` → `app` → `en
 - **Always review changes before committing.** Inspect diffs/status first; only then commit.
 - Commit discipline: clear messages; the repo expects frequent, small, review-first commits. Use feature branches + PRs.
 - Work from the spec in `context/` and keep every module documented (doc-first).
+- **GIT SAFETY — NEVER run these without explicit user approval:** `git reset`, `git revert`, `git checkout --`, `git clean`, `git stash`, `git push --force`, `git rebase`, `git commit --amend`, or any command that rewrites history or discards uncommitted work. If you need to undo something, **ask the user first**. Always inspect `git status` and `git diff` before any git operation.
 
 ## Conventions that differ from defaults
 - **Accessibility is mandatory**: ARIA roles, keyboard nav, screen-reader support on every component/widget.

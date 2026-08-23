@@ -90,13 +90,13 @@ def truncate(value: str, length: int = 100, suffix: str = "...") -> str:
 _translator = None
 
 
-def set_translator(fn) -> None:
+def set_translator(fn: Any) -> None:
     """Register a translator callable ``fn(key, default) -> str``."""
     global _translator
     _translator = fn
 
 
-def get_translator():
+def get_translator() -> Any:
     return _translator
 
 
@@ -192,6 +192,7 @@ class Element:
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         self.children: list[Any] = list(children)
+        self.tag = attrs.pop("tag", self.__class__.tag)
         self.attrs: dict[str, Any] = attrs
 
     # -- tree manipulation -----------------------------------------------------

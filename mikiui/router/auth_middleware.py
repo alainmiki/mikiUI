@@ -29,8 +29,8 @@ def resolve_auth_requirement(route: Any) -> AuthRequirement:
     4. Default ``AuthRequirement(strategy="none")``.
     """
     group = _get_route_group(route)
-    if group is not None and group.auth is not None:
-        group_req = group.auth
+    if group is not None and group._auth is not None:
+        group_req = group._auth
     else:
         group_req = None
 
@@ -68,11 +68,16 @@ class AuthMiddleware:
         strategy_name = requirement.strategy
         strategy = self._app.get_auth_strategy(strategy_name)
         if strategy is None:
-            logger.warning(
-                "Auth strategy %r is not registered; treating route as public.",
+            logger.error(
+                "Auth strategy %r is not registered; failing closed for %s %s.",
                 strategy_name,
+                getattr(request, "method", "?"),
+                getattr(request, "url", "?"),
             )
-            return None
+            return JSONResponse(
+                {"error": "ServiceUnavailable", "detail": "Auth infrastructure not configured."},
+                status_code=503,
+            )
 
         user = strategy.validate(request)
         if user is None:

@@ -169,6 +169,9 @@ _DANGEROUS_CALLS: dict[str, tuple[str, ...]] = {
 # Dangerous attribute assignments (e.g. __builtins__ manipulation)
 _DANGEROUS_ATTR_ASSIGNMENTS = {"__builtins__", "__globals__", "__code__"}
 
+# Names that are dangerous when dynamically resolved via getattr
+_DANGEROUS_DYNAMIC_NAMES = {"eval", "exec", "compile", "__import__"}
+
 
 def _check_ast(tree: ast.AST) -> list[str]:
     """Walk *tree* and return a list of security violation descriptions."""
@@ -200,6 +203,10 @@ def _check_ast(tree: ast.AST) -> list[str]:
                         f"Dangerous call to {name!r} at line {node.lineno}"
                     )
 
+            # Check for obfuscated calls like getattr(obj, 'ev' + 'al')
+            obf_violations = _check_obfuscated_call(node)
+            violations.extend(obf_violations)
+
         # Block dangerous attribute assignments.
         if isinstance(node, ast.Assign):
             for target in node.targets:
@@ -208,6 +215,60 @@ def _check_ast(tree: ast.AST) -> list[str]:
                         violations.append(
                             f"Dangerous attribute assignment to {target.attr!r} at line {node.lineno}"
                         )
+
+    return violations
+
+
+def _resolve_string_arg(node: ast.expr) -> str | None:
+    """Resolve an AST expression to a constant string value if possible.
+
+    Handles ``ast.Constant`` (str), ``ast.Str`` (deprecated but still used),
+    and ``ast.BinOp`` with ``ast.Add`` for string literal concatenation
+    (e.g. ``"ev" + "al"``).
+    """
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _resolve_string_arg(node.left)
+        right = _resolve_string_arg(node.right)
+        if left is not None and right is not None:
+            return left + right
+    return None
+
+
+def _check_obfuscated_call(node: ast.Call) -> list[str]:
+    """Detect dynamic attribute calls that resolve to dangerous names.
+
+    Catches patterns such as::
+
+        getattr(obj, 'ev' + 'al')       # → eval
+        getattr(obj, 'exec')             # → exec
+        obj.__getattribute__('compile')  # → compile
+
+    Returns a list of violation descriptions (empty if none found).
+    """
+    violations: list[str] = []
+    func = node.func
+    target_name: str | None = None
+
+    # getattr(obj, "name") — two-argument form
+    if isinstance(func, ast.Name) and func.id in ("getattr", "__getattribute__"):
+        if node.args:
+            target_name = _resolve_string_arg(node.args[-1])
+
+    # obj.__getattribute__("name") or obj.__getattr__("name")
+    elif isinstance(func, ast.Attribute) and func.attr in (
+        "__getattribute__",
+        "__getattr__",
+    ):
+        if node.args:
+            target_name = _resolve_string_arg(node.args[-1])
+
+    if target_name in _DANGEROUS_DYNAMIC_NAMES:
+        violations.append(
+            f"Dangerous dynamic call resolving to {target_name!r} "
+            f"at line {node.lineno}"
+        )
 
     return violations
 
@@ -338,7 +399,6 @@ _DEFAULT_SAFE_IMPORTS: set[str] = {
     "pydantic",
     "uvicorn",
     "aiofiles",
-    "jinja2",
     "yaml",
     "toml",
     "dotenv",

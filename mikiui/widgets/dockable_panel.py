@@ -153,8 +153,11 @@ dock : str
         attrs.setdefault("data-float-height", float_height)
 
         # CSS custom properties for initial rendering (JS reads data-* attrs, CSS reads vars)
-        attrs.setdefault("style", "")
-        style_parts = [p.strip() for p in attrs["style"].split(";") if p.strip()]
+        style = attrs.get("style", "")
+        if isinstance(style, dict):
+            style = "; ".join(f"{k}:{v}" for k, v in style.items())
+        attrs.setdefault("style", style)
+        style_parts = [p.strip() for p in style.split(";") if p.strip()]
         style_parts.append(f"--miki-dock-width:{dock_width}")
         style_parts.append(f"--miki-dock-height:{dock_height}")
         style_parts.append(f"--miki-float-width:{float_width}")

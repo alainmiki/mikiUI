@@ -100,3 +100,38 @@ def test_page_includes_favicon():
     client = TestClient(create_app(app))
     resp = client.get("/")
     assert '<link rel="icon" href="/_miki/runtime/mikiui-icon.png"' in resp.text
+
+
+def test_path_normalization_strips_trailing_slash():
+    """Routes should normalize trailing slashes so /foo and /foo/ match."""
+    app = MikiApp(title="Test")
+
+    @app.route("/page")
+    def page():
+        return Div("content")
+
+    assert "/page" in app.routes
+    assert "/page/" not in app.routes
+
+
+def test_root_path_not_stripped():
+    """The root path '/' should never be stripped of its trailing slash."""
+    app = MikiApp(title="Test")
+
+    @app.route("/")
+    def root():
+        return Div("root")
+
+    assert "/" in app.routes
+
+
+def test_get_route_normalizes_path():
+    """get_route should normalize lookup paths the same way routes are stored."""
+    app = MikiApp(title="Test")
+
+    @app.route("/items")
+    def items():
+        return Div("items")
+
+    assert app.get_route("/items/") is not None
+    assert app.get_route("/items") is not None

@@ -205,8 +205,8 @@ def resolve_static_path(url_path: str) -> str | None:
         return None
 
     relative = url_path[best_len:].lstrip("/")
-    resolved = os.path.normpath(os.path.join(abs_path, relative))
     abs_path = _ASSET_MOUNTS[best_match]
+    resolved = os.path.normpath(os.path.join(abs_path, relative))
 
     # Security: ensure resolved path is within the static directory
     if not resolved.startswith(abs_path + os.sep) and resolved != abs_path:
