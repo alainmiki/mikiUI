@@ -1,0 +1,32 @@
+(function () {
+  "use strict";
+
+  var miki = window.miki || {};
+
+  var mikiAccordion = {
+    init: function (container) {
+      if (container.dataset.mikiInit === "true") return;
+      container.dataset.mikiInit = "true";
+
+      var groupId = container.getAttribute("data-miki-accordion-group") || generateId("miki-accordion");
+      container.setAttribute("data-miki-accordion-group", groupId);
+
+      var items = container.querySelectorAll("[data-miki-collapsible-header=\"true\"]");
+      for (var i = 0; i < items.length; i++) {
+        var header = items[i];
+        var parent = header.closest("[data-miki-collapsible=\"true\"]");
+        if (parent) {
+          parent.setAttribute("data-miki-accordion-group", groupId);
+        }
+      }
+
+      // Initialize each collapsible in the accordion
+      var collapsibles = container.querySelectorAll("[data-miki-collapsible=\"true\"]");
+      for (var j = 0; j < collapsibles.length; j++) {
+        mikiCollapsible.init(collapsibles[j]);
+      }
+    }
+  };
+
+  window.mikiAccordion = mikiAccordion;
+})();

@@ -17,6 +17,13 @@ from .dialog import Details, Dialog, DialogBody, DialogFooter, DialogTitle, Summ
 from .filepicker import FilePicker
 from .form import Fieldset, Form, Label, Legend, Optgroup
 from .html import (
+    H1,
+    H2,
+    H3,
+    H4,
+    H5,
+    H6,
+    SVG,
     A,
     Abbr,
     Abbreviation,
@@ -29,8 +36,8 @@ from .html import (
     Body,
     Br,
     Canvas,
-    Cite,
     Citation,
+    Cite,
     Code,
     Dd,
     DescriptionDetail,
@@ -44,12 +51,6 @@ from .html import (
     Figcaption,
     Figure,
     Footer,
-    H1,
-    H2,
-    H3,
-    H4,
-    H5,
-    H6,
     Head,
     Header,
     Heading,
@@ -82,7 +83,6 @@ from .html import (
     Span,
     Strong,
     Style,
-    SVG,
     Svg,
     Time,
     Title,
@@ -99,8 +99,8 @@ from .modal import Modal
 from .navbar import Navbar
 from .picture import Picture
 from .progressbar import Meter, Output, Progress, ProgressBar
-from .table import Caption, Table, Tbody, Td, Tfoot, Th, Thead, Tr
 from .splitview.splitview import EditorArea, EditorGroup, EditorTab
+from .table import Caption, Table, Tbody, Td, Tfoot, Th, Thead, Tr
 from .tabs import Tabs
 from .tooltip import Tooltip
 from .treeview import TreeView

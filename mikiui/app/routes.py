@@ -145,9 +145,9 @@ class RouteDef:
     def __init__(
         self,
         path: str,
-        handler: Callable,
+        handler: Callable[..., Any],
         methods: tuple[str, ...],
-        name: str | None,
+        name: str | None = None,
         title: str | None = None,
         requires_auth: bool = False,
         auth: AuthRequirement | None = None,
@@ -189,7 +189,12 @@ class RouteDef:
         return bool(self.path_params)
 
 
-def invoke_route(route: RouteDef, app: Any, request: Any = None, path_params: dict[str, Any] | None = None):
+def invoke_route(
+    route: RouteDef,
+    app: Any,
+    request: Any = None,
+    path_params: dict[str, Any] | None = None,
+) -> tuple[Any, Any]:
     """Call a route handler and return a ``(result, ctx)`` tuple.
 
     The ``result`` may be a sync return value or a coroutine (for async

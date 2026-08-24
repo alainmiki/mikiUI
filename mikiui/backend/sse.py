@@ -80,7 +80,7 @@ def sse_response(generator: AsyncGenerator[Any], last_event_id: str | None = Non
         If provided, included as the ``Last-Event-Id`` response header so
         clients can resume from a specific point.
     """
-    async def event_stream():
+    async def event_stream() -> AsyncGenerator[str]:
         try:
             async for message in generator:
                 if isinstance(message, dict):

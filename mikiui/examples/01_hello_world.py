@@ -10,13 +10,12 @@ from datetime import datetime
 from mikiui import (
     Div,
     Footer,
-    H1,
     MikiApp,
     P,
 )
 from mikiui.components import Button
 from mikiui.themes import Theme
-from mikiui.widgets import Avatar, Badge, Card
+from mikiui.widgets import Badge, Card
 from mikiui.widgets.layout_widgets import Hero
 
 app = MikiApp(

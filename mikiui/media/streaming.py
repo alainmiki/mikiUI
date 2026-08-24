@@ -4,11 +4,14 @@ Manages named in-memory media streams that can be published to and subscribed
 from via async generators producing Server-Sent Event (SSE) ready dicts.
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import AsyncGenerator
+from typing import Any
 
 
-def sse_chunk(payload: dict) -> dict:
+def sse_chunk(payload: dict[str, Any]) -> dict[str, Any]:
     """Return an SSE-ready message dict for an arbitrary payload.
 
     Args:
@@ -28,7 +31,7 @@ class StreamingManager:
     """
 
     def __init__(self) -> None:
-        self._streams: dict[str, asyncio.Queue] = {}
+        self._streams: dict[str, asyncio.Queue[Any]] = {}
         self._counter = 0
 
     def create_stream(self, name: str) -> str:
@@ -45,7 +48,7 @@ class StreamingManager:
         self._streams[stream_id] = asyncio.Queue()
         return stream_id
 
-    def publish(self, stream_id: str, chunk: dict) -> None:
+    def publish(self, stream_id: str, chunk: dict[str, Any]) -> None:
         """Publish a chunk to a stream.
 
         Args:
@@ -57,7 +60,7 @@ class StreamingManager:
             raise KeyError(f"Unknown stream id: {stream_id}")
         queue.put_nowait(chunk)
 
-    async def subscribe(self, stream_id: str) -> AsyncGenerator[dict]:
+    async def subscribe(self, stream_id: str) -> AsyncGenerator[dict[str, Any]]:
         """Subscribe to a stream, yielding chunks as SSE-ready dicts.
 
         Args:

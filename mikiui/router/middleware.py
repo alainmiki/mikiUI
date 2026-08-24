@@ -18,6 +18,7 @@ Security headers added:
 from __future__ import annotations
 
 import secrets
+from collections.abc import Callable
 from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -56,7 +57,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         self._csp = content_security_policy
         self._hsts = strict_transport_security
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         nonce = secrets.token_urlsafe(16)
         request.state.csp_nonce = nonce
         response = await call_next(request)

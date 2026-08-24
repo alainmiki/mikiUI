@@ -8,7 +8,7 @@ Provides :func:`resolve_auth_requirement` to compute the effective
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from typing import Any, cast
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -36,7 +36,7 @@ def resolve_auth_requirement(route: Any) -> AuthRequirement:
 
     route_req = getattr(route, "_auth_requirement", None)
     if route_req is not None:
-        return route_req
+        return cast(AuthRequirement, route_req)
 
     if getattr(route, "requires_auth", False):
         return group_req or AuthRequirement(strategy="session")

@@ -126,7 +126,7 @@ class Tabs(Component):
                 close_btn = None
 
             if icon:
-                tab_content = (
+                tab_content: tuple[Any, ...] = (
                     Span(icon, class_="miki-tab-icon"),
                     P(label, class_="miki-tab-label"),
                 )
@@ -138,7 +138,7 @@ class Tabs(Component):
             else:
                 buttons.append(Button(label, **tab_attrs))
 
-            panel_attrs = {
+            panel_attrs: dict[str, Any] = {
                 "role": "tabpanel",
                 "id": f"{group}-panel-{i}",
                 "aria_labeledby": f"{group}-tab-{i}",

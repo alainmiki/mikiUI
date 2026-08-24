@@ -115,7 +115,7 @@ class RouteGroup:
             if not route_auth:
                 return AuthRequirement(strategy="none")
             return self._auth or AuthRequirement(strategy="session")
-        return route_auth
+        return route_auth  # type: ignore[no-any-return]
 
 
 class RouteGroupBuilder:
@@ -154,19 +154,19 @@ class RouteGroupBuilder:
         self._group.csrf(exempt_paths=exempt_paths, exempt_methods=exempt_methods)
         return self
 
-    def get(self, path: str, **kwargs: Any) -> Callable:
+    def get(self, path: str, **kwargs: Any) -> Callable[..., Any]:
         return self._build_decorator("GET", path, **kwargs)
 
-    def post(self, path: str, **kwargs: Any) -> Callable:
+    def post(self, path: str, **kwargs: Any) -> Callable[..., Any]:
         return self._build_decorator("POST", path, **kwargs)
 
-    def route(self, path: str, **kwargs: Any) -> Callable:
+    def route(self, path: str, **kwargs: Any) -> Callable[..., Any]:
         return self._build_decorator(kwargs.pop("methods", ("GET",)), path, **kwargs)
 
-    def _build_decorator(self, methods, path: str, **kwargs: Any) -> Callable:
+    def _build_decorator(self, methods: str | tuple[str, ...], path: str, **kwargs: Any) -> Callable[..., Any]:
         full_path = f"{self._group.prefix}{path}" if path != "/" else self._group.prefix or "/"
 
-        def decorator(fn: Callable) -> Callable:
+        def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
             self._app.route(
                 full_path,
                 methods=methods if isinstance(methods, tuple) else (methods,),

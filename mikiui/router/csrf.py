@@ -45,7 +45,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         self._validate_csrf = validate_csrf
         self._exempt_paths = tuple(exempt_paths or [])
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Any:
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         if request.method in _SAFE_METHODS:
             return await call_next(request)
 
@@ -63,7 +63,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             content_type = request.headers.get("content-type", "")
             if "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
                 form = await request.form()
-                csrf_token = form.get(_CSRF_FIELD)
+                raw = form.get(_CSRF_FIELD)
+                if isinstance(raw, str):
+                    csrf_token = raw
 
         if not csrf_token or not self._validate_csrf(session_token, csrf_token):
             return JSONResponse(

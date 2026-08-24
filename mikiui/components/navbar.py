@@ -89,7 +89,7 @@ class Navbar(Component):
         hamburger = Button(
             "☰",
             type="button",
-            onclick="document.querySelector('.miki-navbar-links').classList.toggle('active')",
+            onclick="this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.toggle('open')",
             class_="miki-navbar-toggle",
             aria_label="Toggle navigation menu",
         )

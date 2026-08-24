@@ -29,7 +29,7 @@ class Component(Element):
         return cls(*children, **attrs)
 
 
-def component(tag: str, *, void: bool = False):
+def component(tag: str, *, void: bool = False) -> type[Component]:
     """Factory for simple pass-through components (e.g. one-off HTML elements)."""
 
     class _Generated(Component):

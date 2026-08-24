@@ -141,6 +141,7 @@ class PlainCssConfig:
     """Plain-CSS (no framework) configuration."""
 
     framework: Framework = Framework.PLAIN
+    mode: str = "cdn"
     custom_css_paths: list[str] = field(default_factory=list)
 
 
@@ -417,7 +418,7 @@ class StylingSystem:
             theme=theme,
             daisyui=daisyui,
         )
-        write_postcss_config(self.project_dir / "postcss.config.js")
+        write_postcss_config(str(self.project_dir / "postcss.config.js"))
 
         self._register_tailwind_theme(theme=theme, daisyui=daisyui)
 

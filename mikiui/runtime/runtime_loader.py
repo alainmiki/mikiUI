@@ -11,23 +11,58 @@ from __future__ import annotations
 
 
 def runtime_scripts(mode: str = "local") -> list[str]:
+    # Widget JS modules in dependency order (core first, then widgets, then init)
+    widget_modules = [
+        "/_miki/runtime/js/core.js",
+        "/_miki/runtime/js/mikidialog.js",
+        "/_miki/runtime/js/mikimodal.js",
+        "/_miki/runtime/js/mikitabs.js",
+        "/_miki/runtime/js/mikidrawer.js",
+        "/_miki/runtime/js/mikisplitview.js",
+        "/_miki/runtime/js/mikidockablepanel.js",
+        "/_miki/runtime/js/mikislider.js",
+        "/_miki/runtime/js/mikidial.js",
+        "/_miki/runtime/js/mikiprogress.js",
+        "/_miki/runtime/js/mikiprogressdialog.js",
+        "/_miki/runtime/js/mikicollapsible.js",
+        "/_miki/runtime/js/mikiaccordion.js",
+        "/_miki/runtime/js/mikidatagrid.js",
+        "/_miki/runtime/js/mikikanban.js",
+        "/_miki/runtime/js/mikichat.js",
+        "/_miki/runtime/js/mikidropzone.js",
+        "/_miki/runtime/js/mikicarousel.js",
+        "/_miki/runtime/js/mikimessagebox.js",
+        "/_miki/runtime/js/mikitoggle.js",
+        "/_miki/runtime/js/mikisearchableselect.js",
+        "/_miki/runtime/js/mikicontextwindow.js",
+        "/_miki/runtime/js/mikimenubar.js",
+        "/_miki/runtime/js/mikibottomsheet.js",
+        "/_miki/runtime/js/mikibottomnav.js",
+        "/_miki/runtime/js/mikichip.js",
+        "/_miki/runtime/js/mikipressable.js",
+        "/_miki/runtime/js/mikilazygrid.js",
+        "/_miki/runtime/js/mikivirtuallist.js",
+        "/_miki/runtime/js/mikiscrollview.js",
+        "/_miki/runtime/js/init.js",
+    ]
+
     if mode == "cdn":
         return [
             "https://unpkg.com/htmx.org@2.0.3",
             "https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js",
-            "/_miki/runtime/miki_ui.js",
+            *widget_modules,
             "/_miki/runtime/htmx_runtime.js",
             "/_miki/runtime/alpine_runtime.js",
             "/_miki/runtime/history_router.js",
         ]
     # Offline-first: real HTMX + Alpine served locally by the backend.
     # Order matters: HTMX loads first, then Alpine.js (depends on being on page),
-    # then the runtime wrappers, then MikiUI's own widget handlers.
+    # then the runtime wrappers, then MikiUI's widget modules.
     return [
         "/_miki/runtime/htmx.min.js",
         "/_miki/runtime/htmx_runtime.js",
         "/_miki/runtime/alpine.min.js",
         "/_miki/runtime/alpine_runtime.js",
-        "/_miki/runtime/miki_ui.js",
+        *widget_modules,
         "/_miki/runtime/history_router.js",
     ]

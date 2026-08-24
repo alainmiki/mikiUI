@@ -26,6 +26,7 @@ class Accordion(Component):
                     content,
                 )
             )
+        attrs.setdefault("data-miki-accordion", "true")
         user_class = attrs.pop("class_", "")
         attrs["class_"] = f"miki-accordion {user_class}".strip()
         super().__init__(Div(*entries, role="list"), **attrs)

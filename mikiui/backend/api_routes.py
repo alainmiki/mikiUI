@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Request
 
 
@@ -9,15 +11,15 @@ def add_api_routes(router: APIRouter, title: str = "MikiUI App") -> None:
     """Register utility endpoints (health check, app metadata)."""
 
     @router.get("/_miki/health", tags=["miki"])
-    async def health() -> dict:
+    async def health() -> dict[str, Any]:
         return {"status": "ok", "app": title}
 
     @router.get("/_miki/meta", tags=["miki"])
-    async def meta() -> dict:
+    async def meta() -> dict[str, Any]:
         return {"name": title, "framework": "mikiui"}
 
     @router.post("/_miki/api/theme", tags=["miki"])
-    async def set_theme(request: Request) -> dict:
+    async def set_theme(request: Request) -> dict[str, Any]:
         body = await request.json()
         theme_name = body.get("theme")
         app = request.app.state.miki_app

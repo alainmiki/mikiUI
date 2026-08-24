@@ -3401,4 +3401,155 @@ textarea {
     height: 120px;
   }
 }
+
+/* ---- BottomNavigation ---- */
+.miki-bottom-nav {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--miki-surface, #fff);
+  border-top: 1px solid var(--miki-border);
+  z-index: 50;
+  padding: 0.5rem;
+  gap: 0.5rem;
+}
+.miki-bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: var(--miki-radius, 0.5rem);
+  color: var(--miki-fg);
+  text-decoration: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+.miki-bottom-nav-item:hover {
+  background: var(--miki-surface-hover, #f1f5f9);
+}
+.miki-bottom-nav-item-active {
+  color: var(--miki-accent);
+  font-weight: 600;
+}
+
+/* ---- BottomSheet ---- */
+.miki-bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.miki-bottom-sheet-backdrop-open {
+  opacity: 1;
+}
+.miki-bottom-sheet-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--miki-surface, #fff);
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 51;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+.miki-bottom-sheet-panel-open {
+  transform: translateY(0);
+}
+.miki-bottom-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--miki-border);
+}
+.miki-bottom-sheet-body {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+.miki-bottom-sheet-drag-handle {
+  width: 2rem;
+  height: 0.25rem;
+  background: var(--miki-border);
+  border-radius: 0.125rem;
+  margin: 0.5rem auto;
+  cursor: grab;
+}
+
+/* ---- Chip ---- */
+.miki-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--miki-surface-hover, #f1f5f9);
+  color: var(--miki-fg);
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: 1px solid var(--miki-border);
+}
+.miki-chip-selected {
+  background: var(--miki-accent);
+  color: #fff;
+  border-color: var(--miki-accent);
+}
+.miki-chip-remove {
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+/* ---- LazyGrid ---- */
+.miki-lazy-grid {
+  display: grid;
+  gap: 1rem;
+}
+.miki-lazy-item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.miki-lazy-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---- VirtualList ---- */
+.miki-virtual-list {
+  overflow-y: auto;
+  position: relative;
+}
+.miki-virtual-list-content {
+  position: relative;
+}
+
+/* ---- ScrollView ---- */
+.miki-scrollview {
+  overflow: auto;
+}
+
+/* ---- Navbar container ---- */
+.miki-navbar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
 }

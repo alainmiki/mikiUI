@@ -52,6 +52,7 @@ from typing import Any
 from ..base import Component
 from ..button import Button
 from ..html import Div, Section, Span
+
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _STATIC_DIR = os.path.join(_THIS_DIR, "static")
 _CSS_PATH = os.path.join(_STATIC_DIR, "splitview.css")
@@ -118,7 +119,7 @@ class EditorGroup(Component):
 
     def __init__(
         self,
-        tabs: list[EditorTab | tuple],
+        tabs: list[EditorTab | tuple[Any, ...]],
         active: int = 0,
         group_id: str | None = None,
         **attrs: Any,
@@ -144,7 +145,7 @@ class EditorGroup(Component):
                     "Tabs must be EditorTab instances or (label, content) tuples"
                 )
 
-        tabs = normalized_tabs
+        tabs = normalized_tabs  # type: ignore[assignment]
         active = max(0, min(active, len(tabs) - 1))
         group_id = group_id or f"eg-{uuid.uuid4().hex[:8]}"
 
@@ -161,11 +162,11 @@ class EditorGroup(Component):
             tab_class = "miki-editor-tab" + (" miki-editor-tab-active" if is_active else "")
 
             tab_content_parts: list[Any] = []
-            if tab.icon:
-                tab_content_parts.append(Span(tab.icon, class_="miki-editor-tab-icon"))
-            tab_content_parts.append(tab.label)
+            if tab.icon:  # type: ignore[union-attr]
+                tab_content_parts.append(Span(tab.icon, class_="miki-editor-tab-icon"))  # type: ignore[union-attr]
+            tab_content_parts.append(tab.label)  # type: ignore[union-attr]
 
-            if tab.closable:
+            if tab.closable:  # type: ignore[union-attr]
                 close_btn = Button(
                     "×",
                     type="button",
@@ -220,7 +221,7 @@ class EditorGroup(Component):
             if not is_active:
                 panel_attrs["hidden"] = True
 
-            content_panels.append(Section(tab.content, **panel_attrs))
+            content_panels.append(Section(tab.content, **panel_attrs))  # type: ignore[union-attr]
 
         content_container = Div(
             *content_panels, class_="miki-editor-content-container"

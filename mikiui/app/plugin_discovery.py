@@ -157,9 +157,9 @@ def _import_module_rel(base: Path, filepath: Path) -> Any | None:
     # Ensure the parent directory is on sys.path so the module's own imports
     # (e.g. `from mikiui import ...`) resolve from the project root, and so
     # that a later importlib.import_module(sanitized) can find it.
-    parent = str(filepath.parent)
-    if parent not in sys.path:
-        sys.path.insert(0, parent)
+    plugin_parent: str = str(filepath.parent)
+    if plugin_parent not in sys.path:
+        sys.path.insert(0, plugin_parent)
     try:
         spec = importlib.util.spec_from_file_location(sanitized, filepath)
         if spec is None or spec.loader is None:
@@ -173,7 +173,7 @@ def _import_module_rel(base: Path, filepath: Path) -> Any | None:
             raise
         return module
     finally:
-        sys.path.remove(parent)
+        sys.path.remove(plugin_parent)
 
 
 def discover_from_directory(directory: str | Path) -> list[PluginMetadata]:
@@ -227,7 +227,7 @@ def discover_from_entry_points() -> list[PluginMetadata]:
         if hasattr(eps, "select"):
             plugin_eps = eps.select(group="mikiui.plugins")
         else:
-            plugin_eps = eps.get("mikiui.plugins", [])
+            plugin_eps = eps.get("mikiui.plugins", [])  # type: ignore[attr-defined]
         for ep in plugin_eps:
             try:
                 cls = ep.load()

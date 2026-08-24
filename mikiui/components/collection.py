@@ -6,7 +6,7 @@ from typing import Any
 
 from .base import Component
 from .button import Button
-from .html import Div, Img, Span
+from .html import Img, Span
 
 
 class Chip(Component):

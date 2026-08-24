@@ -43,7 +43,7 @@ import shutil
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..app.plugin_discovery import discover_plugins
 from ..app.plugin_security import (
@@ -148,7 +148,7 @@ class DirectoryIndexSource(MarketplaceSource):
         return target
 
     def list_all(self) -> list[PluginInfo]:
-        results = []
+        results: list[PluginInfo] = []
         if not self.index_dir.is_dir():
             return results
         for entry in sorted(self.index_dir.iterdir()):
@@ -341,7 +341,7 @@ class PluginMarketplace:
             raise FileNotFoundError(
                 f"Plugin {name!r} class {meta.class_name!r} could not be loaded."
             )
-        plugin = plugin_cls()
+        plugin = cast(Plugin, plugin_cls())
         # Validate before registering.
         manifest = load_manifest(_resolve_module_from_dir(plugin_dir, meta))
         self._validator.validate_plugin(

@@ -19,7 +19,9 @@ class Progress(Component):
 
     tag = "progress"
 
-    def __init__(self, *children: Any, value: float = 0, max: float = 100, variant: str = "default", **attrs: Any    ) -> None:
+    def __init__(
+        self, *children: Any, value: float = 0, max: float = 100, variant: str = "default", **attrs: Any
+    ) -> None:
         self.value = value
         self.max = max
         classes = "miki-progress"

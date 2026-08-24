@@ -117,7 +117,8 @@ class Input(Component):
         -------
         Div containing label and color input.
         """
-        from .html import Div, Label
+        from .form import Label
+        from .html import Div
         field_id = "miki-color-" + name
 
         return Div(
@@ -321,6 +322,7 @@ class Slider(Input):
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("type", "range")
         attrs.setdefault("class_", "miki-slider miki-slider-input")
+        attrs.setdefault("data-miki-slider", "true")
 
         label = children[0] if children else ""
         if label:

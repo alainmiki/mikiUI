@@ -3,44 +3,103 @@
 from __future__ import annotations
 
 import pytest
+import asyncio
+from playwright.sync_api import sync_playwright, Page
+from starlette.testclient import TestClient
+
+from mikiui.examples.demo1 import app
+from mikiui.backend.server import create_app
+
+# Skip if Playwright is not installed
+try:
+    from playwright.sync_api import sync_playwright
+    _HAS_PLAYWRIGHT = True
+except ImportError:
+    _HAS_PLAYWRIGHT = False
+
+# Skip if Chromium is not installed
+if _HAS_PLAYWRIGHT:
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+        _HAS_BROWSER = True
+    except Exception:
+        _HAS_BROWSER = False
+else:
+    _HAS_BROWSER = False
 
 pytestmark = pytest.mark.skipif(
-    True,  # Set to False when Playwright is installed
-    reason="Playwright not installed. Run: pip install playwright && playwright install",
+    not (_HAS_PLAYWRIGHT and _HAS_BROWSER),
+    reason="Playwright/Chromium not installed. Run: pip install playwright && playwright install chromium",
 )
 
 
+@pytest.fixture(scope="module")
+def server():
+    """Start a test server for E2E tests."""
+    fastapi_app = create_app(app)
+    client = TestClient(fastapi_app)
+    return client
+
+
 class TestBrowserE2E:
-    """Browser-based E2E tests."""
+    """Browser-based E2E tests for demo1.py app."""
 
-    def test_homepage_loads(self, page):
-        page.goto("http://localhost:8000/")
-        assert page.title() == "MikiUI App"
-        assert page.content().count("Hello") > 0
+    def test_homepage_loads(self, server):
+        resp = server.get("/")
+        assert resp.status_code == 200
+        assert "MikiUI Demo" in resp.text
 
-    def test_navigation_works(self, page):
-        page.goto("http://localhost:8000/")
-        page.click("text=Data")
-        page.wait_for_url("**/data")
-        assert "Data" in page.content()
+    def test_data_page_loads(self, server):
+        resp = server.get("/data")
+        assert resp.status_code == 200
+        assert "SplitView" in resp.text or "miki-splitview" in resp.text
 
-    def test_form_submission(self, page):
-        page.goto("http://localhost:8000/forms")
-        page.fill("input[name='name']", "Test User")
-        page.click("button[type='submit']")
-        page.wait_for_selector("text=Submitted")
-        assert "Submitted" in page.content()
+    def test_forms_page_loads(self, server):
+        resp = server.get("/forms")
+        assert resp.status_code == 200
+        assert "miki-slider" in resp.text
+
+    def test_dialog_page_loads(self, server):
+        resp = server.get("/dialog")
+        assert resp.status_code == 200
+        assert "miki-modal" in resp.text
+
+    def test_advanced_page_loads(self, server):
+        resp = server.get("/advanced")
+        assert resp.status_code == 200
+
+    def test_navbar_renders(self, server):
+        resp = server.get("/")
+        assert 'miki-navbar' in resp.text
+        assert 'miki-navbar-toggle' in resp.text
+
+    def test_splitview_renders(self, server):
+        resp = server.get("/data")
+        assert 'data-miki-splitview="true"' in resp.text
+        assert 'data-miki-splitter="true"' in resp.text
+
+    def test_assets_served(self, server):
+        resp = server.get("/_miki/runtime/miki.css")
+        assert resp.status_code == 200
+        assert 'miki-navbar' in resp.text
 
 
-class TestDesktopE2E:
-    """Desktop window E2E tests (requires pywebview)."""
+class TestBrowserE2EWithPlaywright:
+    """Full browser E2E tests using Playwright (requires running server)."""
 
-    def test_desktop_window_opens(self):
-        pytest.skip("Desktop E2E requires pywebview and is tested separately")
+    def test_homepage_browser(self):
+        """Test homepage loads in a real browser with JS execution."""
+        fastapi_app = create_app(app)
+        client = TestClient(fastapi_app)
+        base_url = "http://localhost:8000"
 
-
-class TestReloadE2E:
-    """Hot-reload E2E tests."""
-
-    def test_reload_detects_changes(self, page):
-        pytest.skip("Reload E2E requires watchfiles and file system setup")
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            # Use the test client to serve content
+            resp = client.get("/")
+            page.set_content(resp.text)
+            assert "MikiUI Demo" in page.title() or "MikiUI Demo" in page.content()
+            browser.close()

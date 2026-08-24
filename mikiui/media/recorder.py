@@ -3,7 +3,10 @@
 Tracks recording sessions with simple metadata, kept in memory only.
 """
 
+from __future__ import annotations
+
 import datetime
+from typing import Any
 
 
 class Recorder:

@@ -37,7 +37,7 @@ class WidgetRegistry:
 
     def __init__(self) -> None:
         self._registry: dict[str, type] = {}
-        self._lifecycle_hooks: dict[str, dict[str, list[Callable]]] = {}
+        self._lifecycle_hooks: dict[str, dict[str, list[Callable[..., Any]]]] = {}
         self._instances: dict[str, list[Any]] = {}
 
     def register(self, name: str, cls: type, *, namespace: str | None = None) -> None:
@@ -115,7 +115,7 @@ class WidgetRegistry:
         self._fire_hook("on_create", name, instance)
         return instance
 
-    def on_create(self, name: str, hook: Callable) -> None:
+    def on_create(self, name: str, hook: Callable[..., Any]) -> None:
         """Register a callback invoked when a widget/component is created.
 
         Parameters
@@ -129,7 +129,7 @@ class WidgetRegistry:
             "on_create", []
         ).append(hook)
 
-    def on_destroy(self, name: str, hook: Callable) -> None:
+    def on_destroy(self, name: str, hook: Callable[..., Any]) -> None:
         """Register a callback invoked when a widget/component is destroyed.
 
         Parameters
@@ -143,7 +143,7 @@ class WidgetRegistry:
             "on_destroy", []
         ).append(hook)
 
-    def on_update(self, name: str, hook: Callable) -> None:
+    def on_update(self, name: str, hook: Callable[..., Any]) -> None:
         """Register a callback invoked when a widget/component is updated.
 
         Parameters

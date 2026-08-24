@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .diff import diff
+from .diff import Swap, diff
 from .renderer import render_fragment
 
 
@@ -18,7 +18,7 @@ class OptimisticUpdater:
     def __init__(self, app: Any) -> None:
         self.app = app
 
-    async def update(self, route, request: Any = None) -> str:
+    async def update(self, route: Any, request: Any = None) -> str:
         result = await self.app.invoke(route, request)
         if isinstance(result, tuple):
             nodes = result[0]
@@ -27,5 +27,5 @@ class OptimisticUpdater:
         return render_fragment(nodes)
 
     @staticmethod
-    def swaps(old: Any, new: Any):
+    def swaps(old: Any, new: Any) -> list[Swap]:
         return diff(old, new)

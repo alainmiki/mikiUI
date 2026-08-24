@@ -8,6 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .system import PlainCssConfig
+
 
 def register_plain_theme(custom_css: list[str] | None = None) -> dict[str, Any]:
     """Register a plain-CSS theme in the MikiUI theme registry.
@@ -69,7 +71,7 @@ def setup_plain_css(
                 f"Custom CSS file not found: {resolved} (from path: {p!r})"
             )
 
-    return PlainCssConfig(custom_css_paths=paths)
+    return PlainCssConfig(custom_css_paths=paths)  # type: ignore[no-any-return]
 
 
 def runtime_html(custom_css: list[str] | None = None) -> str:

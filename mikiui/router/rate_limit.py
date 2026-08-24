@@ -128,7 +128,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._auth_path_prefixes = auth_path_prefixes
         self._key_func = key_func
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Any:
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         path = request.url.path
 
         limit = self._general_limit

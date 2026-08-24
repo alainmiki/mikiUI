@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any
+from typing import Any, cast
 
 from ..themes import Theme
 
@@ -49,7 +49,7 @@ class ThemeRegistry:
             return None
         getter = getattr(self._parent_registry, "get", None)
         if callable(getter):
-            return getter(name)
+            return cast(Theme | None, getter(name))
         return None
 
     def _parent_list(self) -> list[str]:
@@ -58,7 +58,7 @@ class ThemeRegistry:
             return []
         lister = getattr(self._parent_registry, "list_all", None)
         if callable(lister):
-            return lister()
+            return cast(list[str], lister())
         return []
 
     def register(
@@ -166,7 +166,10 @@ class ThemeRegistry:
         if name not in self._registry:
             parent = self._parent_registry.get(name) if self._parent_registry else None
             if parent is None:
-                available = sorted(set(self.list_registered()) | set(self._parent_registry.list_all() if self._parent_registry else []))
+                parent_names = (
+                    self._parent_registry.list_all() if self._parent_registry else []
+                )
+                available = sorted(set(self.list_registered()) | set(parent_names))
                 raise ValueError(
                     f"Unknown theme: {name!r}. Available: {', '.join(available)}"
                 )

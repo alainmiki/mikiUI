@@ -142,7 +142,7 @@ class ConnectionManager:
 def mount_websocket(
     router: APIRouter,
     path: str,
-    handler: Callable,
+    handler: Callable[[WebSocket, ConnectionManager], Any],
     *,
     manager: ConnectionManager | None = None,
     max_message_size: int | None = None,
@@ -190,7 +190,7 @@ def mount_websocket(
 async def _size_limited_handler(
     ws: WebSocket,
     manager: ConnectionManager,
-    handler: Callable,
+    handler: Callable[[WebSocket, ConnectionManager], Any],
     max_size: int,
 ) -> None:
     """Wrap *handler* to reject messages exceeding *max_size* bytes."""
@@ -213,5 +213,5 @@ async def _size_limited_handler(
         return _json.loads(raw)
 
     ws.receive_text = _checked_receive_text  # type: ignore[method-assign]
-    ws.receive_json = _checked_receive_json  # type: ignore[method-assign]
+    ws.receive_json = _checked_receive_json  # type: ignore[method-assign,assignment]
     await handler(ws, manager)
