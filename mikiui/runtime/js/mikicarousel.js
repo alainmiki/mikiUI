@@ -17,16 +17,16 @@
       var nextBtn = el.querySelector(".miki-carousel-next");
 
       if (nextBtn) {
-        on(nextBtn, "click", function () { mikiCarousel.next(el); });
+        onPointer(nextBtn, "activate", function () { mikiCarousel.next(el); });
       }
       if (prevBtn) {
-        on(prevBtn, "click", function () { mikiCarousel.prev(el); });
+        onPointer(prevBtn, "activate", function () { mikiCarousel.prev(el); });
       }
 
       for (var i = 0; i < dots.length; i++) {
         (function (dot, idx) {
           dot.setAttribute("data-index", idx);
-          on(dot, "click", function () { mikiCarousel.goTo(el, idx); });
+          onPointer(dot, "activate", function () { mikiCarousel.goTo(el, idx); });
         })(dots[i], i);
       }
 
@@ -46,7 +46,7 @@
         }
       });
 
-      // Keyboard navigation
+      /* Keyboard navigation */
       on(el, "keydown", function (e) {
         if (e.key === "ArrowLeft") {
           e.preventDefault();
@@ -54,6 +54,57 @@
         } else if (e.key === "ArrowRight") {
           e.preventDefault();
           mikiCarousel.next(el);
+        }
+      });
+
+      /* Mobile: swipe navigation */
+      var startX = 0;
+      var startY = 0;
+      var threshold = 50; /* Minimum swipe distance */
+      var restraint = 100; /* Maximum allowed perpendicular distance */
+      var allowswipe = true;
+
+      on(el, "touchstart", function (e) {
+        if (e.touches.length !== 1) return;
+        var touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        allowswipe = true;
+        /* Pause autoplay while interacting */
+        mikiCarousel.stopAutoplay(el);
+      }, { passive: true });
+
+      on(el, "touchmove", function (e) {
+        if (e.touches.length !== 1 || !allowswipe) return;
+        if (el.getAttribute("data-autoplay") === "true") {
+          /* Autoplay was stopped on touchstart, restart on touchend */
+        }
+      }, { passive: true });
+
+      /* Swipe detection with touchmove tracking */
+      var endX = 0;
+      var endY = 0;
+      on(el, "touchmove", function (e) {
+        if (e.touches.length !== 1) return;
+        endX = e.touches[0].clientX;
+        endY = e.touches[0].clientY;
+      }, { passive: true });
+
+      on(el, "touchend", function (e) {
+        var distX = endX - startX;
+        var distY = endY - startY;
+        if (Math.abs(distX) >= threshold && Math.abs(distY) <= restraint) {
+          /* Horizontal swipe */
+          if (distX > 0) {
+            mikiCarousel.prev(el);
+          } else {
+            mikiCarousel.next(el);
+          }
+        }
+        /* Restart autoplay if needed */
+        if (el.getAttribute("data-autoplay") === "true") {
+          var interval = parseInt(el.getAttribute("data-interval") || "4000", 10);
+          mikiCarousel.startAutoplay(el, interval);
         }
       });
     },

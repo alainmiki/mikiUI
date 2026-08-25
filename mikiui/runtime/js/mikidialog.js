@@ -18,9 +18,9 @@
         }
       });
 
-      // Click on backdrop
+      // Click/Tap on backdrop — activates on both mouse click and touch tap
       if (dlg.getAttribute("data-miki-dialog-close-on-overlay") === "true") {
-        on(dlg, "click", function (e) {
+        onPointer(dlg, "activate", function (e) {
           if (e.target === dlg) {
             mikiDialog.close(dlg);
           }
@@ -31,7 +31,7 @@
       var closeBtns = dlg.querySelectorAll("[data-miki-dialog-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          on(btn, "click", function (e) {
+          onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiDialog.close(dlg);
           });

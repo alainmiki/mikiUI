@@ -27,7 +27,8 @@ from starlette.requests import Request
 _CSP_DEFAULT = (
     "default-src 'self'; "
     "script-src 'self'; "
-    "style-src 'self' 'unsafe-inline'; "
+    "style-src-elem 'self' 'unsafe-inline'; "
+    "style-src-attr 'unsafe-inline'; "
     "img-src 'self' data: https:; "
     "font-src 'self' data:; "
     "connect-src 'self'; "
@@ -68,7 +69,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         csp = self._csp or ""
         if nonce:
             csp = csp.replace("script-src 'self'", f"script-src 'self' 'nonce-{nonce}'")
-            csp = csp.replace("style-src 'self' 'unsafe-inline'", f"style-src 'self' 'nonce-{nonce}'")
+            csp = csp.replace(
+                "style-src-elem 'self' 'unsafe-inline'",
+                f"style-src-elem 'self' 'nonce-{nonce}'",
+            )
         response.headers.setdefault("Content-Security-Policy", csp)
         if self._hsts:
             is_https = (

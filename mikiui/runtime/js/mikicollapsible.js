@@ -10,7 +10,7 @@
 
       var header = el.querySelector("[data-miki-collapsible-header=\"true\"]");
       if (header) {
-        on(header, "click", function () {
+        onPointer(header, "activate", function () {
           mikiCollapsible.toggle(el);
         });
         on(header, "keydown", function (e) {

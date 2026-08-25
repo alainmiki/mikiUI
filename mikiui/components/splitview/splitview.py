@@ -49,6 +49,8 @@ import os
 import uuid
 from typing import Any
 
+from ...engine.bridge import bridge_attr
+from ...engine.bridge import bridge_attr
 from ..base import Component
 from ..button import Button
 from ..html import Div, Section, Span
@@ -177,8 +179,10 @@ class EditorGroup(Component):
                         "data-miki-tab-close": "true",
                         "data-miki-tab-group": group_id,
                         "data-miki-tab-index": str(i),
-                        "onclick": (
-                            f"mikiEditorArea.closeTab('{group_id}', {i});"
+                        **bridge_attr(
+                            "click",
+                            "mikiEditorArea.closeTab",
+                            {"group_id": group_id, "index": i},
                         ),
                     },
                 )
@@ -196,7 +200,7 @@ class EditorGroup(Component):
                 "data_miki_tab_group": group_id,
                 "data_miki_tab_index": str(i),
                 "draggable": "true",
-                "onclick": f"mikiEditorArea.showTab('{group_id}', {i});",
+                **bridge_attr("click", "mikiEditorArea.showTab", {"group_id": group_id, "index": i}),
             }
             tabbar_children.append(Div(*tab_content_parts, **tab_btn_attrs))
 
@@ -371,3 +375,5 @@ class EditorArea(Component):
             children_list.append(group)
 
         super().__init__(*asset_children, *children_list, **attrs)
+
+

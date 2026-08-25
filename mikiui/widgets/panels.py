@@ -29,6 +29,7 @@ from ..components import (
 from ..components.base import Component
 from ..components.tabs import Tabs
 from ..engine import _
+from ..engine.bridge import bridge_attr
 
 
 class GroupBox(Component):
@@ -82,21 +83,20 @@ class StackedPanel(Component):
         buttons = []
         panels = []
         for i, (title, content) in enumerate(pages):
-            buttons.append(
-                Button(
-                    title,
-                    type="button",
-                    role="tab",
-                    aria_selected="true" if i == 0 else "false",
-                    class_="miki-stack-tab" + (" miki-stack-tab-active" if i == 0 else ""),
-                    onclick=(
-                        "var ps=document.getElementById('" + group + "-pages').children;"
-                        "for(var i=0;i<ps.length;i++){"
-                        "ps[i].style.display=(i===" + str(i) + ")?'block':'none';"
-                        "this.parentNode.children[i].setAttribute('aria-selected',i===" + str(i) + ");}"
-                    ),
-                )
+            tab_attrs = {
+                "type": "button",
+                "role": "tab",
+                "aria_selected": "true" if i == 0 else "false",
+                "class_": "miki-stack-tab" + (" miki-stack-tab-active" if i == 0 else ""),
+            }
+            js = (
+                "var ps=document.getElementById('" + group + "-pages').children;"
+                "for(var i=0;i<ps.length;i++){"
+                "ps[i].style.display=(i===" + str(i) + ")?'block':'none';"
+                "this.parentNode.children[i].setAttribute('aria-selected',i===" + str(i) + ");}"
             )
+            tab_attrs.update(bridge_attr("click", js))
+            buttons.append(Button(title, **tab_attrs))
             panels.append(
                 Div(
                     content,
@@ -285,7 +285,6 @@ class MessageBox(Component):
                     aria_label=f"Button {text}",
                     **{
                         "data-miki-messagebox-close": "true",
-                        "onclick": "mikiMessageBox.close(this.closest('.miki-messagebox'));",
                     },
                 )
             )
@@ -517,8 +516,8 @@ class MdiSubWindow(Component):
                 type="button",
                 class_="miki-mdi-close",
                 aria_label=_("mdi_close", "Close window"),
-                onclick="var w=this.closest('.miki-mdi-subwindow'); if(w) w.style.display='none';",
-                **{"data-miki-mdi-close": "true"},
+                **bridge_attr("click", "var w=this.closest('.miki-mdi-subwindow'); if(w) w.style.display='none';"),
+                **{"data-miki-mdi-close": "true"}
             ),
             class_="miki-mdi-titlebar",
         )
@@ -654,7 +653,7 @@ class SidePanel(Component):
                         type="button",
                         class_="miki-sidepanel-close",
                         aria_label="Close panel",
-                        onclick="this.closest('.miki-sidepanel').style.display='none';",
+                        **bridge_attr("click", "this.closest('.miki-sidepanel').style.display='none';"),
                     )
                 )
             children.append(Div(*header_children, class_="miki-sidepanel-header"))

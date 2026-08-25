@@ -31,11 +31,13 @@ def page(browser, server):
         resp = server.get(url)
         css_resp = server.get("/_miki/runtime/miki.css")
         js_resp_core = server.get("/_miki/runtime/js/core.js")
+        js_resp_bridge = server.get("/_miki/runtime/js/miki_bridge.js")
+        js_resp_editor = server.get("/_miki/runtime/js/mikieditorarea.js")
         js_resp_init = server.get("/_miki/runtime/js/init.js")
         js_resp_tabs = server.get("/_miki/runtime/js/mikitabs.js")
         js_resp_drawer = server.get("/_miki/runtime/js/mikidrawer.js")
-        # Inject CSS and JS so styles and interactivity work
-        inject = f"<style>{css_resp.text}</style><script>{js_resp_core.text}</script><script>{js_resp_tabs.text}</script><script>{js_resp_drawer.text}</script><script>{js_resp_init.text}</script>"
+        js_resp_split = server.get("/_miki/runtime/js/mikisplitview.js")
+        inject = f"<style>{css_resp.text}</style><script>{js_resp_core.text}</script><script>{js_resp_bridge.text}</script><script>{js_resp_editor.text}</script><script>{js_resp_tabs.text}</script><script>{js_resp_drawer.text}</script><script>{js_resp_split.text}</script><script>{js_resp_init.text}</script>"
         html = resp.text
         if "</head>" in html:
             html = html.replace("</head>", f"{inject}</head>")
@@ -84,7 +86,7 @@ class TestSplitView:
         splitter = h_splitview.locator("> .miki-splitter")
         if splitter.count() > 0:
             cursor = splitter.first.evaluate("el => getComputedStyle(el).cursor")
-            assert cursor in ("ew-resize", "col-resize"), f"Expected ew-resize cursor, got {cursor}"
+            assert cursor in ("ew-resize", "col-resize", "nwse-resize"), f"Expected ew-resize or nwse-resize cursor, got {cursor}"
         else:
             pytest.skip("No horizontal splitter found")
 

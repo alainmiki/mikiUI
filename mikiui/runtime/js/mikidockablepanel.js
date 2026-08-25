@@ -25,13 +25,13 @@
       var buttons = el.querySelectorAll("[data-miki-dock-action]");
       for (var i = 0; i < buttons.length; i++) {
         var action = buttons[i].getAttribute("data-miki-dock-action");
-        (function (btn, act) {
-          on(btn, "click", function (e) {
-            e.preventDefault();
-            var panel = btn.closest(".miki-dockable-panel") || el;
-            mikiDockablePanel[act](panel);
-          });
-        })(buttons[i], action);
+         (function (btn, act) {
+           onPointer(btn, "activate", function (e) {
+             e.preventDefault();
+             var panel = btn.closest(".miki-dockable-panel") || el;
+             mikiDockablePanel[act](panel);
+           });
+         })(buttons[i], action);
       }
 
       // --- ESC to close when floating ---
@@ -236,13 +236,55 @@
           off(document, "mouseup", endDrag);
         }
 
-        on(header, "mousedown", function (e) {
-          // Only start drag if not clicking a button
-          if (e.target.closest("[data-miki-dock-action]")) return;
-          startDrag(e);
-          on(document, "mousemove", doDrag, { passive: false });
-          on(document, "mouseup", endDrag);
-        });
+        /* Touch drag handler */
+        function doTouchDrag(e) {
+          if (!dragState.active || e.touches.length !== 1) return;
+          e.preventDefault();
+          var touch = e.touches[0];
+          doDrag({ clientX: touch.clientX, clientY: touch.clientY });
+        }
+
+        /* Touch end handler */
+        function endTouchDrag(e) {
+          if (!dragState.active) return;
+          var lastTouch = null;
+          if (e.changedTouches && e.changedTouches.length > 0) {
+            lastTouch = e.changedTouches[0];
+          }
+          endDrag({
+            clientX: lastTouch ? lastTouch.clientX : dragState.startX,
+            clientY: lastTouch ? lastTouch.clientY : dragState.startY
+          });
+          off(document, "touchmove", doTouchDrag);
+          off(document, "touchend", endTouchDrag);
+          off(document, "touchcancel", endTouchDrag);
+        }
+
+         on(header, "mousedown", function (e) {
+           // Only start drag if not clicking a button
+           if (e.target.closest("[data-miki-dock-action]")) return;
+           startDrag(e);
+           on(document, "mousemove", doDrag, { passive: false });
+           on(document, "mouseup", endDrag);
+         });
+
+         /* Touch support: tap-and-hold or drag to move */
+         on(header, "touchstart", function (e) {
+           if (e.touches.length !== 1) return;
+           if (e.target.closest("[data-miki-dock-action]")) return;
+           /* Use the first touch point to fake a mouse event */
+           var touch = e.touches[0];
+           var fakeEvent = new MouseEvent("mousedown", {
+             clientX: touch.clientX,
+             clientY: touch.clientY,
+             bubbles: true,
+             cancelable: true
+           });
+           startDrag(fakeEvent);
+           on(document, "touchmove", doTouchDrag, { passive: false });
+           on(document, "touchend", endTouchDrag);
+           on(document, "touchcancel", endTouchDrag);
+         }, { passive: false });
       }
 
       // Persist docked/floating state if a key is supplied

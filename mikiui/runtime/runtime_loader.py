@@ -11,9 +11,15 @@ from __future__ import annotations
 
 
 def runtime_scripts(mode: str = "local") -> list[str]:
-    # Widget JS modules in dependency order (core first, then widgets, then init)
+    # Widget JS modules in dependency order:
+    # core utilities ? bridge layer ? individual widgets ? init registry.
+    # The bridge (miki_bridge.js) loads after core.js but BEFORE widget
+    # modules so that safe widget lookups and data-miki-on bindings are
+    # available when inline handlers execute.
     widget_modules = [
         "/_miki/runtime/js/core.js",
+        "/_miki/runtime/js/miki_bridge.js",
+        "/_miki/runtime/js/mikieditorarea.js",
         "/_miki/runtime/js/mikidialog.js",
         "/_miki/runtime/js/mikimodal.js",
         "/_miki/runtime/js/mikitabs.js",
@@ -65,4 +71,4 @@ def runtime_scripts(mode: str = "local") -> list[str]:
         "/_miki/runtime/alpine_runtime.js",
         *widget_modules,
         "/_miki/runtime/history_router.js",
-    ]
+    ]

@@ -44,7 +44,7 @@ from mikiui.widgets import (
 from mikiui.widgets.layout_widgets import Sidebar
 
 app = MikiApp(title="MikiUI Demo")
-app.set_theme("dark")
+app.set_theme("dracula")
 app.set_style_framework("plain")
 
 # Shared inline style helpers
@@ -149,29 +149,39 @@ def data_demo():
                     ),
                     orientation="horizontal",
                     min_size=200,
-                    resize_mode="horizontal",
+                    resize_mode="both",
                 ),
                 style=CARD + "; height: 24rem",
             ),
-            H2("Horizontal Split (min-size=50)"),
             Div(
                 SplitView(
                     Div("Left Pane", style="padding: 1rem"),
                     Div("Right Pane", style="padding: 1rem"),
                     orientation="horizontal",
+                    min_size=100,
+                    resize_mode="both",
+                ),
+                style=CARD + "; height: 12rem",
+            ),
+            H2("vertical Split (min-size=50)"),
+            Div(
+                SplitView(
+                    Div("Left Pane", style="padding: 1rem"),
+                    Div("Right Pane", style="padding: 1rem"),
+                    orientation="vertical",
                     min_size=50,
-                    resize_mode="horizontal",
+                    resize_mode="vertical",
                 ),
                 style=CARD + "; height: 8rem",
             ),
-            H2("Vertical Split (min-size=60)"),
+            H2("horizontal Split (min-size=60)"),
             Div(
                 SplitView(
                     Div("Top Pane", style="padding: 1rem"),
                     Div("Bottom Pane", style="padding: 1rem"),
-                    orientation="vertical",
+                    orientation="horizontal",
                     min_size=60,
-                    resize_mode="vertical",
+                    resize_mode="horizontal",
                 ),
                 style=CARD + "; height: 8rem",
             ),

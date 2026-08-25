@@ -13,20 +13,20 @@
         el.style.display = "none";
       }
 
-      // Close buttons
+      // Close buttons — works on both mouse click and touch tap
       var closeBtns = el.querySelectorAll("[data-miki-modal-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          on(btn, "click", function (e) {
+          onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiModal.close(el);
           });
         })(closeBtns[i]);
       }
 
-      // Click on overlay (outside panel) closes
+      // Click/Tap on overlay (outside panel) closes
       if (el.getAttribute("data-miki-close-on-overlay") !== "false") {
-        on(el, "click", function (e) {
+        onPointer(el, "activate", function (e) {
           if (e.target === el) {
             mikiModal.close(el);
           }

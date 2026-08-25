@@ -301,10 +301,12 @@
         if (xhr.readyState === 4) {
           if (xhr.status === 200) {
             var targetEl = document.querySelector(target);
-            if (targetEl) {
-              targetEl.innerHTML = xhr.responseText;
-              initAll(targetEl);
-            }
+             if (targetEl) {
+               targetEl.innerHTML = xhr.responseText;
+               if (window.MikiUI && MikiUI.init) {
+                 MikiUI.init(targetEl);
+               }
+             }
           }
           dispatch(el, "miki:datagrid:fetched", { page: pageNum, success: xhr.status === 200 });
         }

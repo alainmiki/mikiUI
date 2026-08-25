@@ -74,7 +74,7 @@ def test_chart_empty():
 def test_tabs_role_and_offline():
     html = Tabs([("A", "a"), ("B", "b")]).to_html()
     assert 'role="tablist"' in html
-    assert "mikiTabs.show" in html
+    assert "mikiTabs.show" in html or 'mikiBridge.call("mikiTabs"' in html or "mikiBridge.call" in html
     assert 'role="tab"' in html
     assert 'role="tabpanel"' in html
     assert 'aria-selected' in html

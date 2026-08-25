@@ -11,7 +11,7 @@
       var closeBtns = el.querySelectorAll("[data-miki-messagebox-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          on(btn, "click", function (e) {
+          onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiMessageBox.close(el);
           });
@@ -25,9 +25,9 @@
         }
       });
 
-      // Click on overlay background
+      // Click/Tap on overlay background
       if (el.getAttribute("data-miki-close-on-overlay") !== "false") {
-        on(el, "click", function (e) {
+        onPointer(el, "activate", function (e) {
           if (e.target === el) {
             mikiMessageBox.close(el);
           }

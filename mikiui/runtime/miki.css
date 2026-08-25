@@ -935,7 +935,8 @@ nav {
   background: var(--miki-surface, #fff);
 }
 .miki-split-pane.miki-split-first { order: 1; }
-.miki-split-pane.miki-split-second { order: 2; }
+.miki-splitter { order: 2; }
+.miki-split-pane.miki-split-second { order: 3; }
 /* VS Code-style sash: transparent by default, blue on hover */
 .miki-splitter {
   flex-shrink: 0;
@@ -958,18 +959,29 @@ nav {
   opacity: 0.9;
 }
 /* Sash bar: vertical bar for horizontal orientation (side-by-side), horizontal bar for vertical */
-.miki-splitview[data-orientation="horizontal"] .miki-splitter {
-  width: 8px;
+.miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter {
+  width: var(--miki-splitter-width, 8px);
   height: 100%;
   cursor: ew-resize;
 }
-.miki-splitview[data-orientation="vertical"] .miki-splitter {
+.miki-splitview[data-miki-splitview][data-orientation="vertical"] .miki-splitter {
   width: 100%;
-  height: 8px;
+  height: var(--miki-splitter-width, 8px);
+  min-height: var(--miki-splitter-width, 8px);
   cursor: ns-resize;
 }
+/* Custom splitter width via data-splitter-width attribute on splitter */
+.miki-splitter[data-splitter-width="1"] { --miki-splitter-width: 1px; }
+.miki-splitter[data-splitter-width="2"] { --miki-splitter-width: 2px; }
+.miki-splitter[data-splitter-width="3"] { --miki-splitter-width: 3px; }
+.miki-splitter[data-splitter-width="4"] { --miki-splitter-width: 4px; }
+.miki-splitter[data-splitter-width="6"] { --miki-splitter-width: 6px; }
+.miki-splitter[data-splitter-width="8"] { --miki-splitter-width: 8px; }
+.miki-splitter[data-splitter-width="12"] { --miki-splitter-width: 12px; }
+.miki-splitter[data-splitter-width="16"] { --miki-splitter-width: 16px; }
+.miki-splitter[data-splitter-width="24"] { --miki-splitter-width: 24px; }
 /* Resize mode overrides */
-.miki-splitview[data-resize-mode="both"] .miki-splitter {
+.miki-splitview[data-miki-splitview][data-resize-mode="both"] .miki-splitter {
   cursor: nwse-resize;
 }
 /* Gripper dots */
@@ -990,15 +1002,15 @@ nav {
   opacity: 0.6;
 }
 /* Horizontal orientation: vertical dot column */
-.miki-splitview[data-orientation="horizontal"] .miki-splitter::after {
-  content: "● ● ●";
+.miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter::after {
+  content: "\25CF \25CF \25CF";
   flex-direction: column;
   font-size: 4px;
   letter-spacing: 2px;
 }
 /* Vertical orientation: horizontal dot row */
-.miki-splitview[data-orientation="vertical"] .miki-splitter::after {
-  content: "● ● ●";
+.miki-splitview[data-miki-splitview][data-orientation="vertical"] .miki-splitter::after {
+  content: "\25CF \25CF \25CF";
   flex-direction: row;
   font-size: 4px;
   letter-spacing: 2px;
@@ -1010,39 +1022,40 @@ nav {
 .miki-split-maximized .miki-split-pane.miki-split-second {
   display: none;
 }
-@media (max-width: 640px) {
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
-    flex-direction: column;
+/* Mobile: larger touch targets for splitters and always-visible */
+@media (max-width: 640px) and (hover: none) {
+  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter,
+  .miki-splitview[data-miki-splitview][data-orientation="vertical"] .miki-splitter {
+    min-width: 16px;
+    min-height: 16px;
   }
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter {
-    width: 100%;
-    height: 8px;
-    min-height: 8px;
-    cursor: ns-resize;
+  .miki-splitter {
+    background: rgba(99, 102, 245, 0.15) !important;
   }
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter::after {
-    content: "● ● ●";
-    flex-direction: row;
+  .miki-splitter::after {
     font-size: 6px;
+    letter-spacing: 3px;
+    opacity: 0.8;
   }
 }
-
-@media (max-width: 640px) {
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] {
-    flex-direction: column;
+/* Touch device or reduced pointer precision: ensure splitter is discoverable */
+@media (max-width: 768px) {
+  .miki-splitter {
+    background: rgba(99, 102, 245, 0.08);
+    transition: background 0.15s ease;
   }
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter {
-    width: 100%;
-    height: 8px;
-    min-height: 8px;
-    cursor: ns-resize;
+  .miki-splitter:hover,
+  .miki-splitter.miki-splitter-dragging {
+    background: rgba(99, 102, 245, 0.25);
   }
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-splitter::before {
-    height: 2px;
-    width: 100%;
+}
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .miki-splitter {
+    transition: none;
   }
-  .miki-splitview[data-miki-splitview][data-orientation="horizontal"] .miki-split-pane {
-    min-height: 150px;
+  .miki-splitter.miki-splitter-dragging {
+    transition: none;
   }
 }
 
@@ -3552,4 +3565,109 @@ textarea {
   align-items: center;
   gap: 1rem;
   flex: 1;
+}
+
+/* ============================================================
+   Touch Action — ensures proper gesture handling on both
+   touch and mouse devices.
+   ============================================================ */
+
+/* Buttons: no double-tap zoom, immediate tap response */
+.miki-btn,
+button,
+.miki-pagination-link,
+.miki-carousel-prev,
+.miki-carousel-next,
+.miki-carousel-dot,
+.miki-sidebar-link,
+.miki-nav-link,
+.miki-nav-item a,
+.miki-context-item,
+.miki-tabs .miki-tab,
+.miki-tab-close,
+.miki-dock-toggle,
+.miki-dock-handle,
+.miki-sidepanel-close {
+  touch-action: manipulation;
+}
+
+/* Tabs navigation */
+[role="tab"],
+.miki-tab {
+  touch-action: manipulation;
+}
+
+/* Collapsible headers */
+.miki-collapsible-header,
+.miki-details .miki-summary,
+.miki-treeveew summary {
+  touch-action: manipulation;
+}
+
+/* Chips and close buttons */
+.miki-chip,
+.miki-chip-remove,
+[data-miki-chip-close="true"],
+.miki-dock-indicator {
+  touch-action: manipulation;
+}
+
+/* Modal, Dialog, Drawer overlays */
+.miki-modal-overlay,
+.miki-dialog,
+.miki-drawer {
+  touch-action: none;
+}
+.miki-modal-overlay[data-miki-close-on-overlay="true"],
+.miki-dialog[data-miki-dialog-close-on-overlay="true"],
+.miki-drawer-open .miki-drawer-overlay {
+  touch-action: manipulation;
+}
+
+/* Splitter — no touch action so drags aren't intercepted */
+.miki-splitter {
+  touch-action: none;
+}
+
+/* Slider input — vertical scroll still works, horizontal handled natively */
+.miki-slider-input input[type="range"],
+input[type="range"].miki-slider {
+  touch-action: none;
+}
+
+/* Carousel — horizontal swipe navigation; allow vertical scroll */
+.miki-carousel {
+  touch-action: pan-y;
+}
+.miki-carousel-container {
+  touch-action: none;
+}
+
+/* Dockable panel header — dragging requires touch-action: none */
+.miki-dock-header.miki-dock-dragging,
+.miki-dock-header [data-miki-dock-drag-handle="true"] {
+  touch-action: none;
+}
+
+/* Kanban / Drag-and-drop items */
+.miki-kanban-column {
+  touch-action: none;
+}
+.miki-kanban-card.miki-kanban-dragging {
+  touch-action: none;
+}
+
+/* Pressable feedback */
+[data-miki-pressable="true"] {
+  touch-action: manipulation;
+}
+
+/* DataGrid sortable headers */
+.miki-th-sortable {
+  touch-action: manipulation;
+}
+
+/* Context Window trigger */
+.miki-context-window[data-miki-context-show="true"] ~ * {
+  touch-action: auto;
 }

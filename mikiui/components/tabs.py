@@ -9,10 +9,9 @@ Tabs provide accessible tabbed interfaces with:
 - Scrollable tab lists
 - Closeable tabs
 
-Works **without** Alpine.js — all interactivity is handled by ``miki_ui.js``
-via ``data-miki-*`` attributes and inline ``onclick`` handlers.  Alpine
-``x_on_*`` directives are omitted entirely so the component works in the
-offline desktop runtime.
+Works **without** Alpine.js -- all interactivity is handled by the MikiUI
+bridge (``miki_bridge.js``) via ``data-miki-on`` attributes. The bridge safely
+routes events through ``mikiBridge.call`` so missing modules do not throw.
 
 Parameters
 ----------
@@ -33,8 +32,8 @@ Example
 
 >>> # With icons
 >>> Tabs([
-...     ("Home", "Overview", "🏠"),
-...     ("Settings", "Settings content", "⚙️"),
+...     ("Home", "Overview", "home"),
+...     ("Settings", "Settings content", "settings"),
 ... ])
 
 >>> # Vertical tabs
@@ -46,23 +45,24 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from ..engine.bridge import bridge_attr
 from .base import Component
 from .button import Button
 from .html import Div, P, Section, Span
 
 
 class Tabs(Component):
-    """Accessible tabbed interface — no Alpine.js required.
+    """Accessible tabbed interface -- no Alpine.js required.
 
     Each tab button receives:
-    - ``onclick`` calling ``mikiTabs.show('<group>', <index>)``
-    - ``data-miki-tab-group`` and ``data-miki-tab-index`` for keyboard routing
-    - Standard ARIA attributes (``role="tab"``, ``aria-selected``, ``tabindex``)
+    - ``data-miki-on`` binding calling ``mikiTabs.show('<group>', <index>)``
+      via the bridge (safe lookup, no ReferenceError if module missing)
+    - ``data-miki-tab-group`` and ``data-miki-tab-index`` attributes
+    - Standard ARIA attributes (role="tab", aria-selected, tabindex)
 
-    The JS runtime (``miki_ui.js``) handles click + keyboard navigation
-    (arrows, Home/End, Enter/Space).  Keyboard navigation is implemented
-    in ``mikiTabs.init`` which binds a single ``keydown`` listener to
-    the tablist container and focuses/moves between sibling tabs.
+    Keyboard navigation (arrows, Home/End, Enter/Space) is implemented in
+    ``mikiTabs.init`` which binds a single ``keydown`` listener to the
+    tablist container.
     """
 
     tag = "div"
@@ -98,7 +98,7 @@ class Tabs(Component):
             if scrollable:
                 tab_class += " miki-tab-scrollable"
 
-            tab_attrs = {
+            tab_attrs: dict[str, Any] = {
                 "type": "button",
                 "role": "tab",
                 "id": f"{group}-tab-{i}",
@@ -106,9 +106,6 @@ class Tabs(Component):
                 "aria_controls": f"{group}-panel-{i}",
                 "tabindex": "0" if is_active else "-1",
                 "class_": tab_class,
-                "data-miki-tab-group": group,
-                "data-miki-tab-index": str(i),
-                "onclick": f"mikiTabs.show('{group}', {i});",
             }
 
             if orientation == "vertical":
@@ -120,10 +117,26 @@ class Tabs(Component):
                     type="button",
                     class_="miki-tab-close",
                     aria_label="Close tab",
-                    **{"data-miki-tab-close": "true", "onclick": f"mikiTabs.close('{group}', {i});"},
+                    **{
+                        "data-miki-tab-close": "true",
+                        **bridge_attr(
+                            "click",
+                            "mikiTabs.close",
+                            {"group": group, "index": i},
+                        ),
+                    },
                 )
             else:
                 close_btn = None
+
+            # Build the data-miki-on binding for the tab button
+            tab_attrs.update(
+                bridge_attr(
+                    "click",
+                    "mikiTabs.show",
+                    {"group": group, "index": i},
+                )
+            )
 
             if icon:
                 tab_content: tuple[Any, ...] = (
@@ -162,10 +175,14 @@ class Tabs(Component):
             **attrs,
         )
 
+        # Expose the group ID for programmatic access
+        self._tab_group = group
+
     @property
     def active_tab(self) -> int:
         return int(self.attrs.get("data-active-tab", 0))
 
     @active_tab.setter
     def active_tab(self, value: int) -> None:
-        self.attrs["data-active-tab"] = str(value)
+        self.attrs["data-active-tab"] = str(value)
+

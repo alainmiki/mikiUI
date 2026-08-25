@@ -17,6 +17,7 @@ from ..components import (
 )
 from ..components.base import Component
 from ..engine import _
+from ..engine.bridge import bridge_attr
 
 
 class FormWizard(Component):
@@ -74,20 +75,19 @@ class FormWizard(Component):
                 "ind[i].classList.toggle('active',i===" + str(idx) + ");}"
             )
 
+        back_attrs = {"type": "button", "class_": "miki-wizard-back", "disabled": (current == 0)}
+        back_attrs.update(bridge_attr("click", js_show(max(0, current - 1))))
+        next_attrs = {"type": "button", "class_": "miki-wizard-next", "disabled": (current >= len(steps) - 1)}
+        next_attrs.update(bridge_attr("click", js_show(min(len(steps) - 1, current + 1))))
+
         nav = Div(
             Button(
                 _("wizard_back", "Back"),
-                type="button",
-                class_="miki-wizard-back",
-                disabled=(current == 0),
-                onclick=js_show(max(0, current - 1)),
+                **back_attrs,
             ),
             Button(
                 _("wizard_next", "Next"),
-                type="button",
-                class_="miki-wizard-next",
-                disabled=(current >= len(steps) - 1),
-                onclick=js_show(min(len(steps) - 1, current + 1)),
+                **next_attrs,
             ),
             class_="miki-wizard-nav",
         )

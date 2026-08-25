@@ -53,10 +53,10 @@
         }
       });
 
-      // Overlay click-to-close
+      // Overlay click/tap-to-close
       var overlay = el.querySelector("[data-miki-drawer-overlay=\"true\"]");
       if (overlay) {
-        on(overlay, "click", function () {
+        onPointer(overlay, "activate", function () {
           mikiDrawer.close(el);
         });
       }
@@ -65,7 +65,7 @@
       var closeBtns = el.querySelectorAll("[data-miki-drawer-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          on(btn, "click", function (e) {
+          onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiDrawer.close(el);
           });

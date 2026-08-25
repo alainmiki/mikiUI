@@ -20,7 +20,32 @@ def _create_test_app() -> MikiApp:
 
     @app.get("/data")
     def data():
-        return Div("Data Page")
+        from mikiui import Tabs
+        from mikiui.widgets import SplitView, KanbanBoard
+        return Div(
+            Div(
+                SplitView(
+                    Div("Left pane", style="height:200px"),
+                    Div("Right pane", style="height:200px"),
+                    orientation="horizontal",
+                    min_size=100,
+                    resize_mode="both",
+                ),
+                style="height:300px",
+            ),
+            Tabs(
+                [("Tab 1", Div("Content 1")), ("Tab 2", Div("Content 2"))],
+                id="data-tabs",
+            ),
+            KanbanBoard(
+                columns={
+                    "TODO": ["Task A", "Task B"],
+                    "IN PROGRESS": ["Task C"],
+                    "DONE": ["Task D"],
+                }
+            ),
+            style="max-width:800px; margin:0 auto; padding:1rem",
+        )
 
     @app.get("/forms")
     def forms():

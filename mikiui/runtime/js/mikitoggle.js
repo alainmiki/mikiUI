@@ -34,6 +34,20 @@
         swap();
       });
 
+      // Keyboard: Enter/Space toggles
+      on(el, "keydown", function (e) {
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          swap();
+        }
+      });
+
+      // Touch: tap toggles (click handles this, but add explicit touch support)
+      on(el, "touchend", function (e) {
+        e.preventDefault();
+        swap();
+      }, { passive: false });
+
       // Initialize state
       if (!el.getAttribute("data-miki-state")) {
         el.setAttribute("data-miki-state", "on");

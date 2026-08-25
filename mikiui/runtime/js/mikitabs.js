@@ -9,7 +9,6 @@
       var pagesContainer = document.getElementById(groupId + "-pages");
       var tablist = document.getElementById(groupId + "-tablist");
 
-      // Show/hide panels
       if (pagesContainer) {
         for (var j = 0; j < pagesContainer.children.length; j++) {
           pagesContainer.children[j].style.display = j === i ? "block" : "none";
@@ -17,13 +16,11 @@
         }
       }
 
-      // Also handle individual panel elements by ID (for the Div-based tabs)
       var panel = document.getElementById(groupId + "-panel-" + i);
       if (panel) {
         panel.style.display = "block";
         panel.setAttribute("aria-hidden", "false");
       }
-      // Hide other panels
       for (var n = 0; n < 100; n++) {
         if (n === i) continue;
         var otherPanel = document.getElementById(groupId + "-panel-" + n);
@@ -34,7 +31,6 @@
         if (!otherPanel && n > 0) break;
       }
 
-      // Update tab buttons
       if (tablist) {
         for (var k = 0; k < tablist.children.length; k++) {
           tablist.children[k].classList.toggle("miki-tab-active", k === i);
@@ -43,14 +39,13 @@
         }
       }
 
-      // Sync hidden Section elements with [role=tabpanel]
       var allPanels = document.querySelectorAll('[role="tabpanel"][id^="' + groupId + '-panel-"]');
       for (var p = 0; p < allPanels.length; p++) {
         allPanels[p].hidden = p !== i;
         allPanels[p].setAttribute("aria-hidden", p !== i ? "true" : "false");
       }
 
-      dispatch(document, "miki:tabs:changed", { group: groupId, index: i });
+      miki.dispatch(document, "miki:tabs:changed", { group: groupId, index: i });
     },
 
     showAlpineFallback: function (groupId, index) {
@@ -79,18 +74,18 @@
       if (panel) panel.remove();
       var tab = document.getElementById(groupId + "-tab-" + index);
       if (tab) tab.remove();
-      dispatch(document, "miki:tabs:closed", { group: groupId, index: parseInt(index, 10) });
+      miki.dispatch(document, "miki:tabs:closed", { group: groupId, index: parseInt(index, 10) });
     },
 
     init: function (container) {
       if (container.dataset.mikiInit === "true") return;
       container.dataset.mikiInit = "true";
 
-      // Find all tab buttons within this container
       var tabs = container.querySelectorAll('[role="tab"]');
       for (var i = 0; i < tabs.length; i++) {
         (function (tab, idx) {
-          on(tab, "click", function (e) {
+          /* Click (also fires on tap for mouse fallback) */
+          onPointer(tab, "activate", function (e) {
             e.preventDefault();
             var group = tab.getAttribute("data-miki-tab-group") || tab.getAttribute("aria-controls");
             if (group) {
@@ -101,7 +96,7 @@
             }
           });
 
-          // Keyboard navigation
+          /* Keyboard navigation */
           on(tab, "keydown", function (e) {
             var tablist = tab.parentNode;
             var allTabs = Array.from(tablist.children);
@@ -128,6 +123,37 @@
             } else if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               tab.click();
+            }
+          });
+
+          /* Touch swipe: detect horizontal swipe to switch tabs */
+          var startX = 0, startY = 0, endX = 0, endY = 0;
+          on(tab, "touchstart", function (e) {
+            if (e.touches && e.touches.length > 0) {
+              startX = e.touches[0].clientX;
+              startY = e.touches[0].clientY;
+            }
+          });
+          on(tab, "touchend", function (e) {
+            if (!startX || !startY) return;
+            endX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0;
+            endY = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0;
+            var dx = endX - startX;
+            var dy = endY - startY;
+            var absDx = Math.abs(dx);
+            var absDy = Math.abs(dy);
+            /* Only treat as swipe if horizontal movement dominates */
+            if (absDx > 30 && absDx > absDy * 1.5) {
+              var tablistEl = tab.parentNode;
+              var allTabsLocal = Array.from(tablistEl.children);
+              var currentIdx = allTabsLocal.indexOf(tab);
+              if (dx > 0 && currentIdx > 0) {
+                /* Swipe right => previous tab */
+                allTabsLocal[currentIdx - 1].click();
+              } else if (dx < 0 && currentIdx < allTabsLocal.length - 1) {
+                /* Swipe left => next tab */
+                allTabsLocal[currentIdx + 1].click();
+              }
             }
           });
         })(tabs[i], i);

@@ -8,109 +8,126 @@
       if (el.dataset.mikiInit === "true") return;
       el.dataset.mikiInit = "true";
 
-      var splitter = el.querySelector('[data-miki-splitter="true"]');
+      var splitter = el.querySelector(':scope > [data-miki-splitter="true"]');
       if (!splitter) return;
 
-      var firstPane = el.querySelector('[data-miki-split-pane="first"]');
-      var secondPane = el.querySelector('[data-miki-split-pane="second"]');
+      var firstPane = el.querySelector(':scope > [data-miki-split-pane="first"]');
+      var secondPane = el.querySelector(':scope > [data-miki-split-pane="second"]');
       if (!firstPane || !secondPane) return;
 
       var orientation = el.getAttribute("data-orientation") || "horizontal";
       var resizeMode = el.getAttribute("data-resize-mode") || "horizontal";
       var minSize = parseInt(el.getAttribute("data-min-size") || "50", 10);
-      // Threshold (px) to detect first meaningful movement in 'both' mode.
       var splitThreshold = parseInt(el.getAttribute("data-split-threshold") || "5", 10);
-      // Optional persistence key for layout saving/loading
       var persistKey = el.getAttribute("data-miki-persist-key") || null;
+       var splitterWidth = parseInt(splitter.getAttribute("data-splitter-width") || "8", 10);
 
-      // Determine which axes are active based on resize_mode
+      var isHorizontal = orientation === "horizontal";
       var canDragX = (resizeMode === "horizontal" || resizeMode === "both");
       var canDragY = (resizeMode === "vertical" || resizeMode === "both");
-
-      // Default drag axis: horizontal orientation → X-axis, vertical → Y-axis
-      var dragAxis = (orientation === "horizontal") ? "x" : "y";
-      if (resizeMode === "horizontal") dragAxis = "x";
-      if (resizeMode === "vertical") dragAxis = "y";
+      var dragAxis = resizeMode === "horizontal" ? "x" : (resizeMode === "vertical" ? "y" : (isHorizontal ? "x" : "y"));
 
       var dragging = false;
       var startPosX = 0, startPosY = 0;
       var startSizeFirstX = 0, startSizeFirstY = 0;
       var dragStarted = false;
+      var activeDragAxis = dragAxis;
 
-      function resetFlexBasis() {
-        firstPane.style.flexBasis = "";
-        secondPane.style.flexBasis = "";
-        firstPane.style.flex = "";
-        secondPane.style.flex = "";
+      /* Guard: only call preventDefault when the event is cancelable to
+         avoid browser "Ignored attempt to cancel a touch event" warnings. */
+      function safePrevent(e) {
+        if (e && e.cancelable) {
+          e.preventDefault();
+        }
       }
 
-      function getDims() {
+      /* Normalize coordinates from mouse or touch event */
+      function coords(e) {
+        var p = (window.miki && miki.eventPoint) ? miki.eventPoint(e)
+               : (e.touches && e.touches[0]) ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+               : (e.changedTouches && e.changedTouches[0]) ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
+               : { x: e.clientX || 0, y: e.clientY || 0 };
+        return p;
+      }
+
+      function dims() {
         return {
-          containerW: el.offsetWidth,
-          containerH: el.offsetHeight,
-          splitterW: splitter.offsetWidth,
-          splitterH: splitter.offsetHeight
+          cw: el.offsetWidth,
+          ch: el.offsetHeight,
+          sw: splitter.offsetWidth,
+          sh: splitter.offsetHeight
         };
       }
 
-      function applySize(primarySize, axis) {
-        firstPane.style.flexBasis = primarySize + "px";
+      function setPaneSize(px, axis) {
         firstPane.style.flex = "none";
-        secondPane.style.flexBasis = "auto";
+        firstPane.style.flexBasis = px + "px";
         secondPane.style.flex = "1 1 0";
+        secondPane.style.flexBasis = "auto";
       }
 
-      function onMouseMove(e) {
+      function clearInlineFlex() {
+        [firstPane, secondPane].forEach(function(pane) {
+          pane.style.removeProperty("flex");
+          pane.style.removeProperty("flex-basis");
+          pane.style.removeProperty("flex-grow");
+          pane.style.removeProperty("flex-shrink");
+        });
+      }
+
+      function onMove(e) {
         if (!dragging) return;
-        e.preventDefault();
 
-        var mouseX = e.clientX;
-        var mouseY = e.clientY;
+        var p = coords(e);
+        var dx = p.x - startPosX;
+        var dy = p.y - startPosY;
 
-        // For 'both' mode: determine axis on first meaningful movement (5px threshold)
+        /* For 'both' mode: lock axis on first meaningful movement */
         if (resizeMode === "both" && !dragStarted) {
-          var deltaX0 = Math.abs(mouseX - startPosX);
-          var deltaY0 = Math.abs(mouseY - startPosY);
-          if (deltaX0 > splitThreshold || deltaY0 > splitThreshold) {
-            dragAxis = deltaX0 >= deltaY0 ? "x" : "y";
+          if (Math.abs(dx) > splitThreshold || Math.abs(dy) > splitThreshold) {
+            activeDragAxis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
             dragStarted = true;
           }
         }
 
-        if (dragAxis === "x" && canDragX) {
-          var deltaX = mouseX - startPosX;
-          var newSizeX = startSizeFirstX + deltaX;
-          var dims = getDims();
-          var maxW = dims.containerW - dims.splitterW - minSize;
-          newSizeX = Math.max(minSize, Math.min(maxW, newSizeX));
-          applySize(newSizeX, "x");
-        } else if (dragAxis === "y" && canDragY) {
-          var deltaY = mouseY - startPosY;
-          var newSizeY = startSizeFirstY + deltaY;
-          var dims2 = getDims();
-          var maxH = dims2.containerH - dims2.splitterH - minSize;
-          newSizeY = Math.max(minSize, Math.min(maxH, newSizeY));
-          applySize(newSizeY, "y");
+        if (activeDragAxis === "x" && canDragX) {
+          var d = dims();
+          var maxW = d.cw - d.sw - minSize;
+          var newW = Math.max(minSize, Math.min(maxW, startSizeFirstX + dx));
+          setPaneSize(newW, "x");
+        } else if (activeDragAxis === "y" && canDragY) {
+          var d2 = dims();
+          var maxH = d2.ch - d2.sh - minSize;
+          var newH = Math.max(minSize, Math.min(maxH, startSizeFirstY + dy));
+          setPaneSize(newH, "y");
         }
 
         dispatch(el, "miki:splitview:resize", {
           orientation: orientation,
           resizeMode: resizeMode,
-          axis: dragAxis
+          axis: activeDragAxis
         });
       }
 
-      function onMouseUp() {
-        dragging = false;
-        dragStarted = false;
-        splitter.classList.remove("miki-splitter-dragging");
-        splitter.style.cursor = "";
-        resetFlexBasis();
-        off(document, "mousemove", onMouseMove);
-        off(document, "mouseup", onMouseUp);
-        // Persist layout if requested
+      function onEnd() {
+         if (!dragging) return;
+         dragging = false;
+         dragStarted = false;
+         activeDragAxis = dragAxis;
+         splitter.classList.remove("miki-splitter-dragging");
+         splitter.style.cursor = "";
+
+         /* Remove all possible event listeners (some may not have been bound) */
+        off(document, "pointermove", onMove);
+        off(document, "pointerup", onEnd);
+        off(document, "mousemove", onMove);
+        off(document, "mouseup", onEnd);
+        off(document, "touchmove", onMove);
+        off(document, "touchend", onEnd);
+
+        /* Persist layout if requested */
         try {
-          if (persistKey && window.localStorage && window.mikiSplitView && typeof window.mikiSplitView.getLayout === 'function') {
+          if (persistKey && window.localStorage && window.mikiSplitView && typeof window.mikiSplitView.getLayout === "function") {
             var layout = window.mikiSplitView.getLayout(el);
             localStorage.setItem(persistKey, JSON.stringify(layout));
           }
@@ -119,116 +136,115 @@
         }
       }
 
-      on(splitter, "mousedown", function (e) {
-        if (e.button !== 0) return;
-        e.preventDefault();
+      function onStart(e) {
+        /* Prevent double-init from pointerdown + mousedown firing together */
+        if (dragging) return;
+        /* Left-click only; ignore right-click/middle-click */
+        if (e.button !== undefined && e.button !== 0) return;
+        /* Ignore if not primary touch/mouse */
+        if (e.pointerType === "touch" && e.isPrimary === false) return;
+        safePrevent(e);
 
         dragging = true;
-        startPosX = e.clientX;
-        startPosY = e.clientY;
+        dragStarted = false;
+        activeDragAxis = dragAxis;
+        var p = coords(e);
+        startPosX = p.x;
+        startPosY = p.y;
         startSizeFirstX = firstPane.offsetWidth;
         startSizeFirstY = firstPane.offsetHeight;
         splitter.classList.add("miki-splitter-dragging");
-        on(document, "mousemove", onMouseMove, { passive: false });
-        on(document, "mouseup", onMouseUp);
-      });
 
-      // Double-click to maximize/restore
+        /* Bind ALL event types so we work with pointer, mouse, and touch.
+           The onStart guard prevents double-init from pointerdown + mousedown. */
+        on(document, "pointermove", onMove, { passive: false });
+        on(document, "pointerup", onEnd);
+        on(document, "mousemove", onMove, { passive: false });
+        on(document, "mouseup", onEnd);
+        on(document, "touchmove", onMove, { passive: false });
+        on(document, "touchend", onEnd);
+      }
+
+      /* Mouse down / touch start / pointer down — unified handler.
+         When PointerEvent is available, prefer pointer events but also
+         bind mousedown as a fallback (Playwright mouse actions may not
+         always fire pointerdown in headless mode). The onStart guard
+         prevents double-binding. */
+       on(splitter, "mousedown", onStart);
+      on(splitter, "touchstart", onStart, { passive: false });
+      if (window.PointerEvent) {
+        on(splitter, "pointerdown", onStart, { passive: false });
+      }
+
+      /* Double-click to maximize/restore the first pane */
       on(splitter, "dblclick", function () {
         if (el.classList.contains("miki-split-maximized")) {
           el.classList.remove("miki-split-maximized");
-          resetFlexBasis();
+          clearInlineFlex();
         } else {
           el.classList.add("miki-split-maximized");
-          var dims = getDims();
-          var activeAxis = (orientation === "horizontal") ? "x" : "y";
-          if (activeAxis === "x") {
-            firstPane.style.flexBasis = (dims.containerW - dims.splitterW) + "px";
+          var d = dims();
+          if (isHorizontal) {
             firstPane.style.flex = "none";
-            secondPane.style.flexBasis = "auto";
-            secondPane.style.flex = "1 1 0";
+            firstPane.style.flexBasis = (d.cw - d.sw) + "px";
           } else {
-            firstPane.style.flexBasis = (dims.containerH - dims.splitterH) + "px";
             firstPane.style.flex = "none";
-            secondPane.style.flexBasis = "auto";
-            secondPane.style.flex = "1 1 0";
+            firstPane.style.flexBasis = (d.ch - d.sh) + "px";
           }
+          secondPane.style.flex = "1 1 0";
+          secondPane.style.flexBasis = "auto";
         }
-        dispatch(el, "miki:splitview:maximized", { maximized: el.classList.contains("miki-split-maximized") });
+        dispatch(el, "miki:splitview:maximized", {
+          maximized: el.classList.contains("miki-split-maximized")
+        });
       });
 
-      // Keyboard support (arrow keys adjust by 5px)
+      /* Keyboard: arrow keys for fine adjustment */
       on(splitter, "keydown", function (e) {
         var step = e.shiftKey ? 1 : 5;
-        var dims = getDims();
+        var d = dims();
         var activeAxis = (orientation === "horizontal") ? "x" : "y";
 
         if (activeAxis === "x" && canDragX) {
-          var currentSize = firstPane.offsetWidth;
-          var maxSize = dims.containerW - dims.splitterW - minSize;
+          var currentW = firstPane.offsetWidth;
+          var maxW = d.cw - d.sw - minSize;
           if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            var newW = Math.max(minSize, currentSize - step);
-            firstPane.style.flexBasis = newW + "px";
-            firstPane.style.flex = "none";
-            secondPane.style.flexBasis = "auto";
-            secondPane.style.flex = "1 1 0";
+            safePrevent(e);
+            setPaneSize(Math.max(minSize, currentW - step), "x");
           } else if (e.key === "ArrowRight") {
-            e.preventDefault();
-            var newW2 = Math.min(maxSize, currentSize + step);
-            firstPane.style.flexBasis = newW2 + "px";
-            firstPane.style.flex = "none";
-            secondPane.style.flexBasis = "auto";
-            secondPane.style.flex = "1 1 0";
+            safePrevent(e);
+            setPaneSize(Math.min(maxW, currentW + step), "x");
           }
         } else if (activeAxis === "y" && canDragY) {
-          var currentSize = firstPane.offsetHeight;
-          var maxSize = dims.containerH - dims.splitterH - minSize;
+          var currentH = firstPane.offsetHeight;
+          var maxH = d.ch - d.sh - minSize;
           if (e.key === "ArrowUp") {
-            e.preventDefault();
-            var newH = Math.max(minSize, currentSize - step);
-            firstPane.style.flexBasis = newH + "px";
-            firstPane.style.flex = "none";
-            secondPane.style.flexBasis = "auto";
-            secondPane.style.flex = "1 1 0";
+            safePrevent(e);
+            setPaneSize(Math.max(minSize, currentH - step), "y");
           } else if (e.key === "ArrowDown") {
-            e.preventDefault();
-            var newH2 = Math.min(maxSize, currentSize + step);
-            firstPane.style.flexBasis = newH2 + "px";
-            firstPane.style.flex = "none";
-            secondPane.style.flexBasis = "auto";
-            secondPane.style.flex = "1 1 0";
+            safePrevent(e);
+            setPaneSize(Math.min(maxH, currentH + step), "y");
           }
         }
       });
 
-      // Touch support
-      on(splitter, "touchstart", function (e) {
-        if (e.touches.length !== 1) return;
-        e.preventDefault();
-        dragStarted = false;
-        dragging = true;
-        startPosX = e.touches[0].clientX;
-        startPosY = e.touches[0].clientY;
-        startSizeFirstX = firstPane.offsetWidth;
-        startSizeFirstY = firstPane.offsetHeight;
-        splitter.classList.add("miki-splitter-dragging");
-      }, { passive: false });
-
-      on(document, "touchmove", onMouseMove, { passive: false });
-      on(document, "touchend", onMouseUp);
+      /* Make splitter focusable for keyboard + screen readers */
+      splitter.setAttribute("tabindex", "0");
+      splitter.setAttribute("role", "separator");
+      if (!splitter.getAttribute("aria-label")) {
+        splitter.setAttribute("aria-label", "Resize panes");
+      }
+      splitter.setAttribute("aria-orientation", isHorizontal ? "horizontal" : "vertical");
     },
 
-    // Get layout state as a serializable object
-    getLayout: function (el) {
-      var data = [];
-      var panes = el.querySelectorAll('[data-miki-split-pane]');
+     getLayout: function (el) {
+       var data = [];
+       var panes = el.querySelectorAll(':scope > [data-miki-split-pane]');
       for (var i = 0; i < panes.length; i++) {
         var pane = panes[i];
-        var size = pane.dataset.mikiSize || pane.style.flexBasis || "";
         data.push({
           id: pane.id || "",
-          size: size,
+          size: pane.dataset.mikiSize || pane.style.flexBasis || "",
           collapsed: pane.classList.contains("miki-split-pane-collapsed")
         });
       }
@@ -240,102 +256,59 @@
       };
     },
 
-    // Apply layout from a saved state object
     setLayout: function (el, layout) {
       if (!layout) return;
       el.setAttribute("data-orientation", layout.orientation || "horizontal");
       el.setAttribute("data-resize-mode", layout.resizeMode || "horizontal");
       el.setAttribute("data-min-size", String(layout.minSize || 50));
 
-      var panes = el.querySelectorAll('[data-miki-split-pane]');
-      for (var i = 0; i < panes.length; i++) {
-        if (i >= layout.panes.length) break;
+      var panes = el.querySelectorAll(':scope > [data-miki-split-pane]');
+      for (var i = 0; i < layout.panes.length && i < panes.length; i++) {
         var pane = panes[i];
         var state = layout.panes[i];
         if (state.size) {
-          pane.style.flexBasis = state.size;
           pane.style.flex = "none";
+          pane.style.flexBasis = state.size;
         }
-        if (state.collapsed) {
-          pane.classList.add("miki-split-pane-collapsed");
-        } else {
-          pane.classList.remove("miki-split-pane-collapsed");
-        }
+        pane.classList.toggle("miki-split-pane-collapsed", !!state.collapsed);
         if (state.id) pane.id = state.id;
       }
 
-      // Re-init to pick up new attributes
-      if (el.dataset.mikiInit === "true") {
-        el.dataset.mikiInit = "";
-        mikiSplitView.init(el);
-      }
-      // If a persisted layout exists, apply it (after re-init)</br>
-      try {
-        if (persistKey && window.localStorage) {
-          var stored = localStorage.getItem(persistKey);
-          if (stored) {
-            var parsed = JSON.parse(stored);
-            if (parsed) {
-              // apply stored layout
-              if (el.dataset.mikiInit === "true") {
-                el.dataset.mikiInit = "";
-              }
-              window.mikiSplitView.setLayout(el, parsed);
-            }
-          }
-        }
-      } catch (err) {
-        /* ignore storage / parse errors */
-      }
+      el.dataset.mikiInit = "";
+      mikiSplitView.init(el);
     },
 
-    // Add a new pane (inserts before the splitter)
-    addPane: function (el, contentHtml, position) {
-      var splitter = el.querySelector('[data-miki-splitter="true"]');
+    addPane: function (el, contentHtml) {
+       var splitter = el.querySelector(':scope > [data-miki-splitter="true"]');
       if (!splitter) return;
-      var firstPane = el.querySelector('[data-miki-split-pane="first"]');
-      if (!firstPane) return;
 
       var newPane = document.createElement("div");
-      newPane.className = "miki-split-pane";
+      newPane.className = "miki-split-pane miki-split-second";
       newPane.setAttribute("data-miki-split-pane", "second");
       newPane.setAttribute("role", "region");
       newPane.innerHTML = contentHtml;
       newPane.style.flex = "1 1 0";
 
-      // Insert new pane + splitter before second pane
-      var secondPane = el.querySelector('[data-miki-split-pane="second"]');
-      if (position === "before-first" || !secondPane) {
-        el.insertBefore(newPane, firstPane);
+       var oldSecond = el.querySelector(':scope > [data-miki-split-pane="second"]');
+      if (oldSecond) {
+        oldSecond.setAttribute("data-miki-split-pane", "third");
         var newSplitter = splitter.cloneNode(false);
         newSplitter.setAttribute("data-miki-splitter", "true");
-        el.insertBefore(newSplitter, firstPane);
-      } else {
-        // Replace second pane position
-        var newSplitter2 = splitter.cloneNode(false);
-        newSplitter2.setAttribute("data-miki-splitter", "true");
-        el.insertBefore(newPane, splitter);
-        el.insertBefore(newSplitter2, secondPane);
+        el.insertBefore(newSplitter, oldSecond);
+        el.insertBefore(newPane, oldSecond);
       }
 
-      // Re-init
       el.dataset.mikiInit = "";
       mikiSplitView.init(el);
     },
 
-    // Remove a pane by index (0 = first, 1 = second)
     removePane: function (el, index) {
-      var panes = el.querySelectorAll('[data-miki-split-pane]');
-      if (index < 0 || index >= panes.length) return;
+       var panes = el.querySelectorAll(':scope > [data-miki-split-pane]');
+       if (index < 0 || index >= panes.length) return;
       var pane = panes[index];
       var splitter = pane.nextElementSibling;
       if (splitter && splitter.hasAttribute("data-miki-splitter")) {
         splitter.remove();
-      } else {
-        splitter = pane.previousElementSibling;
-        if (splitter && splitter.hasAttribute("data-miki-splitter")) {
-          splitter.remove();
-        }
       }
       pane.remove();
       el.dataset.mikiInit = "";

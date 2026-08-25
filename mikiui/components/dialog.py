@@ -26,13 +26,14 @@ from .html import Div
 class Dialog(Component):
     """A styled dialog using the native ``<dialog>`` element with JS polyfill.
 
-    The dialog is auto-wired by ``miki_ui.js``: overlay click, ESC key,
-    and close buttons all work without Alpine.
+    The dialog is auto-wired by the MikiUI bridge (``miki_bridge.js``): overlay click,
+    ESC key, and close buttons all work without Alpine. Close buttons should use
+    the ``data-miki-dialog-close`` attribute; the bridge auto-binds click handlers.
 
     Example
     -------
     >>> Dialog(
-    ...     Button("Close", onclick="mikiDialog.close(this.closest('dialog'))"),
+    ...     Button("Close", **{"data-miki-dialog-close": "true"}),
     ...     open=True,
     ...     title="Confirmation",
     ... )

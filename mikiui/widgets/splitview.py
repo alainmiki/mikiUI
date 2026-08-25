@@ -128,6 +128,8 @@ class SplitView(Component):
         attrs.setdefault("data-orientation", orientation)
         attrs.setdefault("data-min-size", str(min_size))
         attrs.setdefault("data-resize-mode", resize_mode)
+        attrs.setdefault("style", "")
+        attrs["style"] += f"--miki-splitter-width: {separator_width}px;"
 
         container_class = "miki-splitview-container"
         if is_horizontal:
@@ -135,7 +137,7 @@ class SplitView(Component):
         else:
             container_class += " miki-split-v"
 
-        attrs.setdefault("class_", attrs.get("class_", "") + " " + container_class)
+        attrs["class_"] = attrs.get("class_", "") + " " + container_class
 
         # Pane sizing: use min_size for the relevant axis
         first_style = (

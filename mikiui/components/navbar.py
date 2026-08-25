@@ -27,6 +27,7 @@ from typing import Any
 from ..components.base import Component
 from ..components.button import Button
 from ..components.html import A, Div, Li, Ul
+from ..engine.bridge import bridge_attr
 
 
 class Navbar(Component):
@@ -89,9 +90,12 @@ class Navbar(Component):
         hamburger = Button(
             "☰",
             type="button",
-            onclick="this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.toggle('open')",
             class_="miki-navbar-toggle",
             aria_label="Toggle navigation menu",
+            **bridge_attr(
+                "click",
+                "this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.toggle('open')",
+            ),
         )
 
         # Container with flex layout
@@ -108,3 +112,4 @@ class Navbar(Component):
         container = Div(*container_children, class_="miki-navbar-container")
 
         super().__init__(container, hamburger, **attrs)
+

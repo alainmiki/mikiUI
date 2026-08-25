@@ -11,17 +11,17 @@
       var chips = container.querySelectorAll("[data-miki-chip=\"true\"]");
       for (var i = 0; i < chips.length; i++) {
         (function (chip) {
-          miki.on(chip, "click", function (e) {
-            if (chip.hasAttribute("data-miki-chip-remove")) return;
-            var selected = chip.getAttribute("aria-selected") !== "true";
-            chip.setAttribute("aria-selected", selected ? "true" : "false");
-            if (selected) {
-              chip.classList.add("miki-chip-selected");
-            } else {
-              chip.classList.remove("miki-chip-selected");
-            }
-            miki.dispatch(chip, "miki:chip:toggled", { selected: selected });
-          });
+           miki.onPointer(chip, "activate", function (e) {
+             if (chip.hasAttribute("data-miki-chip-remove")) return;
+             var selected = chip.getAttribute("aria-selected") !== "true";
+             chip.setAttribute("aria-selected", selected ? "true" : "false");
+             if (selected) {
+               chip.classList.add("miki-chip-selected");
+             } else {
+               chip.classList.remove("miki-chip-selected");
+             }
+             miki.dispatch(chip, "miki:chip:toggled", { selected: selected });
+           });
 
           miki.on(chip, "keydown", function (e) {
             if (e.key === "Enter" || e.key === " ") {
@@ -32,7 +32,7 @@
 
           var removeBtn = chip.querySelector("[data-miki-chip-remove=\"true\"]");
           if (removeBtn) {
-            miki.on(removeBtn, "click", function (e) {
+            miki.onPointer(removeBtn, "activate", function (e) {
               e.stopPropagation();
               miki.dispatch(chip, "miki:chip:remove", {});
               chip.remove();

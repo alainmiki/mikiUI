@@ -43,6 +43,19 @@
             if (btn) btn.click();
           }
         });
+
+        /* Send button: use onPointer for both mouse click and touch tap */
+        var sendBtn = form.querySelector('button[type="submit"]') || form.querySelector("button");
+        if (sendBtn) {
+          onPointer(sendBtn, "activate", function (e) {
+            /* Native form submission will handle on both mouse and touch */
+          });
+        }
+
+        /* Prevent page scroll when touching the chat input area */
+        on(input, "touchstart", function () {
+          input.dataset.mikiChatInputTouched = "true";
+        });
       }
 
       // Auto-scroll observer

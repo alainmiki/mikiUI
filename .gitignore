@@ -10,3 +10,7 @@ wheels/
 .venv
 .env
 node_modules/
+
+# Coverage and build artifacts
+.coverage
+.mikiui/
