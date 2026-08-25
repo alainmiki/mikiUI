@@ -186,8 +186,7 @@ def controls():
             DatePicker(label="Date:", name="date"),
             ColorPicker(label="Color:", name="color"),
             H2("Dial Control"),
-            Dial(value=50, min=0, max=100),
-            LCDNumber(value=42, digits=6),
+            Dial(value=50, min=0, max=100, step=5, size=160),
         ),
         class_="p-6",
     )

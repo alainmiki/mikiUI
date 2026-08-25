@@ -167,8 +167,7 @@ def home() -> Div:
                     Div(
                         DatePicker(label="Start date:", name="start", value="2026-09-01"),
                         ColorPicker(label="Brand color:", name="color", value="#6366f1"),
-                        Dial(value=65, min=0, max=100),
-                        LCDNumber(value=3.14159, digits=8),
+                        Dial(value=65, min=0, max=100, step=5, size=140),
                         class_="flex flex-wrap gap-6 items-end",
                     ),
                     class_="bg-white p-6 rounded-xl shadow-sm border border-slate-100",

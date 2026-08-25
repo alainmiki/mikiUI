@@ -447,15 +447,45 @@ class LCDNumber(Component):
 
 
 class Dial(Component):
-    """A circular dial control (maps ``QDial``).
+    """A circular rotary dial control (maps ``QDial``).
 
-    Renders a styled range input acting as the dial value, with a visual
-    rotary knob and live value display.  ``miki_ui.js`` keeps the knob and
-    value in sync and adds keyboard support (arrows, Home/End).
+    Renders a single circular track with a visual knob that the user can
+    drag around the arc, plus a live numeric value displayed below the dial.
+    Supports mouse, touch, and keyboard interaction (arrows, Home/End).
+    The knob and value are kept in sync via ``mikiDial`` JS which also
+    dispatches ``miki:dial:change`` with the new value and old value.
 
     :param value: initial value.
     :param min: minimum value.
     :param max: maximum value.
+    :param step: step increment for keyboard / fine-tune (default 1).
+    :param size: diameter of the dial in pixels (default 140).
+    :param wrap: 'hard' = jump from max to min on wrap, 'none' = no wrap
+      (default 'none').
+    :param on_change: optional Python callback ``Callable[[int, int], None]``
+      invoked server-side with ``(value, old_value)`` on change.
+
+    Example::
+
+        from mikiui.widgets import Dial, Span
+
+        def on_dial_change(val, old):
+            print(f"Dial: {old} -> {val}")
+
+        Dial(value=50, min=0, max=100, on_change=on_dial_change)
+
+    HTML structure::
+
+        <div class="miki-dial" data-miki-dial="true" ...>
+          <div class="miki-dial-track">          <!-- the visible circle -->
+            <span class="miki-dial-knob" ...>    <!-- the draggable indicator -->
+            <span class="miki-dial-progress">    <!-- conic-gradient fill -->
+          </div>
+          <div class="miki-dial-display">        <!-- below the circle -->
+            <span class="miki-dial-value">50</span>
+          </div>
+          <input type="range" class="miki-dial-input" ...> <!-- hidden, captures drag -->
+        </div>
     """
 
     tag = "div"
@@ -465,34 +495,62 @@ class Dial(Component):
         value: int = 0,
         min: int = 0,
         max: int = 100,
+        step: int = 1,
+        size: int = 140,
+        wrap: str = "none",
+        on_change: Optional[Callable] = None,
         **attrs: Any,
     ) -> None:
+        if max <= min:
+            raise ValueError(f"max ({max}) must be greater than min ({min})")
+        if not (min <= value <= max):
+            raise ValueError(f"value ({value}) must be between min ({min}) and max ({max})")
+        if wrap not in ("none", "hard"):
+            raise ValueError(f"wrap must be 'none' or 'hard', got {wrap!r}")
+        if size < 60:
+            raise ValueError(f"size ({size}) must be at least 60px")
+
         attrs.setdefault("class_", "miki-dial")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria-label", _("dial_label", "Dial"))
         attrs.setdefault("data-miki-dial", "true")
+        attrs.setdefault("data-min", str(min))
+        attrs.setdefault("data-max", str(max))
+        attrs.setdefault("data-step", str(step))
+        attrs.setdefault("data-size", str(size))
+        attrs.setdefault("data-wrap", wrap)
 
-        # Compute initial rotation for the knob (0 to 270 degrees)
-        percent = ((value - min) / (max - min)) * 100 if max > min else 0
+        if on_change is not None:
+            self._on_change = on_change
+
+        # Compute initial rotation for the knob (-135 to +135 degrees, 270° arc)
+        percent = ((value - min) / (max - min)) * 100
         rotation = (percent / 100) * 270 - 135
 
+        track_style = f"--miki-dial-size: {size}px;"
+
         super().__init__(
+            Div(
+                Span(class_="miki-dial-progress"),
+                Span(
+                    class_="miki-dial-knob",
+                    style=f"transform: rotate({rotation}deg);",
+                ),
+                class_="miki-dial-track",
+                style=track_style,
+            ),
+            Div(
+                Span(str(value), class_="miki-dial-value"),
+                class_="miki-dial-display",
+            ),
             Input(
                 type="range",
                 min=min,
                 max=max,
+                step=step,
                 value=value,
                 class_="miki-dial-input",
                 **{"aria-label": _("dial_label", "Dial")},
-            ),
-            Div(
-                Span(class_="miki-dial-knob", style=f"transform: rotate({rotation}deg)"),
-                class_="miki-dial-track",
-            ),
-            Div(
-                Span("●", class_="miki-dial-thumb"),
-                Span(str(value), class_="miki-dial-value"),
-                class_="miki-dial-display",
             ),
             **attrs,
         )

@@ -699,24 +699,6 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
   font-size: 1.5rem;
   font-weight: 600;
 }
-.miki-dial {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-.miki-dial-input {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border: 2px solid var(--miki-border);
-  accent-color: var(--miki-accent);
-  cursor: pointer;
-}
-.miki-dial-value {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
 
 /* ---- Navbar ---- */
 nav {
@@ -3166,42 +3148,17 @@ textarea {
   text-align: center;
 }
 
-/* ---- Dial (circular knob) ---- */
+/* ---- Dial (circular rotary knob) ---- */
 .miki-dial {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
 }
-.miki-dial-input {
-  width: 140px;
-  height: 140px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-  outline: none;
-}
-.miki-dial-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 0;
-  height: 0;
-  background: transparent;
-  border: none;
-  pointer-events: none;
-}
-.miki-dial-input::-moz-range-thumb {
-  width: 0;
-  height: 0;
-  background: transparent;
-  border: none;
-  pointer-events: none;
-}
 .miki-dial-track {
   position: relative;
-  width: 140px;
-  height: 140px;
+  width: var(--miki-dial-size, 140px);
+  height: var(--miki-dial-size, 140px);
   border-radius: 50%;
   border: 4px solid var(--miki-border);
   background: conic-gradient(
@@ -3211,6 +3168,17 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Progress overlay: shows filled arc from min to current value */
+.miki-dial-progress {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--miki-accent, #6366f1) 0% 0%,
+    transparent 0% 100%
+  );
+  pointer-events: none;
 }
 .miki-dial-knob {
   position: absolute;
@@ -3223,6 +3191,12 @@ textarea {
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  z-index: 2;
+  cursor: grab;
+  cursor: grab;
+}
+.miki-dial-knob:active {
+  cursor: grabbing;
 }
 .miki-dial-knob::before {
   content: "";
@@ -3242,14 +3216,50 @@ textarea {
   gap: 0.4rem;
   font-family: ui-monospace, SFMono-Regular, "Courier New", monospace;
 }
-.miki-dial-thumb {
-  font-size: 1.25rem;
-  color: var(--miki-accent);
-}
 .miki-dial-value {
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--miki-fg);
+}
+/* Hidden range input: captures drag events, invisible */
+.miki-dial-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  opacity: 0;
+  z-index: 3;
+}
+.miki-dial-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+.miki-dial-input::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+/* Mobile: larger touch targets */
+@media (max-width: 640px) and (hover: none) {
+  .miki-dial-track {
+    border-width: 6px;
+  }
+  .miki-dial-knob {
+    width: 20px;
+    height: 64px;
+  }
 }
 
 /* ---- Progress bar (custom) ---- */

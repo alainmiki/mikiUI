@@ -1132,12 +1132,11 @@ def kitchen():
                     ),
                     style=CARD_NO_PAD + "; height: 20rem",
                 ),
-                H3("Dial & LCD Number"),
+                H3("Dial"),
                 Div(
                     Div(
-                        Dial(value=50, min=0, max=100),
-                        LCDNumber(value="42"),
-                        style=FLEX_ROW,
+                        Dial(value=50, min=0, max=100, step=2, size=140),
+                        style=CARD_NO_PAD + "; height: 200px",
                     ),
                     style=CARD,
                 ),

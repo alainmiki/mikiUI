@@ -606,19 +606,96 @@ tr { display: table-row; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
-.miki-dial-input {
-  width: 100px;
-  height: 100px;
+.miki-dial-track {
+  position: relative;
+  width: var(--miki-dial-size, 140px);
+  height: var(--miki-dial-size, 140px);
   border-radius: 50%;
-  border: 2px solid var(--miki-border);
-  accent-color: var(--miki-accent);
-  cursor: pointer;
+  border: 4px solid var(--miki-border);
+  background: conic-gradient(
+    var(--miki-accent) 0% 0%,
+    var(--miki-surface-hover, #f1f5f9) 0% 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.miki-dial-progress {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--miki-accent, #6366f1) 0% 0%,
+    transparent 0% 100%
+  );
+  pointer-events: none;
+}
+.miki-dial-knob {
+  position: absolute;
+  width: 16px;
+  height: 56px;
+  background: var(--miki-accent);
+  border-radius: 8px;
+  transform-origin: center bottom;
+  transition: transform 0.15s ease;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 2;
+}
+.miki-dial-knob::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--miki-bg);
+  border: 2px solid var(--miki-accent);
+}
+.miki-dial-display {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, "Courier New", monospace;
 }
 .miki-dial-value {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 600;
+  color: var(--miki-fg);
+}
+.miki-dial-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  opacity: 0;
+  z-index: 3;
+}
+.miki-dial-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+.miki-dial-input::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
 }
 
 /* ---- Navbar ---- */
