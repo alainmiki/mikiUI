@@ -833,6 +833,7 @@ nav {
 .miki-drawer-left .miki-drawer-panel {
   position: absolute;
   left: 0;
+  right: auto;
   top: 0;
   bottom: 0;
   width: var(--miki-drawer-width, 320px);
@@ -3728,4 +3729,4 @@ input[type="range"].miki-slider {
 .miki-context-window[data-miki-context-show="true"] ~ * {
   touch-action: auto;
 }
-
+}

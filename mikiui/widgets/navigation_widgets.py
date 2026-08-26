@@ -81,7 +81,7 @@ class Drawer(Component):
                 )
             attrs.setdefault("data-miki-drawer-open-side", open_side)
 
-        classes = f"miki-drawer miki-drawer-{side} miki-drawer-{size}"
+        classes = f"miki-drawer miki-drawer-{side}"
         if open:
             classes += " miki-drawer-open"
         attrs["class_"] = (attrs.get("class_", "") + " " + classes).strip()
@@ -125,7 +125,7 @@ class Drawer(Component):
 
         panel = Div(
             *panel_children,
-            class_="miki-drawer-panel",
+            class_=f"miki-drawer-panel miki-drawer-{size}",
         )
 
         children.append(overlay)
