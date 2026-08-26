@@ -131,6 +131,8 @@ def _theme_styles(
         return css_path
 
     # Color theme CSS is served as a static file via /_miki/runtime/themes/<name>.css
+    # miki.css is always loaded for component styles; theme CSS files only
+    # override :root variables for color themes.
     theme_css_url = None
     if effective_fw == "tailwind":
         pass
@@ -143,11 +145,10 @@ def _theme_styles(
         result["links"].append(_style_tag(theme_css_url))
 
     # Framework CSS links (Tailwind)
+    # miki.css is always loaded for component styles, so we only load the
+    # Tailwind CDN for utility classes when using the tailwind framework.
     if effective_fw == "tailwind":
         if style_mode == "local":
-            result["links"].append(
-                '<link rel="stylesheet" href="/_miki/runtime/themes/tailwind.css" media="all" />'
-            )
             if daisyui:
                 result["links"].append(
                     '<link rel="stylesheet" '
@@ -267,15 +268,11 @@ def render_page(
         effective_framework = getattr(active_theme_obj, "framework", None)
 
     # Determine which base CSS to load:
-    # - Tailwind framework: framework CSS is injected via theme links/CDN,
-    #   so skip loading the base miki.css to avoid duplication.
-    # - Plain CSS / color themes: load the base miki.css stylesheet.
-    if effective_framework == "tailwind":
-        base_css = ""
-        theme_attr = f'data-theme="mikiui-{_esc(theme)}"'
-    else:
-        base_css = _style_tag("/_miki/runtime/miki.css")
-        theme_attr = f'data-miki-theme="{_esc(theme)}"'
+    # - Always load miki.css for component styles and base variables.
+    # - Theme CSS files (light.css, tailwind.css, etc.) only set --miki-*
+    #   custom properties on :root and provide minimal theme-specific vars.
+    base_css = _style_tag("/_miki/runtime/miki.css")
+    theme_attr = f'data-miki-theme="{_esc(theme)}"'
 
     # Build the HEAD content
     links = "\n".join(theme_data.get("links", []))

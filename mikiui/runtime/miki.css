@@ -809,7 +809,7 @@ nav {
   opacity: 1;
 }
 .miki-drawer-panel {
-  position: absolute;
+  position: fixed;
   z-index: 2;
   background: var(--miki-surface, #fff);
   border-radius: 0;
@@ -831,7 +831,7 @@ nav {
 
 /* Drawer side positions — panel edge position and default closed transform */
 .miki-drawer-left .miki-drawer-panel {
-  position: absolute;
+  position: fixed;
   left: 0;
   right: auto;
   top: 0;
@@ -841,7 +841,8 @@ nav {
   transform: translateX(-100%);
 }
 .miki-drawer-right .miki-drawer-panel {
-  position: absolute;
+  position: fixed;
+  left: auto;
   right: 0;
   top: 0;
   bottom: 0;
@@ -850,8 +851,9 @@ nav {
   transform: translateX(100%);
 }
 .miki-drawer-top .miki-drawer-panel {
-  position: absolute;
+  position: fixed;
   top: 0;
+  bottom: auto;
   left: 0;
   right: 0;
   width: 100%;
@@ -860,8 +862,9 @@ nav {
   transform: translateY(-100%);
 }
 .miki-drawer-bottom .miki-drawer-panel {
-  position: absolute;
+  position: fixed;
   bottom: 0;
+  top: auto;
   left: 0;
   right: 0;
   width: 100%;

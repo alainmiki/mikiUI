@@ -81,9 +81,9 @@ def test_theme_with_framework():
 
 
 def test_render_page_with_tailwind_framework():
-    """Rendering with framework=tailwind should inject CDN link and skip miki.css."""
+    """Rendering with framework=tailwind should load miki.css for components + CDN for utilities."""
     page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind")
-    assert "miki.css" not in page
+    assert "miki.css" in page
     assert "tailwind.min.css" in page
     assert 'data-theme="mikiui-dark"' in page
 
