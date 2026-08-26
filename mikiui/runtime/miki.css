@@ -22,8 +22,6 @@
 }
 
 @layer base, components, utilities;
-@import url("./miki_components.css");
-@import url("./miki_utilities.css");
 
 @layer base {
   * { box-sizing: border-box; }
@@ -3732,4 +3730,75 @@ input[type="range"].miki-slider {
 .miki-context-window[data-miki-context-show="true"] ~ * {
   touch-action: auto;
 }
+}
+
+@layer utilities {
+/* Background utilities */
+.bg-primary { background-color: var(--miki-success); }
+.bg-secondary { background-color: var(--miki-warning); }
+.bg-accent { background-color: var(--miki-accent); }
+.bg-error { background-color: var(--miki-error); }
+.bg-surface { background-color: var(--miki-surface); }
+.bg-surface-hover:hover { background-color: var(--miki-surface-hover); }
+.bg-surface-active:active { background-color: var(--miki-surface-active); }
+
+/* Text utilities */
+.text-primary { color: var(--miki-success); }
+.text-secondary { color: var(--miki-warning); }
+.text-accent { color: var(--miki-accent); }
+.text-error { color: var(--miki-error); }
+.text-muted { color: var(--miki-text-muted); }
+.text-fg { color: var(--miki-fg); }
+
+/* Border utilities */
+.border-primary { border-color: var(--miki-success); }
+.border-secondary { border-color: var(--miki-warning); }
+.border-accent { border-color: var(--miki-accent); }
+.border-error { border-color: var(--miki-error); }
+.border { border: 1px solid var(--miki-border); }
+.border-hover:hover { border-color: var(--miki-border-hover); }
+
+/* Shadow utilities */
+.shadow { box-shadow: var(--miki-shadow); }
+.shadow-lg { box-shadow: var(--miki-shadow-lg); }
+
+/* Radius utilities */
+.rounded { border-radius: var(--miki-radius); }
+.rounded-lg { border-radius: var(--miki-radius-lg); }
+
+/* State utilities */
+.hover-accent:hover { background-color: var(--miki-accent-hover); }
+.hover-success:hover { background-color: var(--miki-success-hover); }
+.hover-warning:hover { background-color: var(--miki-warning-hover); }
+.hover-error:hover { background-color: var(--miki-error-hover); }
+
+/* Semantic badges */
+.badge-primary { background-color: var(--miki-success); color: var(--miki-fg); }
+.badge-secondary { background-color: var(--miki-warning); color: var(--miki-fg); }
+.badge-accent { background-color: var(--miki-accent); color: var(--miki-fg); }
+.badge-error { background-color: var(--miki-error); color: var(--miki-fg); }
+
+/* Semantic alerts */
+.alert-primary { background-color: var(--miki-success); color: var(--miki-fg); }
+.alert-secondary { background-color: var(--miki-warning); color: var(--miki-fg); }
+.alert-accent { background-color: var(--miki-accent); color: var(--miki-fg); }
+.alert-error { background-color: var(--miki-error); color: var(--miki-fg); }
+
+/* Progress bars */
+.progress-primary .progress-bar { background-color: var(--miki-success); }
+.progress-secondary .progress-bar { background-color: var(--miki-warning); }
+.progress-accent .progress-bar { background-color: var(--miki-accent); }
+.progress-error .progress-bar { background-color: var(--miki-error); }
+
+/* Tabs */
+.tab-primary.tab-active { border-color: var(--miki-success); color: var(--miki-success); }
+.tab-secondary.tab-active { border-color: var(--miki-warning); color: var(--miki-warning); }
+.tab-accent.tab-active { border-color: var(--miki-accent); color: var(--miki-accent); }
+.tab-error.tab-active { border-color: var(--miki-error); color: var(--miki-error); }
+
+/* Toasts */
+.toast-primary { background-color: var(--miki-success); color: var(--miki-fg); }
+.toast-secondary { background-color: var(--miki-warning); color: var(--miki-fg); }
+.toast-accent { background-color: var(--miki-accent); color: var(--miki-fg); }
+.toast-error { background-color: var(--miki-error); color: var(--miki-fg); }
 }

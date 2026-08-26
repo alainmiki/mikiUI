@@ -173,7 +173,7 @@ from mikiui.widgets import (
 
 app = MikiApp(title="MikiUI Kitchen Sink")
 app.set_theme("light")
-app.set_style_framework("tailwind",da)
+app.set_style_framework("tailwind",daisyui=True)
 
 FLEX_ROW = "display: flex; flex-direction: row; align-items: center; gap: 1rem"
 FLEX_COL = "display: flex; flex-direction: column; gap: 1rem"
@@ -203,13 +203,14 @@ def kitchen():
             title="MikiUI Kitchen Sink",
             subtitle="Every component and widget showcased — test on desktop and mobile.",
             action=Button("Get Started", variant="primary", hx_get="/components"),
+            class_="text-2xl bg-red-500 text-white"
         ),
         Div(
             # ==================================================================
             # SECTION 1: BASIC COMPONENTS
             # ==================================================================
             Section(id_="components", *[
-                H2("Basic Components & Elements"),
+                H2("Basic Components & Elements", class_="text-green-400 bg-red-200"),
                 Div(
                     Div(
                         Button("Primary", variant="primary"),
