@@ -59,19 +59,30 @@ class SafeAreaView(Component):
 
 
 class BottomSheet(Component):
-    """A bottom sheet overlay.
+    """A bottom sheet overlay that slides up from the bottom of the screen.
 
     State is JS-only. Open/close via :func:`mikiBottomSheet.open` /
     :func:`mikiBottomSheet.close` or by setting
-    ``data-miki-bottom-sheet-open="true"``.
+    ``data-miki-bottom-sheet-open="true"`` on the container.
 
-    :param children: Sheet content.
+     :param children: Sheet content.
     :param title: Optional title rendered in the header.
     :param closable: If ``True``, show close button and allow ESC/backdrop close.
     :param size: ``"sm"``, ``"md"``, ``"lg"``, or ``"full"``.
     :param on_open: Optional callback name invoked on open.
     :param on_close: Optional callback name invoked on close.
     :param class_: Extra CSS classes.
+
+    Example::
+
+        from mikiui.components import BottomSheet
+
+        BottomSheet(
+            P("Sheet content goes here"),
+            title="My Sheet",
+            size="md",
+            on_close="handleSheetClose",
+        )
     """
 
     tag = "div"
@@ -87,8 +98,9 @@ class BottomSheet(Component):
         class_: str = "",
         **attrs: Any,
     ) -> None:
-        classes = ["miki-bottom-sheet-panel"]
-        classes.append(f"miki-bottom-sheet-{size}")
+        if size not in ("sm", "md", "lg", "full"):
+            raise ValueError(f"size must be 'sm', 'md', 'lg', or 'full', got {size!r}")
+        classes = ["miki-bottom-sheet"]
         if class_:
             classes.append(class_)
         attrs.setdefault("class_", " ".join(classes))
@@ -124,14 +136,19 @@ class BottomSheet(Component):
 
         header = Div(*header_parts, class_="miki-bottom-sheet-header") if header_parts else None
         drag_handle = Div(class_="miki-bottom-sheet-drag-handle")
-        backdrop = Div(class_="miki-bottom-sheet-backdrop", data_miki_bottom_sheet_backdrop="true")
-        body_children: list[Any] = [backdrop, drag_handle]
-        if header:
-            body_children.append(header)
-        body_children.extend(children)
-        body = Div(*body_children, class_="miki-bottom-sheet-body")
 
-        super().__init__(body, **attrs)
+        panel_children: list[Any] = [drag_handle]
+        if header:
+            panel_children.append(header)
+        panel_children.extend(children)
+        panel = Div(*panel_children, class_=f"miki-bottom-sheet-panel miki-bottom-sheet-{size}")
+
+        backdrop = Div(
+            class_="miki-bottom-sheet-backdrop",
+            data_miki_bottom_sheet_backdrop="true",
+        )
+
+        super().__init__(backdrop, panel, **attrs)
 
 
 class BottomNavigation(Component):

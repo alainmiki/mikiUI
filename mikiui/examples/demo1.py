@@ -23,12 +23,14 @@ from mikiui.components import (
     SubmitButton,
     Tabs,
 )
+from mikiui.components import BottomSheet
 from mikiui.widgets import (
     CollapsiblePanel,
     ColorPicker,
     ContextWindow,
     DataGrid,
     DatePicker,
+    Dial,
     DockablePanel,
     Drawer,
     FilePicker,
@@ -85,6 +87,55 @@ def home():
                 Button("Forms", variant="secondary", hx_get="/forms"),
                 Button("Data Tables", variant="primary", hx_get="/data"),
                 style=FLEX_ROW + f"; {GAP}; margin-top: 2rem; flex-wrap: wrap",
+            ),
+            Div(
+                Div(
+                    Button("Open Drawer", onclick="mikiDrawer.open(document.querySelector('.demo-drawer'))", class_="mb-2"),
+                    Button("Open Right Drawer", onclick="mikiDrawer.open(document.querySelector('.demo-drawer-right'))", class_="mb-2"),
+                    Button("Open Bottom Sheet", onclick="mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))", class_="mb-2"),
+                    class_="flex gap-2",
+                ),
+                Drawer(
+                    Div(
+                        P("This drawer slides in from the left. Use ESC, overlay click, or the close button to dismiss it."),
+                        Button("Close", onclick="mikiDrawer.close(document.querySelector('.demo-drawer'))"),
+                    ),
+                    title="Slide-in Drawer",
+                    side="left",
+                    open=False,
+                    class_="demo-drawer",
+                ),
+                Drawer(
+                    Div(
+                        P("This drawer slides in from the right."),
+                    ),
+                    title="Right Drawer",
+                    side="right",
+                    open=False,
+                    class_="demo-drawer-right",
+                ),
+                Drawer(
+                    Div(
+                        P("This drawer slides in from the right but is anchored to the left."),
+                        Button("Close", onclick="mikiDrawer.close('.demo-drawer-override')"),
+                    ),
+                    title="Override Drawer",
+                    side="left",
+                    open_side="right",
+                    open=False,
+                    class_="demo-drawer-override",
+                ),
+                BottomSheet(
+                    Div(
+                        P("This is a bottom sheet that slides up from the bottom."),
+                        Button("Close", onclick="mikiBottomSheet.close('.demo-bottomsheet')"),
+                    ),
+                    title="Bottom Sheet",
+                    size="md",
+                    class_="demo-bottomsheet",
+                ),
+                Dial(value=50, min=0, max=100, step=5, size=140),
+                style=PADDING,
             ),
             style=PADDING,
         ),
@@ -432,20 +483,18 @@ def advanced_demo():
                 ),
                 style=CARD,
             ),
-            H2("Drawer (Slide-in Panel)"),
-            Div(
-                Drawer(
-                    "Drawer content goes here!",
-                    title="Slide-in Drawer",
-                    side="left",
-                    open=True,
-                ),
-                style=CARD,
+        H2("Drawer (Slide-in Panel)"),
+        Div(
+            Drawer(
+                "Drawer content goes here!",
+                title="Slide-in Drawer",
+                side="left",
+                open=True,
             ),
-            style=PADDING + f"; {FLEX_COL}; gap: 2rem",
+            style=CARD,
         ),
-    )
-
+    ),
+)
 
 if __name__ == "__main__":
     app.run(desktop=True, reload=True)

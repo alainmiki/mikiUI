@@ -19,6 +19,14 @@
     return el ? el.closest(selector) : null;
   }
 
+  function resolveEl(el) {
+    if (!el) return null;
+    if (typeof el === "string") {
+      return document.querySelector(el);
+    }
+    return el;
+  }
+
   function generateId(prefix) {
     return prefix + "-" + Math.random().toString(36).slice(2, 10);
   }
@@ -180,6 +188,7 @@
   window.miki.on = on;
   window.miki.off = off;
   window.miki.findClosest = findClosest;
+  window.miki.resolveEl = resolveEl;
   window.miki.generateId = generateId;
   window.miki.dispatch = dispatch;
   window.miki.focusTrap = focusTrap;
@@ -194,6 +203,8 @@
      (window.on / window.off / etc. are not part of the DOM spec). */
   window.on = on;
   window.off = off;
+  window.findClosest = findClosest;
+  window.resolveEl = resolveEl;
   window.dispatch = dispatch;
   window.findClosest = findClosest;
   window.generateId = generateId;

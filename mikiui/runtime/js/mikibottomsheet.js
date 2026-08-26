@@ -4,84 +4,125 @@
   var miki = window.miki || {};
 
   var mikiBottomSheet = {
+    _resolve: function (el) {
+      if (!el) {
+        return document.querySelector("[data-miki-bottom-sheet=\"true\"]");
+      }
+      if (typeof el === "string") {
+        var found = document.querySelector(el);
+        if (found) return found;
+        return document.querySelector("[data-miki-bottom-sheet=\"true\"]");
+      }
+      var sheet = findClosest(el, "[data-miki-bottom-sheet=\"true\"]");
+      return sheet || el;
+    },
+
     open: function (el) {
-      var sheet = miki.findClosest(el, "[data-miki-bottom-sheet=\"true\"]") || document.querySelector("[data-miki-bottom-sheet=\"true\"]");
+      var sheet = mikiBottomSheet._resolve(el);
       if (!sheet) return;
-      var backdrop = sheet.querySelector("[data-miki-bottom-sheet-backdrop]") || document.querySelector("[data-miki-bottom-sheet-backdrop]");
+
+      var backdrop = sheet.querySelector(".miki-bottom-sheet-backdrop");
+      var panel = sheet.querySelector(".miki-bottom-sheet-panel");
+      if (!panel) return;
+
+      /* Save original body overflow to restore on close */
+      if (!sheet.dataset.mikiSavedOverflow) {
+        sheet.dataset.mikiSavedOverflow = document.body.style.overflow || "";
+      }
+
+      document.body.style.overflow = "hidden";
       if (backdrop) backdrop.classList.add("miki-bottom-sheet-backdrop-open");
-      sheet.classList.add("miki-bottom-sheet-panel-open");
+      panel.classList.add("miki-bottom-sheet-panel-open");
       sheet.setAttribute("data-miki-bottom-sheet-open", "true");
       sheet.setAttribute("aria-hidden", "false");
-      document.body.style.overflow = "hidden";
+
       var onOpen = sheet.getAttribute("data-miki-bottom-sheet-on-open");
       if (onOpen && window[onOpen]) window[onOpen](sheet);
-      miki.dispatch(sheet, "miki:bottom-sheet:opened", {});
+      dispatch(sheet, "miki:bottom-sheet:opened", {});
     },
 
     close: function (el) {
-      var sheet = miki.findClosest(el, "[data-miki-bottom-sheet=\"true\"]") || document.querySelector("[data-miki-bottom-sheet=\"true\"]");
+      var sheet = mikiBottomSheet._resolve(el);
       if (!sheet) return;
-      var backdrop = sheet.querySelector("[data-miki-bottom-sheet-backdrop]") || document.querySelector("[data-miki-bottom-sheet-backdrop]");
+
+      var backdrop = sheet.querySelector(".miki-bottom-sheet-backdrop");
+      var panel = sheet.querySelector(".miki-bottom-sheet-panel");
+      if (!panel) return;
+
+      document.body.style.overflow = sheet.dataset.mikiSavedOverflow || "";
+      delete sheet.dataset.mikiSavedOverflow;
+
       if (backdrop) backdrop.classList.remove("miki-bottom-sheet-backdrop-open");
-      sheet.classList.remove("miki-bottom-sheet-panel-open");
+      panel.classList.remove("miki-bottom-sheet-panel-open");
       sheet.setAttribute("data-miki-bottom-sheet-open", "false");
       sheet.setAttribute("aria-hidden", "true");
-      document.body.style.overflow = "";
+
       var onClose = sheet.getAttribute("data-miki-bottom-sheet-on-close");
       if (onClose && window[onClose]) window[onClose](sheet);
-      miki.dispatch(sheet, "miki:bottom-sheet:closed", {});
+      dispatch(sheet, "miki:bottom-sheet:closed", {});
     },
 
     init: function (container) {
       if (container.dataset.mikiInit === "true") return;
       container.dataset.mikiInit = "true";
 
-      var sheet = container.querySelector("[data-miki-bottom-sheet=\"true\"]") || container;
-      if (!sheet.hasAttribute("data-miki-bottom-sheet")) return;
+      if (!container.hasAttribute("data-miki-bottom-sheet")) return;
 
-      var backdrop = sheet.querySelector("[data-miki-bottom-sheet-backdrop]");
+      var sheet = container;
+      var backdrop = sheet.querySelector(".miki-bottom-sheet-backdrop");
+      var panel = sheet.querySelector(".miki-bottom-sheet-panel");
+      if (!panel) return;
+
+      /* Backdrop click/tap to close */
       if (backdrop) {
-        miki.on(backdrop, "click", function () {
+        onPointer(backdrop, "activate", function () {
           mikiBottomSheet.close(sheet);
         });
       }
 
+      /* Close buttons */
       var closeBtn = sheet.querySelector("[data-miki-bottom-sheet-close=\"true\"]");
       if (closeBtn) {
-        miki.on(closeBtn, "click", function (e) {
+        onPointer(closeBtn, "activate", function (e) {
           e.preventDefault();
           mikiBottomSheet.close(sheet);
         });
       }
 
-      miki.on(sheet, "keydown", function (e) {
-        if (e.key === "Escape") {
+      /* ESC key to close — check if sheet is open */
+      on(document, "keydown", function onEsc(e) {
+        if (e.key === "Escape" && sheet.getAttribute("data-miki-bottom-sheet-open") === "true") {
           mikiBottomSheet.close(sheet);
         }
       });
 
+      /* Drag-to-close on touch */
       var startY = 0;
       var currentY = 0;
       var isDragging = false;
       var dragHandle = sheet.querySelector(".miki-bottom-sheet-drag-handle");
-      var panel = sheet.querySelector(".miki-bottom-sheet-panel") || sheet;
 
-      function onTouchStart(e) {
-        startY = e.touches[0].clientY;
+      function onDragStart(e) {
+        if (e.touches && e.touches[0]) {
+          startY = e.touches[0].clientY;
+        } else {
+          startY = e.clientY;
+        }
         isDragging = true;
         panel.style.transition = "none";
       }
 
-      function onTouchMove(e) {
+      function onDragMove(e) {
         if (!isDragging) return;
-        currentY = e.touches[0].clientY;
+        var clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+        currentY = clientY;
         var diff = currentY - startY;
         if (diff > 0) {
           panel.style.transform = "translateY(" + diff + "px)";
         }
       }
 
-      function onTouchEnd() {
+      function onDragEnd() {
         if (!isDragging) return;
         isDragging = false;
         panel.style.transition = "";
@@ -89,19 +130,20 @@
         if (diff > 100) {
           mikiBottomSheet.close(sheet);
         } else {
+          /* Reset to fully open state without inline transform */
           panel.style.transform = "";
-          if (sheet.classList.contains("miki-bottom-sheet-panel-open")) {
-            panel.style.transform = "translateY(0)";
-          }
         }
         startY = 0;
         currentY = 0;
       }
 
       if (dragHandle) {
-        miki.on(dragHandle, "touchstart", onTouchStart, { passive: true });
-        miki.on(dragHandle, "touchmove", onTouchMove, { passive: true });
-        miki.on(dragHandle, "touchend", onTouchEnd);
+        on(dragHandle, "touchstart", onDragStart, { passive: true });
+        on(dragHandle, "touchmove", onDragMove, { passive: true });
+        on(dragHandle, "touchend", onDragEnd);
+        on(dragHandle, "mousedown", onDragStart, { passive: true });
+        on(document, "mousemove", onDragMove, { passive: true });
+        on(document, "mouseup", onDragEnd);
       }
     }
   };

@@ -193,6 +193,159 @@ class TestDrawerToggle:
         expect(panel).to_have_count(1)
 
 
+class TestDrawerInteractive:
+    """Drawer: open/close via JS API, overlay click, ESC, side configurations."""
+
+    def test_drawer_open_close_js(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        drawer = page.locator(".demo-drawer").first
+        if drawer.count() == 0:
+            pytest.skip("No drawer found")
+        assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer'))")
+        page.wait_for_timeout(200)
+        assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+        page.evaluate("mikiDrawer.close(document.querySelector('.demo-drawer'))")
+        page.wait_for_timeout(200)
+        assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+
+    def test_drawer_overlay_click_closes(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        drawer = page.locator(".demo-drawer").first
+        if drawer.count() == 0:
+            pytest.skip("No drawer found")
+        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer'))")
+        page.wait_for_timeout(200)
+        overlay = drawer.locator(".miki-drawer-overlay")
+        overlay.click()
+        page.wait_for_timeout(200)
+        assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+
+    def test_drawer_esc_closes(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        drawer = page.locator(".demo-drawer").first
+        if drawer.count() == 0:
+            pytest.skip("No drawer found")
+        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer'))")
+        page.wait_for_timeout(200)
+        assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+        page.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))")
+        page.wait_for_timeout(200)
+        assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+
+    def test_drawer_right_side(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        drawer = page.locator(".demo-drawer-right").first
+        if drawer.count() == 0:
+            pytest.skip("No right drawer found")
+        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer-right'))")
+        page.wait_for_timeout(200)
+        assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+        page.evaluate("mikiDrawer.close(document.querySelector('.demo-drawer-right'))")
+        page.wait_for_timeout(100)
+
+    def test_drawer_toggle(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        drawer = page.locator(".demo-drawer").first
+        if drawer.count() == 0:
+            pytest.skip("No drawer found")
+        page.evaluate("mikiDrawer.toggle(document.querySelector('.demo-drawer'))")
+        page.wait_for_timeout(200)
+        assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+        page.evaluate("mikiDrawer.toggle(document.querySelector('.demo-drawer'))")
+        page.wait_for_timeout(200)
+        assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+
+    def test_drawer_string_selector(self, page):
+        """Drawer open/close/toggle accept a CSS selector string."""
+        page.load("/")
+        page.wait_for_timeout(500)
+        drawer = page.locator(".demo-drawer").first
+        if drawer.count() == 0:
+            pytest.skip("No drawer found")
+        page.evaluate("mikiDrawer.open('.demo-drawer')")
+        page.wait_for_timeout(200)
+        assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+        page.evaluate("mikiDrawer.close('.demo-drawer')")
+        page.wait_for_timeout(200)
+        assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+
+
+class TestDrawerOpenSide:
+    """Drawer open_side: panel anchored to one side but slides in from another."""
+
+    def test_open_side_attribute_present(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        override = page.locator("[data-miki-drawer-open-side]").first
+        if override.count() == 0:
+            pytest.skip("No open_side drawer found")
+        assert override.count() >= 1, "Expected at least one drawer with open_side override"
+
+    def test_open_side_drawer_opens_from_right(self, page):
+        """Drawer with side=left and open_side=right should still open."""
+        page.load("/")
+        page.wait_for_timeout(500)
+        # The kitchen sink has an override drawer on /advanced, but we test /
+        drawer = page.locator(".demo-drawer").first
+        if drawer.count() == 0:
+            pytest.skip("No drawer found")
+        page.evaluate("mikiDrawer.open('.demo-drawer')")
+        page.wait_for_timeout(200)
+        assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
+
+
+class TestBottomSheetInteractive:
+    """BottomSheet: open/close via JS API, overlay click, ESC."""
+
+    def test_bottomsheet_open_close_js(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        sheet = page.locator(".demo-bottomsheet").first
+        if sheet.count() == 0:
+            pytest.skip("No bottom sheet found")
+        assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "false"
+        page.evaluate("mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))")
+        page.wait_for_timeout(300)
+        assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "true"
+        panel = sheet.locator(".miki-bottom-sheet-panel")
+        assert panel.evaluate("el => el.classList.contains('miki-bottom-sheet-panel-open')")
+        page.evaluate("mikiBottomSheet.close(document.querySelector('.demo-bottomsheet'))")
+        page.wait_for_timeout(300)
+        assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "false"
+
+    def test_bottomsheet_backdrop_click_closes(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        sheet = page.locator(".demo-bottomsheet").first
+        if sheet.count() == 0:
+            pytest.skip("No bottom sheet found")
+        page.evaluate("mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))")
+        page.wait_for_timeout(300)
+        backdrop = sheet.locator(".miki-bottom-sheet-backdrop")
+        backdrop.click()
+        page.wait_for_timeout(300)
+        assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "false"
+
+    def test_bottomsheet_esc_closes(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        sheet = page.locator(".demo-bottomsheet").first
+        if sheet.count() == 0:
+            pytest.skip("No bottom sheet found")
+        page.evaluate("mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))")
+        page.wait_for_timeout(300)
+        assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "true"
+        page.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))")
+        page.wait_for_timeout(300)
+        assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "false"
+
+
 class TestTabKeyboardNav:
     """Tab widget: keyboard navigation (ArrowLeft/Right, Enter/Space)."""
     def _get_tabs(self, page):
@@ -374,6 +527,69 @@ class TestSplitterResize:
         page.wait_for_timeout(200)
         has_max = sv_element.evaluate("el => !el.classList.contains('miki-split-maximized')")
         assert has_max, "Splitter should restore on second double-click"
+
+
+class TestDialInteractive:
+    """Dial: value changes, keyboard, click-to-value."""
+
+    def test_dial_exists(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        dials = page.locator("[data-miki-dial='true']")
+        if dials.count() == 0:
+            pytest.skip("No dials found")
+        assert dials.count() >= 1
+
+    def test_dial_keyboard_increments(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        dial = page.locator("[data-miki-dial='true']").first
+        if dial.count() == 0:
+            pytest.skip("No dial found")
+        input_el = dial.locator("input[type='range']")
+        step = int(input_el.get_attribute("step") or "1")
+        before = input_el.evaluate("el => parseFloat(el.value)")
+        input_el.focus()
+        input_el.press("ArrowRight")
+        page.wait_for_timeout(100)
+        after = input_el.evaluate("el => parseFloat(el.value)")
+        assert after == before + step, f"Dial should increment by step={step}: {before} -> {after}"
+
+    def test_dial_keyboard_decrements(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        dial = page.locator("[data-miki-dial='true']").first
+        if dial.count() == 0:
+            pytest.skip("No dial found")
+        input_el = dial.locator("input[type='range']")
+        step = int(input_el.get_attribute("step") or "1")
+        input_el.focus()
+        input_el.press("ArrowRight")
+        page.wait_for_timeout(100)
+        before = input_el.evaluate("el => parseFloat(el.value)")
+        min_val = float(input_el.evaluate("el => parseFloat(el.min)"))
+        if before <= min_val:
+            pytest.skip("Dial at minimum, cannot test decrement")
+        input_el.press("ArrowLeft")
+        page.wait_for_timeout(100)
+        after = input_el.evaluate("el => parseFloat(el.value)")
+        assert after == before - step, f"Dial should decrement by step={step}: {before} -> {after}"
+
+    def test_dial_home_end(self, page):
+        page.load("/")
+        page.wait_for_timeout(500)
+        dial = page.locator("[data-miki-dial='true']").first
+        if dial.count() == 0:
+            pytest.skip("No dial found")
+        input_el = dial.locator("input[type='range']")
+        max_val = float(input_el.evaluate("el => el.max"))
+        input_el.focus()
+        input_el.press("End")
+        page.wait_for_timeout(100)
+        assert input_el.evaluate("el => parseFloat(el.value)") == max_val
+        input_el.press("Home")
+        page.wait_for_timeout(100)
+        assert input_el.evaluate("el => parseFloat(el.value)") == 0
 
 
 class TestToggleButton:

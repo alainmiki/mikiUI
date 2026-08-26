@@ -8,6 +8,8 @@ import pytest
 
 from mikiui import Div, MikiApp
 from mikiui.backend.server import create_app
+from mikiui.components import BottomSheet
+from mikiui.widgets import Drawer, Dial
 
 
 def _create_test_app() -> MikiApp:
@@ -16,7 +18,42 @@ def _create_test_app() -> MikiApp:
 
     @app.get("/")
     def home():
-        return Div("Hello E2E")
+        from mikiui import Div, P, Button, H4
+        return Div(
+            Div("Hello E2E"),
+            Div(
+                Button("Open Drawer", onclick="mikiDrawer.open(document.querySelector('.test-drawer'))"),
+                Drawer(
+                    Div(
+                        H4("Test Drawer"),
+                        P("This is a test drawer accessible via JS API."),
+                        Button("Close", onclick="mikiDrawer.close(document.querySelector('.test-drawer'))"),
+                    ),
+                    title="Drawer",
+                    side="left",
+                    open=False,
+                    class_="test-drawer",
+                ),
+                style="margin: 1rem",
+            ),
+            Div(
+                Button("Open Bottom Sheet", onclick="mikiBottomSheet.open(document.querySelector('.test-bottomsheet'))"),
+                BottomSheet(
+                    Div(
+                        P("This is a test bottom sheet."),
+                        Button("Close", onclick="mikiBottomSheet.close(document.querySelector('.test-bottomsheet'))"),
+                    ),
+                    title="Bottom Sheet",
+                    size="md",
+                    class_="test-bottomsheet",
+                ),
+                style="margin: 1rem",
+            ),
+            Div(
+                Dial(value=50, min=0, max=100, step=5, size=140),
+                style="margin: 1rem",
+            ),
+        )
 
     @app.get("/data")
     def data():

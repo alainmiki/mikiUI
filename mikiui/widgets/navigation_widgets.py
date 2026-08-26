@@ -41,11 +41,18 @@ class Drawer(Component):
         Show a close button in the header.
     open : bool
         Initial open state.
+    open_side : str or None
+        Override the slide-in direction.  When set, the drawer panel
+        stays on ``side`` but animates in from ``open_side``.  E.g.
+        ``side="left", open_side="right"`` anchors the panel to the left
+        edge while sliding it in from the right.
+
     **attrs : Additional HTML attributes.
 
     Example
     -------
     >>> Drawer("Content", title="Quick Panel", side="left", open=True)
+    >>> Drawer("Content", title="Panel", side="left", open_side="right")
     """
 
     tag = "div"
@@ -58,6 +65,7 @@ class Drawer(Component):
         size: str = "md",
         closable: bool = True,
         open: bool = False,
+        open_side: str | None = None,
         **attrs: Any,
     ) -> None:
         if side not in ("left", "right", "top", "bottom"):
@@ -66,10 +74,17 @@ class Drawer(Component):
         if size not in ("sm", "md", "lg"):
             raise ValueError(f"size must be 'sm', 'md', or 'lg', got {size!r}")
 
+        if open_side is not None:
+            if open_side not in ("left", "right", "top", "bottom"):
+                raise ValueError(
+                    f"open_side must be 'left', 'right', 'top', or 'bottom', got {open_side!r}"
+                )
+            attrs.setdefault("data-miki-drawer-open-side", open_side)
+
         classes = f"miki-drawer miki-drawer-{side} miki-drawer-{size}"
         if open:
             classes += " miki-drawer-open"
-        attrs.setdefault("class_", classes)
+        attrs["class_"] = (attrs.get("class_", "") + " " + classes).strip()
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria-modal", "true")
         attrs.setdefault("aria-hidden", "true" if not open else "false")

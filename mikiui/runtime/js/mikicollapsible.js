@@ -30,15 +30,19 @@
       }
     },
 
-    toggle: function (el) {
-      if (el.classList.contains("miki-collapsible-open")) {
-        mikiCollapsible.close(el);
-      } else {
-        mikiCollapsible.open(el);
-      }
-    },
+     toggle: function (el) {
+       el = resolveEl(el);
+       if (!el) return;
+       if (el.classList.contains("miki-collapsible-open")) {
+         mikiCollapsible.close(el);
+       } else {
+         mikiCollapsible.open(el);
+       }
+     },
 
-    open: function (el) {
+     open: function (el) {
+       el = resolveEl(el);
+       if (!el) return;
       // Close siblings if within an accordion group
       var group = el.getAttribute("data-miki-accordion-group");
       if (group) {
@@ -71,7 +75,9 @@
       dispatch(el, "miki:collapsible:opened", {});
     },
 
-    close: function (el) {
+     close: function (el) {
+       el = resolveEl(el);
+       if (!el) return;
       el.classList.remove("miki-collapsible-open");
       el.classList.add("miki-collapsible-closed");
       el.setAttribute("data-miki-state", "closed");

@@ -39,7 +39,12 @@
       }
     },
 
-    show: function (dlg) {
+     show: function (dlg) {
+       var resolved = resolveEl(dlg);
+       if (!resolved) return;
+       var dialog = findClosest(resolved, "[data-miki-dialog=\"true\"]") || findClosest(resolved, "dialog");
+       if (!dialog) dialog = resolved;
+       dlg = dialog;
       // Save the currently-focused element so we can restore focus later
       var active = document.activeElement;
       if (active && active !== document.body && active.id) {
@@ -74,7 +79,12 @@
       dlg.dispatchEvent(new CustomEvent("miki:dialog:opened"));
     },
 
-    close: function (dlg) {
+     close: function (dlg) {
+       var resolved = resolveEl(dlg);
+       if (!resolved) return;
+       var dialog = findClosest(resolved, "[data-miki-dialog=\"true\"]") || findClosest(resolved, "dialog");
+       if (!dialog) dialog = resolved;
+       dlg = dialog;
       if (typeof dlg.close === "function") {
         dlg.close();
       } else {
@@ -96,13 +106,17 @@
       dlg.dispatchEvent(new CustomEvent("miki:dialog:closed"));
     },
 
-    toggle: function (dlg) {
-      if (dlg.open) {
-        mikiDialog.close(dlg);
-      } else {
-        mikiDialog.show(dlg);
-      }
-    }
+     toggle: function (dlg) {
+       var resolved = resolveEl(dlg);
+       if (!resolved) return;
+       var dialog = findClosest(resolved, "[data-miki-dialog=\"true\"]") || findClosest(resolved, "dialog");
+       if (!dialog) return;
+       if (dialog.open) {
+         mikiDialog.close(dialog);
+       } else {
+         mikiDialog.show(dialog);
+       }
+     }
   };
 
   window.mikiDialog = mikiDialog;

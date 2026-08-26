@@ -190,7 +190,8 @@ Navbar(
 
 ### Drawer
 
-A slide-in panel with modal overlay.
+A slide-in panel with modal overlay. Supports four sides, custom slide-in
+direction via `open_side`, and ESC/overlay/close-button dismissal.
 
 ```python
 from mikiui.widgets import Drawer
@@ -198,9 +199,11 @@ from mikiui.widgets import Drawer
 Drawer(
     Div("Settings content"),
     title="Settings",
-    side="right",   # left | right | top | bottom
-    size="md",      # sm | md | lg
-    closeable=True,
+    side="right",       # left | right | top | bottom  (panel anchor edge)
+    open_side="right",  # optional: override slide-in direction
+    size="md",          # sm | md | lg
+    closable=True,
+    open=False,
 )
 ```
 
@@ -210,9 +213,57 @@ Drawer(
 |-----------|------|---------|-------------|
 | `*content` | `Any` | — | Drawer body |
 | `title` | `str` | `None` | Header title |
-| `side` | `str` | `"left"` | Slide-in direction |
-| `size` | `str` | `"md"` | Drawer width |
-| `closeable` | `bool` | `True` | Show close button |
+| `side` | `str` | `"left"` | Edge the panel is anchored to |
+| `size` | `str` | `"md"` | Panel width (`sm`=240px, `md`=320px, `lg`=480px) |
+| `closable` | `bool` | `True` | Show close button |
+| `open` | `bool` | `False` | Initial open state |
+| `open_side` | `str\|None` | `None` | Override slide-in direction (e.g. `side="left"` with `open_side="right"`) |
+
+**JS API:**
+
+```javascript
+// You can pass a CSS selector string, ID, or a DOM element
+mikiDrawer.open('.my-drawer')     // opens
+mikiDrawer.close('#drawer-1')     // closes
+mikiDrawer.toggle('.my-drawer')   // toggles
+```
+
+---
+
+### BottomSheet
+
+A bottom sheet overlay that slides up from the bottom of the screen.
+Supports drag-to-dismiss on touch devices, backdrop click, and ESC to close.
+
+```python
+from mikiui.components import BottomSheet
+
+BottomSheet(
+    Div("Sheet content"),
+    title="My Sheet",
+    size="md",       # sm | md | lg | full
+    closable=True,
+    on_close="handleClose",
+)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `*children` | `Any` | — | Sheet content |
+| `title` | `str` | `None` | Header title |
+| `closable` | `bool` | `True` | Show close button and enable backdrop/ESC close |
+| `size` | `str` | `"md"` | Sheet width (`sm`=384px, `md`=640px, `lg`=90vw, `full`=100vw) |
+| `on_open` | `str` | `None` | Callback name invoked on open |
+| `on_close` | `str` | `None` | Callback name invoked on close |
+
+**JS API:**
+
+```javascript
+mikiBottomSheet.open('.my-sheet')
+mikiBottomSheet.close('#sheet-1')
+```
 
 ---
 
@@ -605,12 +656,39 @@ ColorPicker(label="Pick Color:", name="color", default="#3b82f6")
 
 ### Dial
 
-A circular dial / knob control.
+A circular dial / knob control with click-to-value, drag, and keyboard
+support. Smoothly animates via CSS transforms.
 
 ```python
 from mikiui.widgets import Dial
 
-Dial(value=50, min=0, max=100)
+Dial(
+    value=50,
+    min=0,
+    max=100,
+    step=5,
+    size=140,     # diameter in pixels
+    wrap="none",  # none | soft | hard
+)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `value` | `float` | `50` | Current value |
+| `min` | `float` | `0` | Minimum value |
+| `max` | `float` | `100` | Maximum value |
+| `step` | `float` | `1` | Increment step |
+| `size` | `int` | `140` | Dial diameter in pixels |
+| `wrap` | `str` | `"none"` | Wrap behavior at extremes |
+
+**JS API:**
+
+```javascript
+var dial = document.querySelector('[data-miki-dial="true"]');
+mikiDial.setValue(dial, 75);   // set value programmatically
+var current = mikiDial.getValue(dial);  // get current value
 ```
 
 ---

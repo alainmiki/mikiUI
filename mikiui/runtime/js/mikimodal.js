@@ -41,49 +41,55 @@
       });
     },
 
-    show: function (el) {
-      el.style.display = "flex";
-      el.setAttribute("data-miki-modal-open", "true");
-      el.setAttribute("aria-hidden", "false");
+     show: function (el) {
+       el = resolveEl(el);
+       if (!el) return;
 
-      // Focus trap (skip if already trapped)
-      if (el.dataset.mikiFocusTrapped !== "true") {
-        miki.focusTrap(el);
-      }
+       el.style.display = "flex";
+       el.setAttribute("data-miki-modal-open", "true");
+       el.setAttribute("aria-hidden", "false");
 
-      var focusable = el.querySelectorAll(
-        'a[href], input:not([disabled]):not([type="hidden"]), ' +
-        'select:not([disabled]), textarea:not([disabled]), ' +
-        'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusable.length > 0) {
-        focusable[0].focus();
-      }
+       if (el.dataset.mikiFocusTrapped !== "true") {
+         miki.focusTrap(el);
+       }
 
-      el.dispatchEvent(new CustomEvent("miki:modal:opened"));
-    },
+       var focusable = el.querySelectorAll(
+         'a[href], input:not([disabled]):not([type="hidden"]), ' +
+         'select:not([disabled]), textarea:not([disabled]), ' +
+         'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+       );
+       if (focusable.length > 0) {
+         focusable[0].focus();
+       }
 
-    close: function (el) {
-      el.style.display = "none";
-      el.setAttribute("data-miki-modal-open", "false");
-      el.setAttribute("aria-hidden", "true");
-      el.dataset.mikiFocusTrapped = "false";
-      // Restore focus to the element that opened the modal
-      if (el.dataset.mikiFocusTrapReturn) {
-        var ret = document.getElementById(el.dataset.mikiFocusTrapReturn);
-        if (ret) ret.focus();
-        delete el.dataset.mikiFocusTrapReturn;
-      }
-      el.dispatchEvent(new CustomEvent("miki:modal:closed"));
-    },
+       el.dispatchEvent(new CustomEvent("miki:modal:opened"));
+     },
 
-    toggle: function (el) {
-      if (el.getAttribute("data-miki-modal-open") === "true") {
-        mikiModal.close(el);
-      } else {
-        mikiModal.show(el);
-      }
-    }
+     close: function (el) {
+       el = resolveEl(el);
+       if (!el) return;
+
+       el.style.display = "none";
+       el.setAttribute("data-miki-modal-open", "false");
+       el.setAttribute("aria-hidden", "true");
+       el.dataset.mikiFocusTrapped = "false";
+       if (el.dataset.mikiFocusTrapReturn) {
+         var ret = document.getElementById(el.dataset.mikiFocusTrapReturn);
+         if (ret) ret.focus();
+         delete el.dataset.mikiFocusTrapReturn;
+       }
+       el.dispatchEvent(new CustomEvent("miki:modal:closed"));
+     },
+
+     toggle: function (el) {
+       el = resolveEl(el);
+       if (!el) return;
+       if (el.getAttribute("data-miki-modal-open") === "true") {
+         mikiModal.close(el);
+       } else {
+         mikiModal.show(el);
+       }
+     }
   };
 
   window.mikiModal = mikiModal;
