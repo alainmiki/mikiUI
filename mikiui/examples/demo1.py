@@ -90,15 +90,15 @@ def home():
             ),
             Div(
                 Div(
-                    Button("Open Drawer", onclick="mikiDrawer.open(document.querySelector('.demo-drawer'))", class_="mb-2"),
-                    Button("Open Right Drawer", onclick="mikiDrawer.open(document.querySelector('.demo-drawer-right'))", class_="mb-2"),
-                    Button("Open Bottom Sheet", onclick="mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))", class_="mb-2"),
+                    Button("Open Drawer", onclick="mikiDrawer.open('.demo-drawer')", class_="mb-2"),
+                    Button("Open Right Drawer", onclick="mikiDrawer.open('.demo-drawer-right')", class_="mb-2"),
+                    Button("Open Bottom Sheet", onclick="mikiBottomSheet.open('.demo-bottomsheet')", class_="mb-2"),
                     class_="flex gap-2",
                 ),
                 Drawer(
                     Div(
                         P("This drawer slides in from the left. Use ESC, overlay click, or the close button to dismiss it."),
-                        Button("Close", onclick="mikiDrawer.close(document.querySelector('.demo-drawer'))"),
+                        Button("Close", onclick="mikiDrawer.close('.demo-drawer')"),
                     ),
                     title="Slide-in Drawer",
                     side="left",

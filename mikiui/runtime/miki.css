@@ -805,23 +805,21 @@ nav {
   transition: opacity 0.2s ease;
   z-index: 1;
 }
-.miki-drawer-overlay::before {
-  content: "";
-}
 .miki-drawer-open .miki-drawer-overlay {
   opacity: 1;
 }
- .miki-drawer-panel {
-   position: relative;
-   z-index: 2;
-   background: var(--miki-surface, #fff);
-   border-radius: 0;
-   box-shadow: var(--miki-shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
-   transform: translateX(-100%);
-   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-   overflow-y: auto;
-   overflow-x: hidden;
- }
+.miki-drawer-panel {
+  position: absolute;
+  z-index: 2;
+  background: var(--miki-surface, #fff);
+  border-radius: 0;
+  box-shadow: var(--miki-shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
+}
 .miki-drawer-open .miki-drawer-panel {
   transform: translateX(0);
 }
@@ -833,6 +831,7 @@ nav {
 
 /* Drawer side positions — panel edge position and default closed transform */
 .miki-drawer-left .miki-drawer-panel {
+  position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
@@ -841,6 +840,7 @@ nav {
   transform: translateX(-100%);
 }
 .miki-drawer-right .miki-drawer-panel {
+  position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
@@ -849,6 +849,7 @@ nav {
   transform: translateX(100%);
 }
 .miki-drawer-top .miki-drawer-panel {
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -858,6 +859,7 @@ nav {
   transform: translateY(-100%);
 }
 .miki-drawer-bottom .miki-drawer-panel {
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
@@ -3196,16 +3198,18 @@ textarea {
   align-items: center;
   justify-content: center;
 }
-/* Progress overlay: shows filled arc from min to current value */
 .miki-dial-progress {
   position: absolute;
   inset: 4px;
   border-radius: 50%;
+  pointer-events: none;
+}
+.miki-dial-progress[data-miki-dial-progress="true"] {
   background: conic-gradient(
     var(--miki-accent, #6366f1) 0% 0%,
     transparent 0% 100%
   );
-  pointer-events: none;
+  transition: background 0.1s ease-out;
 }
 .miki-dial-knob {
   position: absolute;
@@ -3214,13 +3218,13 @@ textarea {
   background: var(--miki-accent);
   border-radius: 8px;
   transform-origin: center bottom;
-  transition: transform 0.15s ease;
+  transition: transform 0.1s ease-out;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   z-index: 2;
   cursor: grab;
-  cursor: grab;
+  will-change: transform;
 }
 .miki-dial-knob:active {
   cursor: grabbing;

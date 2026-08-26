@@ -907,18 +907,18 @@ def kitchen():
                 H3("Drawer"),
                 Div(
                     Div(
-                        Button("Open Left", onclick="mikiDrawer.open(document.querySelector('.ks-drawer-left'))", class_="mr-2"),
-                        Button("Open Right", onclick="mikiDrawer.open(document.querySelector('.ks-drawer-right'))", class_="mr-2"),
-                        Button("Open Top", onclick="mikiDrawer.open(document.querySelector('.ks-drawer-top'))", class_="mr-2"),
-                        Button("Open Bottom", onclick="mikiDrawer.open(document.querySelector('.ks-drawer-bottom'))", class_="mr-2"),
-                        Button("Open Override", onclick="mikiDrawer.open(document.querySelector('.ks-drawer-override'))"),
+                        Button("Open Left", onclick="mikiDrawer.open('.ks-drawer-left')", class_="mr-2"),
+                        Button("Open Right", onclick="mikiDrawer.open('.ks-drawer-right')", class_="mr-2"),
+                        Button("Open Top", onclick="mikiDrawer.open('.ks-drawer-top')", class_="mr-2"),
+                        Button("Open Bottom", onclick="mikiDrawer.open('.ks-drawer-bottom')", class_="mr-2"),
+                        Button("Open Override", onclick="mikiDrawer.open('.ks-drawer-override')"),
                         class_="flex gap-2 mb-2",
                     ),
                     Drawer(
                         Div(
                             H4("Left Drawer"),
                             P("Slides in from the left edge. Supports ESC, overlay click, close button."),
-                            Button("Close", onclick="mikiDrawer.close(document.querySelector('.ks-drawer-left'))", class_="mt-2"),
+                            Button("Close", onclick="mikiDrawer.close('.ks-drawer-left')", class_="mt-2"),
                             P("Try the buttons above to open different drawer sides.", class_="mt-3 text-sm"),
                         ),
                         title="Left Drawer",
@@ -931,7 +931,7 @@ def kitchen():
                         Div(
                             H4("Right Drawer"),
                             P("Slides in from the right edge."),
-                            Button("Close", onclick="mikiDrawer.close(document.querySelector('.ks-drawer-right'))", class_="mt-2"),
+                            Button("Close", onclick="mikiDrawer.close('.ks-drawer-right')", class_="mt-2"),
                         ),
                         title="Right Drawer",
                         side="right",
@@ -943,7 +943,7 @@ def kitchen():
                         Div(
                             H4("Top Drawer"),
                             P("Slides down from the top edge."),
-                            Button("Close", onclick="mikiDrawer.close(document.querySelector('.ks-drawer-top'))", class_="mt-2"),
+                            Button("Close", onclick="mikiDrawer.close('.ks-drawer-top')", class_="mt-2"),
                         ),
                         title="Top Drawer",
                         side="top",
@@ -954,7 +954,7 @@ def kitchen():
                         Div(
                             H4("Bottom Drawer"),
                             P("Slides up from the bottom edge."),
-                            Button("Close", onclick="mikiDrawer.close(document.querySelector('.ks-drawer-bottom'))", class_="mt-2"),
+                            Button("Close", onclick="mikiDrawer.close('.ks-drawer-bottom')", class_="mt-2"),
                         ),
                         title="Bottom Drawer",
                         side="bottom",
@@ -965,7 +965,7 @@ def kitchen():
                         Div(
                             H4("Open-side Override"),
                             P("This drawer uses side=left but opens from the right via open_side=right."),
-                            Button("Close", onclick="mikiDrawer.close(document.querySelector('.ks-drawer-override'))", class_="mt-2"),
+                            Button("Close", onclick="mikiDrawer.close('.ks-drawer-override')", class_="mt-2"),
                         ),
                         title="Override Drawer",
                         side="left",
@@ -977,7 +977,7 @@ def kitchen():
                         Div(
                             H4("Bottom Drawer"),
                             P("Slides up from the bottom edge."),
-                            Button("Close", onclick="mikiDrawer.close(document.querySelector('.ks-drawer-bottom'))", class_="mt-2"),
+                            Button("Close", onclick="mikiDrawer.close('.ks-drawer-bottom')", class_="mt-2"),
                         ),
                         title="Bottom Drawer",
                         side="bottom",
@@ -989,15 +989,15 @@ def kitchen():
                 H3("Bottom Sheet"),
                 Div(
                     Div(
-                        Button("Open Sheet (md)", onclick="mikiBottomSheet.open(document.querySelector('.ks-bottomsheet'))", class_="mr-2"),
-                        Button("Open Sheet (full)", onclick="mikiBottomSheet.open(document.querySelector('.ks-bottomsheet-full'))", class_="mr-2"),
+                        Button("Open Sheet (md)", onclick="mikiBottomSheet.open('.ks-bottomsheet')", class_="mr-2"),
+                        Button("Open Sheet (full)", onclick="mikiBottomSheet.open('.ks-bottomsheet-full')", class_="mr-2"),
                     ),
                     BottomSheet(
                         Div(
                             H4("Bottom Sheet (md)"),
                             P("This sheet slides up from the bottom."),
                             P("Drag the handle down to dismiss, or click the backdrop.", class_="text-sm"),
-                            Button("Close", onclick="mikiBottomSheet.close(document.querySelector('.ks-bottomsheet'))", class_="mt-2"),
+                            Button("Close", onclick="mikiBottomSheet.close('.ks-bottomsheet')", class_="mt-2"),
                         ),
                         title="Bottom Sheet",
                         size="md",
@@ -1008,7 +1008,7 @@ def kitchen():
                         Div(
                             H4("Full-screen Sheet"),
                             P("This sheet takes up the full screen — ideal for mobile forms or detail views."),
-                            Button("Close", onclick="mikiBottomSheet.close(document.querySelector('.ks-bottomsheet-full'))", class_="mt-2"),
+                            Button("Close", onclick="mikiBottomSheet.close('.ks-bottomsheet-full')", class_="mt-2"),
                         ),
                         title="Full Sheet",
                         size="full",

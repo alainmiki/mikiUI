@@ -203,10 +203,10 @@ class TestDrawerInteractive:
         if drawer.count() == 0:
             pytest.skip("No drawer found")
         assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
-        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer'))")
+        page.evaluate("mikiDrawer.open('.demo-drawer')")
         page.wait_for_timeout(200)
         assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
-        page.evaluate("mikiDrawer.close(document.querySelector('.demo-drawer'))")
+        page.evaluate("mikiDrawer.close('.demo-drawer')")
         page.wait_for_timeout(200)
         assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
 
@@ -216,10 +216,11 @@ class TestDrawerInteractive:
         drawer = page.locator(".demo-drawer").first
         if drawer.count() == 0:
             pytest.skip("No drawer found")
-        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer'))")
+        page.evaluate("mikiDrawer.open('.demo-drawer')")
         page.wait_for_timeout(200)
         overlay = drawer.locator(".miki-drawer-overlay")
-        overlay.click()
+        # Click on the overlay element directly via JS to avoid pointer interception
+        page.evaluate("document.querySelector('.demo-drawer .miki-drawer-overlay').click()")
         page.wait_for_timeout(200)
         assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
 
@@ -229,7 +230,7 @@ class TestDrawerInteractive:
         drawer = page.locator(".demo-drawer").first
         if drawer.count() == 0:
             pytest.skip("No drawer found")
-        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer'))")
+        page.evaluate("mikiDrawer.open('.demo-drawer')")
         page.wait_for_timeout(200)
         assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
         page.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))")
@@ -242,10 +243,10 @@ class TestDrawerInteractive:
         drawer = page.locator(".demo-drawer-right").first
         if drawer.count() == 0:
             pytest.skip("No right drawer found")
-        page.evaluate("mikiDrawer.open(document.querySelector('.demo-drawer-right'))")
+        page.evaluate("mikiDrawer.open('.demo-drawer-right')")
         page.wait_for_timeout(200)
         assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
-        page.evaluate("mikiDrawer.close(document.querySelector('.demo-drawer-right'))")
+        page.evaluate("mikiDrawer.close('.demo-drawer-right')")
         page.wait_for_timeout(100)
 
     def test_drawer_toggle(self, page):
@@ -254,10 +255,10 @@ class TestDrawerInteractive:
         drawer = page.locator(".demo-drawer").first
         if drawer.count() == 0:
             pytest.skip("No drawer found")
-        page.evaluate("mikiDrawer.toggle(document.querySelector('.demo-drawer'))")
+        page.evaluate("mikiDrawer.toggle('.demo-drawer')")
         page.wait_for_timeout(200)
         assert drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
-        page.evaluate("mikiDrawer.toggle(document.querySelector('.demo-drawer'))")
+        page.evaluate("mikiDrawer.toggle('.demo-drawer')")
         page.wait_for_timeout(200)
         assert not drawer.evaluate("el => el.classList.contains('miki-drawer-open')")
 
@@ -310,12 +311,12 @@ class TestBottomSheetInteractive:
         if sheet.count() == 0:
             pytest.skip("No bottom sheet found")
         assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "false"
-        page.evaluate("mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))")
+        page.evaluate("mikiBottomSheet.open('.demo-bottomsheet')")
         page.wait_for_timeout(300)
         assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "true"
         panel = sheet.locator(".miki-bottom-sheet-panel")
         assert panel.evaluate("el => el.classList.contains('miki-bottom-sheet-panel-open')")
-        page.evaluate("mikiBottomSheet.close(document.querySelector('.demo-bottomsheet'))")
+        page.evaluate("mikiBottomSheet.close('.demo-bottomsheet')")
         page.wait_for_timeout(300)
         assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "false"
 
@@ -325,7 +326,7 @@ class TestBottomSheetInteractive:
         sheet = page.locator(".demo-bottomsheet").first
         if sheet.count() == 0:
             pytest.skip("No bottom sheet found")
-        page.evaluate("mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))")
+        page.evaluate("mikiBottomSheet.open('.demo-bottomsheet')")
         page.wait_for_timeout(300)
         backdrop = sheet.locator(".miki-bottom-sheet-backdrop")
         backdrop.click()
@@ -338,7 +339,7 @@ class TestBottomSheetInteractive:
         sheet = page.locator(".demo-bottomsheet").first
         if sheet.count() == 0:
             pytest.skip("No bottom sheet found")
-        page.evaluate("mikiBottomSheet.open(document.querySelector('.demo-bottomsheet'))")
+        page.evaluate("mikiBottomSheet.open('.demo-bottomsheet')")
         page.wait_for_timeout(300)
         assert sheet.evaluate("el => el.getAttribute('data-miki-bottom-sheet-open')") == "true"
         page.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))")

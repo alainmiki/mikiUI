@@ -150,12 +150,12 @@ def data():
             ),
         ),
         Group("Drawer Example",
-            Button("Open Drawer", onclick="mikiDrawer.open(document.querySelector('.demo-drawer'))"),
-            Button("Toggle Drawer", onclick="mikiDrawer.toggle(document.querySelector('.demo-drawer'))", class_="ml-2"),
+            Button("Open Drawer", onclick="mikiDrawer.open('.demo-drawer')"),
+            Button("Toggle Drawer", onclick="mikiDrawer.toggle('.demo-drawer')", class_="ml-2"),
             Drawer(
                 Div(
                     P("This is the drawer content. Close via ESC, overlay, or ✕ button."),
-                    Button("Close", onclick="mikiDrawer.close(document.querySelector('.demo-drawer'))"),
+                    Button("Close", onclick="mikiDrawer.close('.demo-drawer')"),
                 ),
                 title="Drawer",
                 side="left",

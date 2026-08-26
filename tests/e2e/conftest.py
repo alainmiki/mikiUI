@@ -22,12 +22,12 @@ def _create_test_app() -> MikiApp:
         return Div(
             Div("Hello E2E"),
             Div(
-                Button("Open Drawer", onclick="mikiDrawer.open(document.querySelector('.test-drawer'))"),
+                Button("Open Drawer", onclick="mikiDrawer.open('.test-drawer')"),
                 Drawer(
                     Div(
                         H4("Test Drawer"),
                         P("This is a test drawer accessible via JS API."),
-                        Button("Close", onclick="mikiDrawer.close(document.querySelector('.test-drawer'))"),
+                        Button("Close", onclick="mikiDrawer.close('.test-drawer')"),
                     ),
                     title="Drawer",
                     side="left",
@@ -37,11 +37,11 @@ def _create_test_app() -> MikiApp:
                 style="margin: 1rem",
             ),
             Div(
-                Button("Open Bottom Sheet", onclick="mikiBottomSheet.open(document.querySelector('.test-bottomsheet'))"),
+                Button("Open Bottom Sheet", onclick="mikiBottomSheet.open('.test-bottomsheet')"),
                 BottomSheet(
                     Div(
                         P("This is a test bottom sheet."),
-                        Button("Close", onclick="mikiBottomSheet.close(document.querySelector('.test-bottomsheet'))"),
+                        Button("Close", onclick="mikiBottomSheet.close('.test-bottomsheet')"),
                     ),
                     title="Bottom Sheet",
                     size="md",

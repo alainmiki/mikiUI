@@ -57,11 +57,10 @@
         }
 
         if (progress) {
-          var pct2 = ((val - min) / (max - min)) * 100;
           progress.style.background =
             "conic-gradient(" +
-            "var(--miki-accent, #6366f1) 0% " + pct2 + "%," +
-            "var(--miki-border, #e2e8f0) " + pct2 + "% 100%)";
+            "var(--miki-accent, #6366f1) 0% " + pct + "%," +
+            "var(--miki-border, #e2e8f0) " + pct + "% 100%)";
         }
 
         if (dispatchEvent) {
@@ -148,15 +147,20 @@
       on(input, "keydown", onKeyDown);
 
       if (track) {
-        on(track, "click", onTrackClick);
         on(track, "touchstart", onTrackClick, { passive: false });
         on(track, "mousedown", function (e) {
           e.preventDefault();
           onTrackClick(e);
+          var rafId = 0;
           function onDragMove(ev) {
-            onTrackClick(ev);
+            ev.preventDefault();
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(function () {
+              onTrackClick(ev);
+            });
           }
           function onDragEnd() {
+            if (rafId) cancelAnimationFrame(rafId);
             off(document, "mousemove", onDragMove);
             off(document, "mouseup", onDragEnd);
             off(document, "touchmove", onDragMove);
