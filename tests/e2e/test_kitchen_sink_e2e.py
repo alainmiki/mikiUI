@@ -4,6 +4,8 @@ Run with:  pytest tests/e2e/test_kitchen_sink_e2e.py -v
 """
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import sync_playwright, expect
 from starlette.testclient import TestClient
@@ -64,7 +66,9 @@ def page(browser, server):
             html = html.replace("</head>", f"{inject}</head>")
         else:
             html = inject + html
-        p.set_content(html)
+        html = re.sub(r'<script src="https://cdn\.tailwindcss\.com"></script>', '', html)
+        html = re.sub(r'<link rel="stylesheet" href="https://cdn\.jsdelivr\.net[^"]*">', '', html)
+        p.set_content(html, wait_until="domcontentloaded")
         return p
 
     p.load = load
@@ -88,7 +92,9 @@ def touch_page(browser, server):
             html = html.replace("</head>", f"{inject}</head>")
         else:
             html = inject + html
-        p.set_content(html)
+        html = re.sub(r'<script src="https://cdn\.tailwindcss\.com"></script>', '', html)
+        html = re.sub(r'<link rel="stylesheet" href="https://cdn\.jsdelivr\.net[^"]*">', '', html)
+        p.set_content(html, wait_until="domcontentloaded")
         return p
 
     p.load = load

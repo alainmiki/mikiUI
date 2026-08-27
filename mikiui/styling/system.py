@@ -485,10 +485,9 @@ def _tailwind_runtime_html(
     parts: list[str] = []
 
     if config.use_cdn:
-        cdn_url = "https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css"
-        parts.append(f'<link rel="stylesheet" href="{cdn_url}">')
+        parts.append('<script src="https://cdn.tailwindcss.com"></script>')
         if config.daisyui:
-            daisyui_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css"
+            daisyui_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css"
             parts.append(f'<link rel="stylesheet" href="{daisyui_cdn}">')
     else:
         tailwind_css = project_dir / "mikiui" / "runtime" / "themes" / "tailwind.css"

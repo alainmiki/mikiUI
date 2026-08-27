@@ -47,7 +47,7 @@ BASE_TEMPLATE = """<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{page_title}</title>
   {favicon}
-  {base_css}
+  {tailwind_script}
   {theme_links}
   {theme_inline_css}
   {theme_vars}
@@ -110,7 +110,7 @@ def _theme_styles(
         "links": [],
         "body_attrs": "",
         "variables": "",
-        "js_tags": "",
+        "js_tags": [],
         "theme_obj": theme,
     }
 
@@ -130,37 +130,31 @@ def _theme_styles(
             return f"/_miki/runtime/themes/{_esc(filename)}"
         return css_path
 
-    # Color theme CSS is served as a static file via /_miki/runtime/themes/<name>.css
-    # miki.css is always loaded for component styles; theme CSS files only
-    # override :root variables for color themes.
-    theme_css_url = None
+    # Framework CSS must be loaded FIRST for proper cascade.
+    # For Tailwind: loads Tailwind CSS (local) or Tailwind JS (CDN).
+    # For plain: no framework CSS to load.
     if effective_fw == "tailwind":
-        pass
-    elif theme.css_path and os.path.isfile(theme.css_path):
+        if style_mode == "local":
+            result["links"].append(_style_tag("/_miki/runtime/themes/tailwind.css"))
+        else:
+            result["js_tags"].append('<script src="https://cdn.tailwindcss.com"></script>')
+            if daisyui:
+                result["links"].append(_style_tag(
+                    "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css"
+                ))
+
+    # Color theme CSS loads after framework CSS (Tailwind/DaisyUI) but before
+    # miki.css. Sets --miki-* CSS variables that widgets rely on.
+    # For plain mode, theme CSS is always loaded.
+    # For Tailwind mode, theme CSS is also loaded to provide color variables.
+    theme_css_url = None
+    if theme.css_path and os.path.isfile(theme.css_path):
         theme_css_url = _theme_href(theme.css_path)
-    elif theme.framework is None or theme.framework == "css" or effective_fw == "plain":
+    elif effective_fw in (None, "css", "plain", "tailwind"):
         theme_css_url = f"/_miki/runtime/themes/{_esc(theme_name)}.css"
 
     if theme_css_url:
         result["links"].append(_style_tag(theme_css_url))
-
-    # Framework CSS links (Tailwind)
-    # miki.css is always loaded for component styles, so we only load the
-    # Tailwind CDN for utility classes when using the tailwind framework.
-    if effective_fw == "tailwind":
-        if style_mode == "local":
-            if daisyui:
-                result["links"].append(
-                    '<link rel="stylesheet" '
-                    'href="https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css" '
-                    'media="all" />'
-                )
-        else:
-            cdn_url = "https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css"
-            result["links"].append(_style_tag(cdn_url))
-            if daisyui:
-                daisyui_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css"
-                result["links"].append(_style_tag(daisyui_cdn))
 
     # Body classes/data attributes
     extra = list(theme.extra_classes) or []
@@ -267,34 +261,50 @@ def render_page(
     if effective_framework is None and active_theme_obj:
         effective_framework = getattr(active_theme_obj, "framework", None)
 
-    # Determine which base CSS to load:
-    # - Always load miki.css for component styles and base variables.
-    # - Theme CSS files (light.css, tailwind.css, etc.) only set --miki-*
-    #   custom properties on :root and provide minimal theme-specific vars.
-    base_css = _style_tag("/_miki/runtime/miki.css")
     theme_attr = f'data-miki-theme="{_esc(theme)}"'
 
     # Build the HEAD content
-    links = "\n".join(theme_data.get("links", []))
+    theme_links = "\n".join(theme_data.get("links", []))
     inline = "\n".join(theme_data.get("inline_css", []))
     vars_css = theme_data.get("variables", "")
-    js_tags = "\n".join(theme_data.get("js_tags", []))
 
     scripts = _script_tags(runtime_scripts)
+
+    # CSS Loading Strategy:
+    # - miki.css contains base styles, @layer declarations, and widget styles.
+    # - For Tailwind CDN: The Tailwind JS script must come first in <head> to
+    #   process HTML and inject utility CSS. Tailwind's style attribute is added
+    #   via a dedicated placeholder.
+    # - For Tailwind Local / Plain: miki.css provides all widget styles.
+    # - Widget-specific CSS (splitview, etc.) is discovered via static_assets.
+    miki_css = _style_tag("/_miki/runtime/miki.css")
+    all_links = f"{theme_links}\n{miki_css}"
+
+    # Extract Tailwind CDN script if present (it should come before CSS)
+    js_tags_list = theme_data.get("js_tags", [])
+    tailwind_script = ""
+    other_js_tags = ""
+    if js_tags_list:
+        all_js = "\n".join(js_tags_list)
+        # If there's a Tailwind CDN script, put it first
+        if "tailwindcss.com" in all_js:
+            tailwind_script = all_js + "\n"
+        else:
+            other_js_tags = all_js + "\n"
 
     return BASE_TEMPLATE.format(
         html_lang=_esc(lang),
         page_title=_esc(title),
         favicon=favicon_tag,
-        base_css=base_css,
-        theme_links=links,
+        tailwind_script=tailwind_script,
+        theme_links=all_links,
         theme_inline_css=inline,
         theme_vars=vars_css,
         theme_attr=theme_attr,
         body_class_attr=theme_data.get("body_attrs", ""),
         head_extra=head_extra,
         runtime_scripts=scripts,
-        js_tags=js_tags,
+        js_tags=other_js_tags,
         body=body,
     )
 

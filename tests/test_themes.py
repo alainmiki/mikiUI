@@ -84,7 +84,7 @@ def test_render_page_with_tailwind_framework():
     """Rendering with framework=tailwind should load miki.css for components + CDN for utilities."""
     page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind")
     assert "miki.css" in page
-    assert "tailwind.min.css" in page
+    assert "cdn.tailwindcss.com" in page
     assert 'data-theme="mikiui-dark"' in page
 
 
@@ -105,6 +105,64 @@ def test_app_set_theme_invalid_raises():
     app = MikiApp()
     with pytest.raises(ValueError, match="Unknown theme"):
         app.set_theme("nonexistent")
+
+
+def test_render_page_tailwind_loads_widget_css():
+    """miki.css must be loaded in Tailwind mode for widget styles."""
+    from mikiui.components import Button
+    page = render_page(Button("Click me"), title="Test", theme="dark", framework="tailwind")
+    assert "miki.css" in page
+    assert "miki-btn" in page  # Widget class reference in button
+
+
+def test_render_page_tailwind_css_order():
+    """CSS order: Tailwind/DaisyUI -> theme -> miki.css."""
+    page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind", daisyui=True)
+    tw_pos = page.find("tailwindcss.com")
+    daisy_pos = page.find("daisyui")
+    theme_pos = page.find("/themes/dark.css")
+    miki_pos = page.find("miki.css")
+    # Tailwind CDN script should come first in head
+    assert tw_pos < daisy_pos, "Tailwind should load before DaisyUI"
+    assert daisy_pos < theme_pos, "Theme CSS should load after DaisyUI"
+    assert theme_pos < miki_pos, "miki.css should load after theme CSS"
+
+
+def test_render_page_plain_css_order():
+    """CSS order: theme -> miki.css."""
+    page = render_page(Div("test"), title="Test", theme="light", framework="plain")
+    theme_pos = page.find("/themes/light.css")
+    miki_pos = page.find("miki.css")
+    assert theme_pos < miki_pos, "miki.css should load after theme CSS"
+
+
+def test_render_page_tailwind_local_includes_widget_css():
+    """miki.css must be present even in local Tailwind mode."""
+    page = render_page(Div("test"), title="Test", theme="light", framework="tailwind", style_mode="local")
+    assert "miki.css" in page
+    assert "/themes/tailwind.css" in page or "tailwind.min.css" in page.lower() or "tailwind.css" in page
+
+
+def test_render_page_theme_css_in_tailwind_mode():
+    """Theme color CSS must be loaded even in Tailwind mode for CSS variables."""
+    page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind")
+    assert 'data-theme="mikiui-dark"' in page
+    assert "/themes/dark.css" in page
+
+
+def test_render_page_css_variables_injected():
+    """CSS variables should be injected from theme settings."""
+    from mikiui.themes import Theme, register_theme
+    t = Theme(name="varstest", source="custom", variables={"--miki-accent": "#ff0000"})
+    try:
+        register_theme(t)
+        page = render_page(Div("test"), title="Test", theme="varstest", framework="plain")
+        assert "--miki-accent: #ff0000" in page or "--miki-accent:#ff0000" in page
+    finally:
+        # Clean up
+        from mikiui.themes import _theme_registry
+        if "varstest" in _theme_registry:
+            del _theme_registry["varstest"]
 
 
 def test_app_register_theme():

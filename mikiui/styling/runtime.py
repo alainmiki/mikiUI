@@ -134,10 +134,9 @@ def css_head_block(
     if framework == "tailwind":
         use_cdn = runtime == "cdn" or mode == "dev"
         if use_cdn:
-            cdn = "https://cdn.jsdelivr.net/npm/tailwindcss@4/dist/tailwind.min.css"
-            parts.append(f'<link rel="stylesheet" href="{cdn}">')
+            parts.append('<script src="https://cdn.tailwindcss.com"></script>')
             if daisyui:
-                daisy_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.min.css"
+                daisy_cdn = "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css"
                 parts.append(f'<link rel="stylesheet" href="{daisy_cdn}">')
         else:
             tw = project_dir / "_miki" / "runtime" / "themes" / "tailwind.css"
