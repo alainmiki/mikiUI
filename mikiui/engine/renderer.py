@@ -76,6 +76,50 @@ def _script_tag(src: str, defer: bool = True, type_: str | None = None) -> str:
     return f'  <script src="{_esc(src)}" {attrs}></script>'
 
 
+def _tailwind_config_script(theme_name: str, daisyui: bool = False, csp_nonce: str | None = None) -> str:
+    """Generate Tailwind v4 configuration via inline CSS (type="text/tailwindcss").
+    
+    Tailwind v4 dropped the ``tailwind.config = {}`` JavaScript API.  Configuration
+    now happens inside ``<style type="text/tailwindcss">`` blocks using the
+    ``@theme`` directive.  The browser CDN scans the DOM for utility classes
+    automatically, so no content paths are required.
+    """
+    from ..themes import get_theme
+    
+    theme = get_theme(theme_name)
+    theme_vars_lines: list[str] = []
+    if theme is not None:
+        for k, v in (theme.variables or {}).items():
+            if k.startswith("--miki-"):
+                tw_key = "--color-" + k[len("--miki-"):].replace("_", "-")
+                theme_vars_lines.append(f"  {tw_key}: {_esc(v)};")
+    
+    daisyui_theme = ""
+    if daisyui:
+        daisyui_theme = (
+            "\n  --color-primary: #3b82f6;\n"
+            "  --color-secondary: #60a5fa;\n"
+            "  --color-accent: #3b82f6;\n"
+            "  --color-neutral: #1e293b;\n"
+            "  --color-base-100: #0f172a;\n"
+            "  --color-base-200: #1e293b;\n"
+            "  --color-base-300: #334155;\n"
+        )
+    
+    nonce_attr = f' nonce="{_esc(csp_nonce)}"' if csp_nonce else ""
+    
+    all_vars = "\n".join(theme_vars_lines) + daisyui_theme
+    if not all_vars.strip():
+        return f'<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>'
+    
+    return f'''<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style{nonce_attr} type="text/tailwindcss">
+@theme {{
+{all_vars}
+}}
+</style>'''
+
+
 def _theme_styles(
     theme_name: str,
     framework: str | None = None,
@@ -137,10 +181,14 @@ def _theme_styles(
         if style_mode == "local":
             result["links"].append(_style_tag("/_miki/runtime/themes/tailwind.css"))
         else:
-            result["js_tags"].append('<script src="https://cdn.tailwindcss.com"></script>')
+            # CDN mode: DaisyUI v5 requires Tailwind v4 (@tailwindcss/browser@4).
+            # The config sets content paths for class scanning. The CDN auto-scans
+            # the rendered DOM, so content paths document what should be scanned
+            # even though the browser CDN can only see the current page.
+            result["js_tags"].append(_tailwind_config_script(theme_name, daisyui=daisyui, csp_nonce=csp_nonce))
             if daisyui:
                 result["links"].append(_style_tag(
-                    "https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css"
+                    "https://cdn.jsdelivr.net/npm/daisyui@5"
                 ))
 
     # Color theme CSS loads after framework CSS (Tailwind/DaisyUI) but before
@@ -161,9 +209,9 @@ def _theme_styles(
     data_attrs = ""
     if effective_fw == "tailwind":
         color_name = getattr(theme, "color_theme", None) or theme_name
-        data_attrs = f" data-theme=\"mikiui-{_esc(color_name)}\""
+        data_attrs = f' data-theme="{_esc(f"mikiui-{color_name}")}"'
     if extra:
-        result["body_attrs"] = f" class=\"{ _esc(' '.join(extra)) }\"{data_attrs}"
+        result["body_attrs"] = f' class="{_esc(" ".join(extra))}"{data_attrs}'
     elif data_attrs:
         result["body_attrs"] = data_attrs
 
@@ -287,7 +335,7 @@ def render_page(
     if js_tags_list:
         all_js = "\n".join(js_tags_list)
         # If there's a Tailwind CDN script, put it first
-        if "tailwindcss.com" in all_js:
+        if "tailwindcss" in all_js:
             tailwind_script = all_js + "\n"
         else:
             other_js_tags = all_js + "\n"

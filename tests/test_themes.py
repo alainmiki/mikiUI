@@ -84,7 +84,7 @@ def test_render_page_with_tailwind_framework():
     """Rendering with framework=tailwind should load miki.css for components + CDN for utilities."""
     page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind")
     assert "miki.css" in page
-    assert "cdn.tailwindcss.com" in page
+    assert "@tailwindcss/browser@4" in page
     assert 'data-theme="mikiui-dark"' in page
 
 
@@ -118,10 +118,10 @@ def test_render_page_tailwind_loads_widget_css():
 def test_render_page_tailwind_css_order():
     """CSS order: Tailwind/DaisyUI -> theme -> miki.css."""
     page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind", daisyui=True)
-    tw_pos = page.find("tailwindcss.com")
-    daisy_pos = page.find("daisyui")
+    tw_pos = page.find('src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"')
+    daisy_pos = page.find('href="https://cdn.jsdelivr.net/npm/daisyui@5"')
     theme_pos = page.find("/themes/dark.css")
-    miki_pos = page.find("miki.css")
+    miki_pos = page.find('href="/_miki/runtime/miki.css"')
     # Tailwind CDN script should come first in head
     assert tw_pos < daisy_pos, "Tailwind should load before DaisyUI"
     assert daisy_pos < theme_pos, "Theme CSS should load after DaisyUI"
