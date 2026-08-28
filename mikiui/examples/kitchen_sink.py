@@ -7,6 +7,7 @@ compatibility across desktop and mobile viewport sizes.
 """
 
 from __future__ import annotations
+from importlib import reload
 
 from mikiui import (
     A,
@@ -203,14 +204,14 @@ def kitchen():
             title="MikiUI Kitchen Sink",
             subtitle="Every component and widget showcased — test on desktop and mobile.",
             action=Button("Get Started", variant="primary", hx_get="/components"),
-            class_="text-2xl bg-red-500 text-white"
+            class_="text-2xl bg-red-500 "
         ),
         Div(
             # ==================================================================
             # SECTION 1: BASIC COMPONENTS
             # ==================================================================
             Section(id_="components", *[
-                H2("Basic Components & Elements", class_="text-green-400 bg-red-200"),
+                H2("Basic Components & Elements", class_="text-green-400 bg-info  text-2xl text-center py-4"),
                 Div(
                     Div(
                         Button("Primary", variant="primary"),
@@ -368,8 +369,8 @@ def kitchen():
                             footer=Button("Action", variant="primary"),
                         ),
                         Div(
-                            Avatar(src="/mikiui-avatar.png", alt="User avatar", status="online"),
-                            Avatar(src="/mikiui-avatar2.png", alt="Team member", status="away", size="lg"),
+                            Avatar(src="/static/mikiui-avatar.png", alt="User avatar", status="online"),
+                            Avatar(src="/static/mikiui-avatar2.png", alt="Team member", status="away", size="lg"),
                             style=FLEX_ROW,
                         ),
                         style=FLEX_ROW,
@@ -394,7 +395,7 @@ def kitchen():
                         Time("August 24, 2026", datetime="2026-08-24"),
                         Br(),
                         Hr(),
-                        Figcaption(Figure(Img(src="/mikiui-avatar.png", alt="Demo")), "Figure with caption."),
+                        Figcaption(Figure(Img(src="/static/mikiui-avatar.png", alt="Demo")), "Figure with caption."),
                         style=FLEX_COL,
                     ),
                     Aside(
@@ -472,12 +473,12 @@ def kitchen():
                 H3("Audio & Video"),
                 Div(
                     Audio(
-                        Source(src="/sample.mp3", type_="audio/mpeg"),
+                        Source(src="/static/sample.mp3", type_="audio/mpeg"),
                         "Your browser does not support the audio element.",
                         controls=True,
                     ),
                     Video(
-                        Source(src="/sample.mp4", type_="video/mp4"),
+                        Source(src="/static/sample.mp4", type_="video/mp4"),
                         "Your browser does not support the video element.",
                         controls=True,
                     ),
@@ -1377,4 +1378,4 @@ def components_page():
 
 if __name__ == "__main__":
     # app.run(desktop=False,browser=True, reload=True)
-    app.run(desktop=False,browser=True)
+    app.run(desktop=False,browser=True,reload=True)
