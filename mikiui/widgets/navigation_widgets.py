@@ -90,6 +90,7 @@ class Drawer(Component):
         attrs.setdefault("aria-hidden", "true" if not open else "false")
         attrs.setdefault("data-miki-drawer", "true")
         attrs.setdefault("data-miki-drawer-esc-close", "true")
+        attrs.setdefault("touch-action", "manipulation")
 
         if title:
             attrs.setdefault("aria-labelledby", f"{title}-title")
@@ -184,6 +185,7 @@ class Rail(Component):
         attrs.setdefault("class_", classes)
         attrs.setdefault("role", "navigation")
         attrs.setdefault("aria_label", "Navigation rail")
+        attrs.setdefault("touch-action", "manipulation")
 
         children: list[Any] = []
 
@@ -263,6 +265,7 @@ class ContextWindow(Component):
         attrs.setdefault("class_", classes)
         attrs.setdefault("role", "menu")
         attrs.setdefault("data-miki-context-window", "true")
+        attrs.setdefault("touch-action", "manipulation")
         attrs.setdefault("style", f"min-width: {width};")
 
         children: list[Any] = []
@@ -332,6 +335,7 @@ class DrawerToggle(Button):
         attrs.setdefault("type", "button")
         attrs.setdefault("class_", "miki-drawer-toggle-btn")
         attrs.setdefault("data-miki-drawer-toggle", "true")
+        attrs.setdefault("touch-action", "manipulation")
         attrs.setdefault("aria_label", f"Toggle drawer: {target or 'menu'}")
         if target:
             attrs["data-miki-drawer-target"] = target

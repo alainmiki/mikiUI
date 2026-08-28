@@ -12,6 +12,9 @@
   var widgetRegistry = [
     { selector: '[data-miki-tabs="true"]', init: function(el){return window.mikiTabs && mikiTabs.init(el);}, name: "tabs" },
     { selector: '[data-miki-editor-area="true"]', init: function(el){return window.mikiEditorArea && mikiEditorArea.init(el);}, name: "editorArea" },
+    { selector: '[data-miki-editor="true"]', init: function(el){return window.mikiIDE && mikiIDE.init(el);}, name: "ide" },
+    { selector: '[data-miki-mdiarea="true"]', init: function(el){return window.mikiMDI && mikiMDI.initArea(el);}, name: "mdi" },
+    { selector: '[data-miki-stackedpanel="true"]', init: function(el){return window.mikiStackedPanel && mikiStackedPanel.init(el);}, name: "stackedPanel" },
     { selector: '[data-miki-dialog="true"]', init: function(el){return window.mikiDialog && mikiDialog.init(el);}, name: "dialog" },
     { selector: '[data-miki-modal="true"]', init: function(el){return window.mikiModal && mikiModal.init(el);}, name: "modal" },
     { selector: '[data-miki-slider="true"]', init: function(el){return window.mikiSlider && mikiSlider.init(el);}, name: "slider" },
@@ -66,8 +69,14 @@
           : scope.querySelectorAll(entry.selector);
       }
       for (var j = 0; j < widgets.length; j++) {
+        var widget = widgets[j];
+        var tag = widget && widget.dataset ? widget.dataset.mikiWidgetInit : null;
+        if (tag === entry.name) continue;
         try {
-          entry.init(widgets[j]);
+          entry.init(widget);
+          if (widget && widget.dataset) {
+            widget.dataset.mikiWidgetInit = entry.name;
+          }
         } catch (e) {
           /* Widget init failed -- do not break the whole page */
         }

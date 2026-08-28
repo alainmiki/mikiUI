@@ -36,6 +36,31 @@ def _esc(value: Any) -> str:
     return _html.escape(str(value), quote=True)
 
 
+def _resolve_app_spec(miki_app: Any) -> str:
+    """Best-effort reverse lookup of ``module:attr`` for a live ``MikiApp``.
+
+    uvicorn's ``reload`` mode requires the application to be passed as an
+    import string, so when ``app.run(reload=True)`` is used we have to figure
+    out the user's ``module:attr`` to hand to uvicorn.
+
+    Falls back to ``__main__:app`` which is what ``python app.py`` runs.
+    """
+    import sys
+
+    target_id = id(miki_app)
+    for mod_name, mod in list(sys.modules.items()):
+        if mod is None or not hasattr(mod, "__dict__"):
+            continue
+        for attr_name, attr in list(vars(mod).items()):
+            if attr is miki_app or (id(attr) == target_id and attr is miki_app):
+                if mod_name == "__main__":
+                    return f"__main__:{attr_name}"
+                if mod_name.startswith("__"):
+                    continue
+                return f"{mod_name}:{attr_name}"
+    return "__main__:app"
+
+
 class MikiApp:
     def __init__(
         self,
@@ -728,14 +753,29 @@ class MikiApp:
                 native=not browser,
                 **kwargs,
             )
-        else:
-            import uvicorn
+            return
 
-            from ..backend import create_app
+        import uvicorn
 
-            reload = kwargs.pop("reload", False)
-            fastapi_app = create_app(self)
-            uvicorn.run(fastapi_app, host=host, port=port, reload=reload)
+        from ..backend import create_app
+
+        reload = kwargs.pop("reload", False)
+        if reload:
+            import os
+
+            spec = _resolve_app_spec(self)
+            os.environ["MIKIUI_APP_SPEC"] = spec
+            uvicorn.run(
+                "mikiui.cli._dev_support:app_factory",
+                host=host,
+                port=port,
+                reload=True,
+                factory=True,
+            )
+            return
+
+        fastapi_app = create_app(self)
+        uvicorn.run(fastapi_app, host=host, port=port)
 
     def shutdown(self) -> None:
         """Shut down the app, calling plugin shutdown hooks."""

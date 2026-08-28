@@ -133,6 +133,7 @@ dock : str
         attrs.setdefault("data-miki-dockable", "true")
         attrs.setdefault("data-miki-dock-position", dock)
         attrs.setdefault("data-miki-original-dock", dock)
+        attrs.setdefault("touch-action", "manipulation")
 
         if not open:
             dock_state = "collapsed"
@@ -196,6 +197,7 @@ dock : str
                     class_="miki-dock-toggle",
                     role="button",
                     aria_label="Collapse panel" if open else "Expand panel",
+                    aria_expanded="true" if open else "false",
                     title="Collapse / Expand panel",
                     **{"data-miki-dock-action": "toggle"},
                 )
@@ -231,6 +233,7 @@ dock : str
             *header_children,
             class_="miki-dock-header",
             draggable="true",
+            aria_label="Panel actions",
             **{"data-miki-dock-header": "true"},
         )
 

@@ -124,11 +124,13 @@ class SplitView(Component):
             "class_", f"miki-splitview miki-splitview-{orientation}-{str(id(self))[:6]}"
         )
         attrs.setdefault("role", "group")
+        attrs.setdefault("aria-label", "Split view")
         attrs.setdefault("data-miki-splitview", "true")
         attrs.setdefault("data-orientation", orientation)
         attrs.setdefault("data-min-size", str(min_size))
         attrs.setdefault("data-resize-mode", resize_mode)
         attrs.setdefault("style", "")
+        attrs.setdefault("touch-action", "none")
         attrs["style"] += f"--miki-splitter-width: {separator_width}px;"
 
         container_class = "miki-splitview-container"
@@ -171,8 +173,13 @@ class SplitView(Component):
             class_=f"miki-splitter miki-splitter-clickable {hover_class}",
             role="separator",
             aria_orientation="horizontal" if is_horizontal else "vertical",
+            aria_label="Resize panes",
             tabindex="0",
-            **{"data-miki-splitter": "true", "data-splitter-width": str(separator_width)},
+            **{
+                "data-miki-splitter": "true",
+                "data-splitter-width": str(separator_width),
+                "touch-action": "none",
+            },
         )
 
         super().__init__(first_pane, splitter, second_pane, **attrs)

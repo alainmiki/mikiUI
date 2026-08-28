@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from mikiui import H1, H2, H3, Button, Div, MikiApp, P, Span
 from mikiui.components import (
+    Dialog,
     Form,
     Input,
     Label,
@@ -364,6 +365,17 @@ def dialog_demo():
         ),
         Div(
             H1("Dialogs & Modals"),
+            H2("Native Dialog"),
+            Div(
+                Dialog(
+                    "This native dialog closes on overlay click, Esc, or the close button.",
+                    title="Confirmation",
+                    open=True,
+                    close_on_overlay=True,
+                    close_on_escape=True,
+                ),
+                style=CARD,
+            ),
             H2("Alert Dialog"),
             Div(
                 MessageBox(

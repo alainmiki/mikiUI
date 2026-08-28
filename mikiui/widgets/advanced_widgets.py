@@ -96,7 +96,10 @@ class Carousel(Component):
         attrs.setdefault("class_", classes)
         attrs.setdefault("role", "region")
         attrs.setdefault("aria_label", "Image carousel")
+        attrs.setdefault("aria_live", "polite")
+        attrs.setdefault("tabindex", "0")
         attrs.setdefault("data-miki-carousel", "true")
+        attrs.setdefault("touch-action", "manipulation")
         attrs.setdefault("data-autoplay", str(autoplay).lower())
         attrs.setdefault("data-interval", str(interval))
 

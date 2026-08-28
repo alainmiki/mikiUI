@@ -8,13 +8,13 @@ accessibility attributes from the framework conventions.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 from ..components import (
     H1,
     A,
     Button,
-    Details,
     Div,
     Input,
     Label,
@@ -23,7 +23,6 @@ from ..components import (
     P,
     Progress,
     Span,
-    Summary,
     Ul,
 )
 from ..components.base import Component
@@ -72,37 +71,55 @@ class StackedPanel(Component):
     """A stacked widget showing one page at a time (maps ``QStackedWidget``).
 
     :param pages: a list of ``(title, content)`` pairs.
+    :param active: index of the initially-visible page (default 0).
+    :param panel_id: optional DOM id for the panel container.
     """
 
     tag = "div"
 
-    def __init__(self, pages: list[tuple[str, Any]], **attrs: Any) -> None:
+    def __init__(
+        self,
+        pages: list[tuple[str, Any]],
+        active: int = 0,
+        panel_id: str | None = None,
+        **attrs: Any,
+    ) -> None:
+        if not pages:
+            raise ValueError("StackedPanel requires at least one page")
+        active = max(0, min(active, len(pages) - 1))
+
         attrs.setdefault("class_", "miki-stackedpanel")
+        attrs.setdefault("role", "group")
+        attrs.setdefault("aria_label", _("stackedpanel_label", "Stacked panel"))
+        attrs.setdefault("data-miki-stackedpanel", "true")
+        if panel_id:
+            attrs["id"] = panel_id
+
         group = "miki-stacked-" + uuid.uuid4().hex[:8]
 
         buttons = []
         panels = []
         for i, (title, content) in enumerate(pages):
+            is_active = i == active
             tab_attrs = {
                 "type": "button",
                 "role": "tab",
-                "aria_selected": "true" if i == 0 else "false",
-                "class_": "miki-stack-tab" + (" miki-stack-tab-active" if i == 0 else ""),
+                "id": f"{group}-tab-{i}",
+                "aria_selected": "true" if is_active else "false",
+                "aria_controls": f"{group}-page-{i}",
+                "tabindex": "0" if is_active else "-1",
+                "class_": "miki-stack-tab" + (" miki-stack-tab-active" if is_active else ""),
+                "data_miki_stack_tab": "true",
+                "data_miki_stack_index": str(i),
             }
-            js = (
-                "var ps=document.getElementById('" + group + "-pages').children;"
-                "for(var i=0;i<ps.length;i++){"
-                "ps[i].style.display=(i===" + str(i) + ")?'block':'none';"
-                "this.parentNode.children[i].setAttribute('aria-selected',i===" + str(i) + ");}"
-            )
-            tab_attrs.update(bridge_attr("click", js))
             buttons.append(Button(title, **tab_attrs))
             panels.append(
                 Div(
                     content,
                     role="tabpanel",
                     id=f"{group}-page-{i}",
-                    **({"style": "display:none"} if i != 0 else {}),
+                    aria_labeledby=f"{group}-tab-{i}",
+                    **({"style": "display:none", "aria_hidden": "true"} if not is_active else {}),
                 )
             )
 
@@ -170,17 +187,75 @@ class StatusBar(Component):
 class MenuBar(Component):
     """A menu bar with dropdown sub-menus (maps ``QMenuBar``/``QMenu``).
 
-    :param items: a list of ``(label, sub_items)`` pairs where ``sub_items`` is a
-        list of ``(label, href)`` pairs.
+    Each top-level item is a ``(label, sub_items)`` pair.  ``sub_items``
+    is a list of action entries.  An action entry may be:
+
+    * ``(label, href)`` — a simple link item.
+    * ``(label, href, icon)`` — link item with an optional icon label.
+    * ``(label, href, icon, shortcut)`` — link item with icon + shortcut text.
+    * ``"divider"`` or ``None`` — a horizontal separator.
+    * ``(label, href, icon, shortcut, disabled)`` — disabled item when
+      ``disabled`` is truthy.
+
+    Disabled items render with ``aria-disabled`` and are skipped during
+    keyboard navigation.
+
+    :param items: list of ``(label, sub_items)`` pairs.
+    :param bar_id: optional DOM id for the menu bar.
     """
 
     tag = "nav"
 
-    def __init__(self, items: list[tuple[str, list[tuple[str, str]]]], **attrs: Any) -> None:
+    def __init__(
+        self,
+        items: list[tuple[str, list[Any]]],
+        bar_id: str | None = None,
+        **attrs: Any,
+    ) -> None:
         attrs.setdefault("class_", "miki-menubar")
         attrs.setdefault("aria_label", _("menubar_label", "Main menu"))
+        attrs.setdefault("data-miki-menubar", "true")
+        attrs.setdefault("role", "menubar")
+        attrs.setdefault("touch-action", "manipulation")
+        if bar_id:
+            attrs["id"] = bar_id
+
         menus = []
         for label, sub_items in items:
+            action_items: list[Any] = []
+            for entry in sub_items:
+                if entry is None or entry == "divider":
+                    action_items.append(Li(class_="miki-menu-divider", role="separator"))
+                    continue
+
+                sub_label = entry[0]
+                href = entry[1] if len(entry) > 1 else "#"
+                icon = entry[2] if len(entry) > 2 else None
+                shortcut = entry[3] if len(entry) > 3 else None
+                disabled = bool(entry[4]) if len(entry) > 4 else False
+
+                parts: list[Any] = []
+                if icon:
+                    parts.append(Span(icon, class_="miki-menu-icon"))
+                parts.append(Span(sub_label, class_="miki-menu-label"))
+                if shortcut:
+                    parts.append(Span(shortcut, class_="miki-menu-shortcut"))
+
+                link_attrs: dict[str, Any] = {
+                    "role": "menuitem",
+                    "class_": "miki-menu-item",
+                    "tabindex": "-1",
+                }
+                if disabled:
+                    link_attrs["aria_disabled"] = "true"
+                    link_attrs["class_"] += " miki-menu-item-disabled"
+                    link_attrs["tabindex"] = "-1"
+                    link = A(*parts, href="javascript:void(0)", **link_attrs)
+                else:
+                    link = A(*parts, href=href, aria_label=sub_label, **link_attrs)
+
+                action_items.append(Li(link, class_="miki-menu-item-wrap"))
+
             menus.append(
                 Div(
                     Button(
@@ -188,10 +263,13 @@ class MenuBar(Component):
                         type="button",
                         class_="miki-menu-title",
                         aria_haspopup="true",
+                        aria_expanded="false",
+                        aria_label=f"Open {label} menu",
                     ),
                     Ul(
-                        *[Li(A(sub_label, href=href), class_="miki-menu-item") for sub_label, href in sub_items],
+                        *action_items,
                         class_="miki-menu-dropdown",
+                        role="menu",
                     ),
                     class_="miki-menu",
                 )
@@ -400,7 +478,7 @@ class ProgressDialog(Component):
         attrs.setdefault("data-value", str(value))
         attrs.setdefault("data-max", str(max))
 
-        children = [
+        children: list[Any] = [
             Div(title, class_="miki-progressdialog-title"),
         ]
         if message:
@@ -498,7 +576,7 @@ class Dial(Component):
         step: int = 1,
         size: int = 140,
         wrap: str = "none",
-        on_change: Optional[Callable] = None,
+        on_change: Callable[[int, int], None] | None = None,
         **attrs: Any,
     ) -> None:
         if max <= min:
@@ -561,22 +639,87 @@ class MdiSubWindow(Component):
 
     :param title: window title bar text.
     :param content: window body content.
+    :param icon: optional icon text/label shown before the title.
+    :param minimizable: show a minimize button (default True).
+    :param maximizable: show a maximize button (default True).
+    :param closeable: show a close button (default True).
+    :param left: initial left offset in px.
+    :param top: initial top offset in px.
+    :param width: initial width (px or CSS string).
+    :param height: initial height (px or CSS string).
     """
 
     tag = "section"
 
-    def __init__(self, title: str, *content: Any, **attrs: Any) -> None:
+    def __init__(
+        self,
+        title: str,
+        *content: Any,
+        icon: str | None = None,
+        minimizable: bool = True,
+        maximizable: bool = True,
+        closeable: bool = True,
+        left: int = 24,
+        top: int = 24,
+        width: int | str = 420,
+        height: int | str = 280,
+        **attrs: Any,
+    ) -> None:
+        def _css(v: int | str, suffix: str = "px") -> str:
+            return f"{v}{suffix}" if isinstance(v, (int, float)) else str(v)
+
         attrs.setdefault("class_", "miki-mdi-subwindow")
+        style_parts = [
+            f"left:{_css(left)}",
+            f"top:{_css(top)}",
+            f"width:{_css(width)}",
+            f"height:{_css(height)}",
+        ]
+        existing_style = attrs.pop("style", "")
+        if existing_style and not existing_style.endswith(";"):
+            existing_style += ";"
+        attrs["style"] = existing_style + ";".join(style_parts)
+
+        title_children: list[Any] = []
+        if icon:
+            title_children.append(Span(icon, class_="miki-mdi-icon"))
+        title_children.append(Span(title, class_="miki-mdi-title"))
+
+        control_buttons: list[Any] = []
+        if minimizable:
+            control_buttons.append(
+                Button(
+                    "—",
+                    type="button",
+                    class_="miki-mdi-minimize",
+                    aria_label=_("mdi_minimize", "Minimize window"),
+                    **{"data-miki-mdi-minimize": "true"},
+                )
+            )
+        if maximizable:
+            control_buttons.append(
+                Button(
+                    "▢",
+                    type="button",
+                    class_="miki-mdi-maximize",
+                    aria_label=_("mdi_maximize", "Maximize window"),
+                    **{"data-miki-mdi-maximize": "true"},
+                )
+            )
+        if closeable:
+            control_buttons.append(
+                Button(
+                    "×",
+                    type="button",
+                    class_="miki-mdi-close",
+                    aria_label=_("mdi_close", "Close window"),
+                    **{"data-miki-mdi-close": "true"},
+                )
+            )
+
         title_bar = Div(
-            Span(title, class_="miki-mdi-title"),
-            Button(
-                "×",
-                type="button",
-                class_="miki-mdi-close",
-                aria_label=_("mdi_close", "Close window"),
-                **bridge_attr("click", "var w=this.closest('.miki-mdi-subwindow'); if(w) w.style.display='none';"),
-                **{"data-miki-mdi-close": "true"}
-            ),
+            Div(*title_children, class_="miki-mdi-title-group"),
+            Div(*control_buttons, class_="miki-mdi-controls"),
             class_="miki-mdi-titlebar",
         )
         body = Div(*content, class_="miki-mdi-body")
@@ -587,12 +730,18 @@ class MdiArea(Component):
     """A multiple-document interface area (maps ``QMdiArea``).
 
     :param windows: :class:`MdiSubWindow` instances placed in the area.
+    :param area_id: optional DOM id for the MDI area.
     """
 
     tag = "div"
 
-    def __init__(self, *windows: Any, **attrs: Any) -> None:
+    def __init__(self, *windows: Any, area_id: str | None = None, **attrs: Any) -> None:
         attrs.setdefault("class_", "miki-mdiarea")
+        attrs.setdefault("role", "group")
+        attrs.setdefault("aria_label", _("mdi_label", "Workspace"))
+        attrs.setdefault("data-miki-mdiarea", "true")
+        if area_id:
+            attrs["id"] = area_id
         super().__init__(*windows, **attrs)
 
 
@@ -794,7 +943,12 @@ class TabbedPanel(Tabs):
     **attrs : Additional HTML attributes.
     """
 
-    def __init__(self, tabs: list[tuple[str, Any]], closable: bool = False, **attrs: Any) -> None:
+    def __init__(
+        self,
+        tabs: list[tuple[str, Any] | tuple[str, Any, str]],
+        closable: bool = False,
+        **attrs: Any,
+    ) -> None:
         attrs.setdefault("class_", "miki-tabbedpanel")
         super().__init__(tabs, closeable=closable, **attrs)
 

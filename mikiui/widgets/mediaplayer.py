@@ -30,6 +30,7 @@ class MediaPlayer(Component):
     ) -> None:
         attrs.setdefault("class_", "miki-mediaplayer")
         attrs.setdefault("role", "region")
+        attrs.setdefault("touch-action", "manipulation")
         label = _("mediaplayer_label", "Media player")
         if kind == "audio":
             media = Audio(src=source, controls=controls, aria_label=label)

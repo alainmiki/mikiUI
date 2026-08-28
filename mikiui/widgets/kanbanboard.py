@@ -19,7 +19,9 @@ class KanbanBoard(Component):
     def __init__(self, columns: dict[str, list], **attrs: Any) -> None:
         attrs.setdefault("class_", "miki-kanban")
         attrs.setdefault("role", "list")
+        attrs.setdefault("aria-label", "Kanban board")
         attrs.setdefault("data-miki-kanban", "true")
+        attrs.setdefault("touch-action", "manipulation")
         column_nodes = []
         for title, items in columns.items():
             item_nodes = []
@@ -40,7 +42,7 @@ class KanbanBoard(Component):
                     class_="miki-kanban-column",
                     role="group",
                     aria_label=title,
-                    **{"data-miki-kanban-column": "true"}
+                    **{"data-miki-kanban-column": "true", "data-collapsible-title": title}
                 )
             )
         super().__init__(*column_nodes, **attrs)

@@ -600,17 +600,44 @@ KanbanBoard(
 
 ### IDEEditor
 
-A code editor with syntax highlighting.
+A lightweight code editor with a line-number gutter, tab handling,
+auto-indent, undo/redo, and scroll-synced gutter.
 
 ```python
 from mikiui.widgets import IDEEditor
 
 IDEEditor(
+    content="print('Hello, World!')",
     language="python",
-    theme="dark",
-    code="print('Hello, World!')",
+    tab_size=4,
+    line_numbers=True,
+    readonly=False,
+    placeholder="Start typing...",
 )
 ```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `content` | `str` | `""` | Initial editor text |
+| `language` | `str` | `"python"` | Language hint (CSS class) |
+| `tab_size` | `int` | `4` | Spaces inserted on Tab |
+| `line_numbers` | `bool` | `True` | Show line-number gutter |
+| `readonly` | `bool` | `False` | Read-only mode |
+| `placeholder` | `str` | `""` | Placeholder text |
+| `editor_id` | `str` | `None` | DOM id for the container |
+
+**JS API:**
+
+```python
+editor = document.querySelector('[data-miki-editor="true"]')
+mikiIDE.setValue(editor, "new code")
+text = mikiIDE.getValue(editor)
+mikiIDE.insert(editor, "snippet")
+```
+
+**Events:** `miki:ide:input` (detail: `{ text }`), `miki:ide:scroll`.
 
 ---
 
@@ -873,19 +900,33 @@ SignupForm(action="/signup", method="post")
 
 ### ChatUI
 
-A messaging interface.
+A messaging interface with a scrollable log, typing indicator, and input form.
 
 ```python
 from mikiui.widgets import ChatUI
 
 ChatUI(
     messages=[
-        ("Alice", "Hello!"),
-        ("Bob", "Hi there."),
+        {"role": "user", "text": "Hello!", "avatar": "U"},
+        {"role": "bot", "text": "Hi there.", "avatar": "B", "time": "10:30"},
     ],
-    current_user="Bob",
+    multiline=False,
+    placeholder="Type a message...",
 )
 ```
+
+**Message fields:** `role` (`"user"`/`"bot"`), `text`, `avatar` (text/URL/HTML), `time`.
+
+**JS API:**
+
+```python
+chat = document.querySelector('[data-miki-chat="true"]')
+mikiChat.appendMessage(chat, {"role": "bot", "text": "New message", "avatar": "B"})
+mikiChat.toggleTyping(chat, True)
+mikiChat.clear(chat)
+```
+
+**Events:** `miki:chat:send` (detail: `{ text }`), `miki:chat:messageadded`.
 
 ---
 
@@ -980,11 +1021,15 @@ directives.
 | Upload | `data-miki-file-input="true"` | Hidden file input with label click handler |
 | ContextWindow | `data-miki-context-window="true"` | Click-to-toggle floating context menu |
 | MessageBox | `data-miki-messagebox="true"` | Alert with ESC and overlay close |
-| MenuBar | `data-miki-menubar="true"` | Hover/click dropdowns |
+| MenuBar | `data-miki-menubar="true"` | Click/hover dropdowns, full keyboard nav, touch support |
+| StackedPanel | `data-miki-stackedpanel="true"` | Tabbed page container with keyboard nav |
+| IDEEditor | `data-miki-editor="true"` | Code editor with gutter, tab, undo/redo |
+| MdiArea | `data-miki-mdiarea="true"` | Drag/resize/minimize/maximize sub-windows |
+| EditorArea | `data-miki-editor-area="true"` | VS Code-like multi-group editor with splitters |
 | DataGrid | `data-miki-datagrid="true"` | Sortable, filterable, paginated table |
 | Kanban | `data-miki-kanban="true"` | Drag-and-drop task board |
 | Carousel | `data-miki-carousel="true"` | Autoplay slideshow with arrows/dots |
-| Chat | `data-miki-chat="true"` | Scrolling message log with typing indicator |
+| Chat | `data-miki-chat="true"` | Scrolling message log with typing indicator, append API |
 
 ### Global API
 
@@ -1206,4 +1251,82 @@ HTML:
   element that opened it (stored via `data-miki-focus-trap-return`).
 - **SplitView splitter**: Supports both mouse drag and keyboard (arrow keys
   for 1px, Shift+arrow for 5px, double-click to maximize).
+
+---
+
+## StackedPanel
+
+A QStackedWidget-like container showing one page at a time with a tab strip.
+
+```python
+from mikiui.widgets import StackedPanel
+
+StackedPanel(
+    pages=[
+        ("Overview", Div("Project overview metrics and KPIs.")),
+        ("Analytics", Div("Traffic and engagement data.")),
+        ("Reports", Div("Generated reports and exports.")),
+    ],
+    active=0,
+)
+```
+
+**Parameters:** `pages` (list of `(title, content)`), `active` (initial index), `panel_id`.
+
+**JS API:** `mikiStackedPanel.show(el, index)`, `mikiStackedPanel.activeIndex(el)`.
+
+**Events:** `miki:stackedpanel:change` (detail: `{ index }`).
+
+**Keyboard:** ArrowLeft/Right to move, Home/End to jump, Enter/Space to activate.
+
+---
+
+## MdiArea / MdiSubWindow
+
+A multiple-document interface (QMdiArea) with draggable, resizable sub-windows.
+
+```python
+from mikiui.widgets import MdiArea, MdiSubWindow
+
+MdiArea(
+    MdiSubWindow("main.py", Div("code..."), icon="📄"),
+    MdiSubWindow("readme.md", Div("docs..."), left=60),
+)
+```
+
+**MdiSubWindow parameters:** `title`, `*content`, `icon`, `minimizable`, `maximizable`, `closeable`, `left`, `top`, `width`, `height`.
+
+**JS API:**
+- `mikiMDI.activate(win)`, `mikiMDI.close(win)`, `mikiMDI.minimize(win)`, `mikiMDI.maximize(win)`, `mikiMDI.restore(win)`
+- `mikiMDI.cascade(area)`, `mikiMDI.tile(area)`
+
+**Events:** `miki:mdi:activate`, `miki:mdi:close`, `miki:mdi:minimize`, `miki:mdi:maximize`, `miki:mdi:move`, `miki:mdi:resize`.
+
+**Interactions:** Drag titlebar to move, drag edges/corners to resize, double-click titlebar to maximize/restore, click to bring to front.
+
+---
+
+## EditorArea / EditorGroup / EditorTab
+
+A VS Code-like multi-group editor with tab bars, drag-and-drop tabs, and resizable splitters.
+
+```python
+from mikiui.components import EditorArea, EditorGroup, EditorTab
+
+EditorArea(
+    EditorGroup([EditorTab("main.py", "print('hello')"), EditorTab("readme.md", "# README")], active=0),
+    EditorGroup([EditorTab("utils.py", "def helper(): pass")]),
+    orientation="horizontal",
+)
+```
+
+**EditorTab:** `label`, `content`, `closable`, `icon`.
+
+**EditorGroup:** `tabs`, `active`, `group_id`.
+
+**EditorArea:** `*groups`, `orientation` (`"horizontal"`/`"vertical"`), `min_size`, `separator_width`.
+
+**Events:** `miki:editor:tabchanged`, `miki:editor:tabclosed`, `miki:editor:tabdrop`, `miki:editor:resize`, `miki:editor:maximized`.
+
+**Keyboard:** ArrowLeft/Right to switch tabs, Home/End to jump, Enter/Space to activate, arrow keys on splitter to resize.
 

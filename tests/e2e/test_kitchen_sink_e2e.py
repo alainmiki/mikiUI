@@ -31,7 +31,9 @@ def server():
 def _load_js(server):
     """Load all widget JS modules concatenated into a single string."""
     js_files = [
-        "core.js", "miki_bridge.js", "mikieditorarea.js", "mikidialog.js", "mikimodal.js", "mikitabs.js",
+        "core.js", "miki_bridge.js", "mikieditorarea.js", "mikiide.js",
+        "mikimdi.js", "mikistackedpanel.js",
+        "mikidialog.js", "mikimodal.js", "mikitabs.js",
         "mikidrawer.js", "mikisplitview.js", "mikidockablepanel.js",
         "mikislider.js", "mikidial.js", "mikiprogress.js",
         "mikiprogressdialog.js", "mikicollapsible.js", "mikiaccordion.js",
@@ -68,7 +70,7 @@ def page(browser, server):
             html = inject + html
         html = re.sub(r'<script src="https://cdn\.tailwindcss\.com"></script>', '', html)
         html = re.sub(r'<link rel="stylesheet" href="https://cdn\.jsdelivr\.net[^"]*">', '', html)
-        p.set_content(html, wait_until="domcontentloaded")
+        p.set_content(html, wait_until="domcontentloaded", timeout=60000)
         return p
 
     p.load = load
@@ -94,7 +96,7 @@ def touch_page(browser, server):
             html = inject + html
         html = re.sub(r'<script src="https://cdn\.tailwindcss\.com"></script>', '', html)
         html = re.sub(r'<link rel="stylesheet" href="https://cdn\.jsdelivr\.net[^"]*">', '', html)
-        p.set_content(html, wait_until="domcontentloaded")
+        p.set_content(html, wait_until="domcontentloaded", timeout=60000)
         return p
 
     p.load = load

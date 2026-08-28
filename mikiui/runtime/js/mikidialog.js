@@ -18,10 +18,19 @@
         }
       });
 
-      // Click/Tap on backdrop — activates on both mouse click and touch tap
+      // Click/Tap on backdrop — activates on both mouse click and touch tap.
+      // Treat either the dialog element itself or an explicit overlay child as
+      // the backdrop so native <dialog> elements and custom overlay containers
+      // behave consistently.
       if (dlg.getAttribute("data-miki-dialog-close-on-overlay") === "true") {
         onPointer(dlg, "activate", function (e) {
-          if (e.target === dlg) {
+          var target = e && e.target ? e.target : null;
+          var targetNode = target && target.closest ? target : null;
+          var isBackdrop =
+            target === dlg ||
+            (targetNode && targetNode.matches && targetNode.matches("[data-miki-dialog-close='true']")) ||
+            (target && target.getAttribute && target.getAttribute("data-miki-dialog-close") === "true");
+          if (isBackdrop) {
             mikiDialog.close(dlg);
           }
         });

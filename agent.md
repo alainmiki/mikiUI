@@ -7,6 +7,9 @@
 3. **`context/project-structure.md`** — intended package layout
 4. **`context/components.md`** — component and widget catalog
 5. **`context/mobile.md`** — mobile build plan (DESIGN DOC ONLY — see Phase Lock below)
+6. **`context/production-readiness-checklist.md`** — production gate, adoption criteria, and release-level required quality checks
+
+> This checklist is mandatory. If a feature or fix does not improve the project's production readiness, it is not a valid release-priority task.
 
 ## Purpose
 
@@ -50,6 +53,8 @@ After mobile work is unblocked, follow the implementation order in `context/mobi
 - Implement CLI commands (`new`, `dev`, `build`).
 - Support hot reload during development.
 - Include advanced panels/widgets (dockable panels, split views, property grids, IDE-like editors).
+- Treat `context/production-readiness-checklist.md` as a hard gate for framework quality, not a suggestion list.
+- Do not ship feature work that improves demo polish while weakening framework stability, accessibility, mobile readiness, or release confidence.
 
 ## Guardrails & Best Practices
 
@@ -82,6 +87,13 @@ After mobile work is unblocked, follow the implementation order in `context/mobi
 - **Documentation-first**: every module must have clear docs and examples.
 - **Read everything in the `context/` folder before designing or coding.**
 - Every component, widget, panel, utility, and file must be documented.
+- The project must keep a public-facing production checklist that is used as an implementation gate for future work.
+
+### Production Readiness Gate
+- **Read and apply** `context/production-readiness-checklist.md` before determining if a feature is release-worthy.
+- **Do not claim the project is production-ready** unless the checklist passes in the relevant areas.
+- **Mobile readiness, accessibility, runtime stability, and testing are mandatory** at Level 3 production standards.
+- **A demo is not enough**: every feature must satisfy real behavior and reliability expectations.
 
 ### Testing
 - **Testing-first**: write unit/integration tests before merging.

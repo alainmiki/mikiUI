@@ -51,6 +51,7 @@ class Hero(Component):
         if class_:
             classes += f" {class_}"
         attrs.setdefault("class_", classes)
+        attrs.setdefault("aria-label", "Hero section")
 
         if image:
             style = attrs.get("style")
@@ -141,6 +142,9 @@ class Sidebar(Component):
             classes += " miki-sidebar-mobile"
         attrs.setdefault("class_", classes)
         attrs.setdefault("role", "complementary")
+        attrs.setdefault("aria-label", "Sidebar")
+        attrs.setdefault("data-miki-sidebar", "true")
+        attrs.setdefault("touch-action", "manipulation")
 
         # Set width via style
         style = attrs.get("style")

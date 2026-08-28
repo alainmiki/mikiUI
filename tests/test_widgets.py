@@ -15,6 +15,7 @@ from mikiui.widgets import (
     InspectorPanel,
     KanbanBoard,
     MediaPlayer,
+    MenuBar,
     PropertyGrid,
     SplitView,
     TerminalWidget,
@@ -110,12 +111,55 @@ def test_dockable_panel_title():
     assert "<section" in html
 
 
+def test_dashboard_and_menubar_have_widget_api_contract():
+    dash = Dashboard("a", "b", columns=2)
+    menu = MenuBar([("File", [("Open", "/open")])])
+    html = render(dash)
+    assert 'data-miki-dashboard="true"' in html
+    assert 'touch-action="manipulation"' in html
+    menu_html = render(menu)
+    assert 'data-miki-menubar="true"' in menu_html
+    assert 'touch-action="manipulation"' in menu_html
+
+
+def test_carousel_controls_are_touch_ready():
+    carousel = Carousel("img1.jpg", "img2.jpg")
+    html = render(carousel)
+    assert 'data-miki-carousel-prev="true"' in html
+    assert 'data-miki-carousel-next="true"' in html
+    assert 'touch-action="manipulation"' in html
+
+
 def test_splitview():
     sv = SplitView("left", "right", orientation="horizontal")
     html = render(sv)
     assert "miki-splitview" in html
     assert "left" in html
     assert "right" in html
+
+
+def test_splitview_has_accessible_touch_contract():
+    sv = SplitView("left", "right", orientation="horizontal", min_size=120)
+    html = render(sv)
+    assert 'touch-action="none"' in html
+    assert 'aria-orientation="horizontal"' in html
+    assert 'role="separator"' in html
+
+
+def test_dockable_panel_is_accessible_and_expandable():
+    panel = DockablePanel("My Panel", "body", collapsible=True, closeable=True, detachable=True)
+    html = render(panel)
+    assert 'aria-expanded="true"' in html
+    assert 'aria-label="Collapse panel"' in html
+    assert 'data-miki-dock-header="true"' in html
+
+
+def test_kanbanboard_is_accessible_and_touch_ready():
+    board = KanbanBoard({"Todo": ["x"], "Done": ["y"]})
+    html = render(board)
+    assert 'touch-action="manipulation"' in html
+    assert 'aria-label="Kanban board"' in html
+    assert 'aria-label="Todo"' in html
 
 
 def test_property_grid_inputs():
@@ -174,6 +218,65 @@ def test_datagrid_has_pagination_controls():
     grid = DataGrid(["Name"], [["a"], ["b"], ["c"]], pagination=True, page_size=2)
     html = render(grid)
     assert "data-miki-pagination" in html
+
+
+def test_navbar_and_sidebar_are_stable_accessible_contracts():
+    from mikiui.components import Menu, Navbar, BottomSheet, Tabs
+    from mikiui.components.layout_primitives import Stack
+    from mikiui.widgets.layout_widgets import Hero, Sidebar
+
+    nav = Navbar("Demo", [("Home", "/")], sticky=True)
+    side = Sidebar(("Home", "/"), title="Main")
+    menu = Menu("Home", "About")
+    hero = Hero("Hello", subtitle="Build")
+    stack = Stack("A", "B")
+    tabs = Tabs([("One", "Alpha"), ("Two", "Beta")])
+    sheet = BottomSheet("Sheet body", title="Details")
+
+    nav_html = render(nav)
+    assert 'data-miki-navbar="true"' in nav_html
+    assert 'aria-label="Main navigation"' in nav_html
+    assert 'aria-expanded="false"' in nav_html
+
+    side_html = render(side)
+    assert 'data-miki-sidebar="true"' in side_html
+    assert 'aria-label="Sidebar"' in side_html
+
+    assert 'role="menu"' in render(menu)
+    assert 'aria-label="Hero section"' in render(hero)
+    assert 'display: flex; flex-direction: column; gap: 0.5rem' in render(stack)
+    assert 'role="tablist"' in render(tabs)
+    assert 'data-miki-bottom-sheet="true"' in render(sheet)
+
+
+def test_tabs_bottomsheet_editor_and_terminal_are_production_ready():
+    from mikiui.components import BottomSheet, Tabs
+    from mikiui.widgets import IDEEditor, TerminalWidget
+
+    tabs = Tabs([("Overview", "One"), ("Details", "Two")], orientation="horizontal")
+    sheet = BottomSheet("Body", title="Details")
+    editor = IDEEditor("x = 1\nprint(x)", language="python")
+    terminal = TerminalWidget(["root@demo:~$", "echo hi"])
+
+    tabs_html = render(tabs)
+    assert 'data-miki-tabs="true"' in tabs_html
+    assert 'aria-selected="true"' in tabs_html
+    assert 'touch-action="manipulation"' in tabs_html
+
+    sheet_html = render(sheet)
+    assert 'aria-modal="true"' in sheet_html
+    assert 'data-miki-bottom-sheet-close="true"' in sheet_html
+    assert 'touch-action="manipulation"' in sheet_html
+
+    editor_html = render(editor)
+    assert 'data-miki-editor="true"' in editor_html
+    assert 'aria-label="python editor"' in editor_html
+    assert 'spellcheck="false"' in editor_html
+
+    terminal_html = render(terminal)
+    assert 'data-miki-terminal="true"' in terminal_html
+    assert 'aria-label="Terminal output"' in terminal_html
+    assert 'tabindex="0"' in terminal_html
 
 
 def test_kanbanboard_has_drag_drop():

@@ -88,6 +88,7 @@ class ThemeSwitcher(Component):
         attrs.setdefault("class_", "miki-theme-switcher")
         attrs.setdefault("role", "group")
         attrs.setdefault("aria-label", "Theme Switcher")
+        attrs.setdefault("touch-action", "manipulation")
 
         wrapper_classes = "miki-theme-switcher"
         if class_:

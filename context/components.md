@@ -145,3 +145,121 @@ This catalog defines all base components (HTML elements) and advanced widgets/pa
 - Widgets are **composite classes** built from base components.
 - Accessibility (ARIA roles, keyboard navigation) is mandatory.
 - Internationalization hooks must be available in all components/widgets.
+
+---
+
+## Styling & Theming System
+
+### Overview
+
+MikiUI uses a layered CSS architecture that works seamlessly with both:
+- **Plain CSS mode** - Built-in styles via `miki.css`
+- **Tailwind CSS mode** - Hybrid approach with Tailwind utilities
+
+### CSS Layers
+
+1. **`miki.css`** (Always loaded) - Contains:
+   - CSS custom properties (`--miki-*`) for themeable values
+   - Base styles, typography, and widget layouts
+   - Component styles using Tailwind-like utility classes (`miki-btn`, `miki-card`, etc.)
+   - `@layer base`, `@layer components`, `@layer utilities` declarations
+
+2. **Color Theme CSS** (light.css, dark.css, dracula.css, etc.) - Sets:
+   - `--miki-*` CSS variable values on `:root`
+   - Color palette for the active theme
+
+3. **Framework CSS** (optional) - Tailwind:
+   - CDN mode: Loads Tailwind via `https://cdn.tailwindcss.com`
+   - Local mode: Loads pre-built CSS via `mikiui build`
+
+### Using Tailwind with Widgets
+
+Widgets work in Tailwind mode because:
+
+1. **CSS Variables Contract**: Widgets use `--miki-*` variables that Tailwind can define in `tailwind.config.js`
+
+2. **CSS Cascade**: `miki.css` loads **after** Tailwind, ensuring widget styles apply
+
+3. **Class Composition**: Widgets add both `miki-*` classes (for structured styles) and allow `class_` for Tailwind customization
+
+```python
+from mikiui.widgets import Card, Button
+
+# Works in both plain and Tailwind modes
+Card(
+    Button("Click me", class_="bg-blue-500 hover:bg-blue-600"),
+    class_="shadow-lg"
+)
+```
+
+### Available Color Themes
+
+Built-in themes are DaisyUI-compatible and work with both modes:
+
+| Theme | Style |
+|-------|-------|
+| `light` | Light background |
+| `dark` | Dark theme |
+| `dracula` | Dark violet theme |
+| `solarized-dark` | Solarized dark |
+| `cupcake` | Soft pastel |
+| `synthwave` | Neon synthwave |
+| `cyberpunk` | Cyberpunk neon |
+| `forest` | Green forest |
+| `halloween` | Halloween theme |
+| `valentine` | Valentine theme |
+| `emerald` | Emerald theme |
+| `aqua` | Aqua theme |
+| `bumblebee` | Bumblebee (light) |
+| `garden` | Garden theme |
+| `pastel` | Pastel colors |
+| `retro` | Retro theme |
+
+### Switching Themes
+
+```python
+from mikiui import MikiApp
+
+app = MikiApp()
+app.set_theme("dark")  # or "light", "dracula", etc.
+
+# Or use Tailwind mode with a color theme
+app.set_style_framework("tailwind", daisyui=True)
+app.set_theme("dark")
+```
+
+### Combining Tailwind Utilities with MikiUI Classes
+
+```python
+from mikiui.components import Div, Button, Grid
+from mikiui.widgets import DataGrid
+
+# Use Tailwind for layout + MikiUI for behavior
+Div(
+    DataGrid(columns=["Name", "Email"], rows=[...], class_="w-full"),
+    class_="bg-gray-50 p-4 rounded-xl shadow-md"
+)
+
+# Override button styles with Tailwind
+Button("Submit", class_="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold")
+```
+
+### CSS Custom Properties Reference
+
+Widgets reference these CSS variables (defined in `miki.css`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--miki-bg` | `#f8fafc` | Background color |
+| `--miki-fg` | `#0f172a` | Foreground/text color |
+| `--miki-accent` | `#2563eb` | Accent color |
+| `--miki-accent-hover` | `#1d4ed8` | Accent hover state |
+| `--miki-border` | `#e2e8f0` | Border color |
+| `--miki-surface` | `#ffffff` | Surface/background |
+| `--miki-surface-hover` | `#f1f5f9` | Surface hover state |
+| `--miki-text-muted` | `#64748b` | Muted text color |
+| `--miki-success` | `#16a34a` | Success state |
+| `--miki-warning` | `#d97706` | Warning state |
+| `--miki-error` | `#dc2626` | Error state |
+| `--miki-radius` | `0.5rem` | Border radius |
+| `--miki-shadow` | `0 1px 3px rgba(0,0,0,0.1)` | Shadow |

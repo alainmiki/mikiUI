@@ -109,6 +109,7 @@ class BottomSheet(Component):
         attrs.setdefault("role", "dialog")
         attrs.setdefault("aria-modal", "true")
         attrs.setdefault("aria-hidden", "true")
+        attrs.setdefault("touch-action", "manipulation")
         if title:
             attrs.setdefault("aria-label", title)
         if on_open:
@@ -131,6 +132,7 @@ class BottomSheet(Component):
                     class_="miki-bottom-sheet-close",
                     aria_label="Close",
                     data_miki_bottom_sheet_close="true",
+                    type="button",
                 )
             )
 

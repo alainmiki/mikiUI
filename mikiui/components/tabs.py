@@ -78,7 +78,9 @@ class Tabs(Component):
         user_class = attrs.pop("class_", "")
         attrs["class_"] = f"miki-tabs miki-tabs-{orientation} {user_class}".strip()
         attrs.setdefault("role", "tablist")
+        attrs.setdefault("aria-label", "Tab group")
         attrs.setdefault("data-miki-tabs", "true")
+        attrs.setdefault("touch-action", "manipulation")
 
         if orientation not in ("horizontal", "vertical"):
             raise ValueError("orientation must be 'horizontal' or 'vertical'")
@@ -106,6 +108,7 @@ class Tabs(Component):
                 "aria_controls": f"{group}-panel-{i}",
                 "tabindex": "0" if is_active else "-1",
                 "class_": tab_class,
+                "touch-action": "manipulation",
             }
 
             if orientation == "vertical":
@@ -184,5 +187,7 @@ class Tabs(Component):
 
     @active_tab.setter
     def active_tab(self, value: int) -> None:
-        self.attrs["data-active-tab"] = str(value)
-
+        self.attrs["data-active-tab"] = str(value)
+
+
+

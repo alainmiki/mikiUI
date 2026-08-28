@@ -74,7 +74,9 @@ class Navbar(Component):
             classes += " miki-navbar-dark"
         attrs.setdefault("class_", classes)
         attrs.setdefault("role", "navigation")
-        attrs.setdefault("aria_label", "Main navigation")
+        attrs.setdefault("aria-label", "Main navigation")
+        attrs.setdefault("data-miki-navbar", "true")
+        attrs.setdefault("touch-action", "manipulation")
 
         # Build nav links
         nav_items: list[Any] = []
@@ -92,9 +94,10 @@ class Navbar(Component):
             type="button",
             class_="miki-navbar-toggle",
             aria_label="Toggle navigation menu",
+            aria_expanded="false",
             **bridge_attr(
                 "click",
-                "this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.toggle('open')",
+                "var nav=this.closest('.miki-navbar'); var links=nav.querySelector('.miki-navbar-links'); var open=links.classList.toggle('open'); this.setAttribute('aria-expanded', String(open));",
             ),
         )
 

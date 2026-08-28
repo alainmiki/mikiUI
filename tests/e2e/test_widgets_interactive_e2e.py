@@ -40,7 +40,9 @@ def page(browser, server):
         css_resp = server.get("/_miki/runtime/miki.css")
         # Load ALL widget JS modules
         js_files = [
-            "core.js", "miki_bridge.js", "mikieditorarea.js", "mikidialog.js", "mikimodal.js", "mikitabs.js",
+            "core.js", "miki_bridge.js", "mikieditorarea.js", "mikiide.js",
+            "mikimdi.js", "mikistackedpanel.js",
+            "mikidialog.js", "mikimodal.js", "mikitabs.js",
             "mikidrawer.js", "mikisplitview.js", "mikidockablepanel.js",
             "mikislider.js", "mikidial.js", "mikiprogress.js",
             "mikiprogressdialog.js", "mikicollapsible.js", "mikiaccordion.js",
@@ -667,10 +669,10 @@ class TestDialogClose:
             pytest.skip("No dialogs found")
         dlg = dialogs.first
         close_on_overlay = dlg.get_attribute("data-miki-dialog-close-on-overlay")
-        if close_on_overlay != "true":
-            pytest.skip("Dialog does not close on overlay click")
-        # Click the dialog backdrop (the dialog itself)
-        dlg.click(position={"x": 5, "y": 5})
+        assert close_on_overlay == "true", "Dialog must expose overlay-close support"
+        overlay = dlg.locator(".miki-dialog-overlay").first
+        assert overlay.count() > 0, "Dialog overlay element should exist"
+        overlay.click()
         page.wait_for_timeout(200)
         is_hidden = dlg.evaluate("el => !el.hasAttribute('open') || el.style.display === 'none'")
         assert is_hidden, "Dialog should close on backdrop click"
@@ -781,7 +783,7 @@ class TestKanbanTouch:
                 html = html.replace("</head>", f"{inject}</head>")
             else:
                 html = inject + html
-            page.set_content(html)
+        page.set_content(html, timeout=60000)
 
         page.set_viewport_size({"width": 375, "height": 667})
         load("/data")

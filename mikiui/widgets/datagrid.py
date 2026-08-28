@@ -119,7 +119,10 @@ class DataGrid(Component):
     ) -> None:
         attrs.setdefault("class_", "miki-datagrid")
         attrs.setdefault("role", "grid")
+        attrs.setdefault("aria_label", "Data grid")
         attrs.setdefault("data-miki-datagrid", "true")
+        attrs.setdefault("touch-action", "manipulation")
+        attrs.setdefault("tabindex", "0")
 
         if htmx_get:
             attrs.setdefault("data-miki-htmx-get", htmx_get)
@@ -218,6 +221,7 @@ class DataGrid(Component):
                 th_attrs.setdefault("role", "button")
                 th_attrs.setdefault("tabindex", "0")
                 th_attrs.setdefault("aria-sort", "none")
+                th_attrs.setdefault("aria_label", f"Sort by {label}")
                 th_attrs["class_"] += " miki-th-sortable"
                 sort_indicator = Span("▲", class_="miki-sort-indicator", **{"data-miki-sort-indicator": "true"})
                 if opts.get("filterable", False):

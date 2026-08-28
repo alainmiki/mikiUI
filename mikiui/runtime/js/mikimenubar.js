@@ -1,195 +1,224 @@
 (function () {
   "use strict";
 
-  var miki = window.miki || {};
+  if (typeof window === "undefined") return;
+  if (typeof window.mikiMenuBar !== "undefined") return;
 
-  var mikiMenuBar = {
-    init: function (navBar) {
-      if (navBar.dataset.mikiInit === "true") return;
-      navBar.dataset.mikiInit = "true";
+  /* ---------------------------------------------------------------
+   * MenuBar — accessible, touch + mouse menu bar.
+   *
+   * Features:
+   *  - Click / tap a top-level label to toggle its dropdown.
+   *  - Hover-intent opens (configurable delay) for pointer users.
+   *  - Full keyboard support: Enter/Space/ArrowDown to open,
+   *    ArrowUp/ArrowDown to move between items, ArrowRight/Left to
+   *    move between top-level menus, Escape to close, Tab to leave.
+   *  - Click-away and Escape close all menus.
+   *  - Touch-friendly: tap outside closes, tap a label toggles.
+   *  - ARIA: aria-haspopup, aria-expanded, role=menu/menuitem.
+   *  - CustomEvents: miki:menubar:open, miki:menubar:close.
+   * --------------------------------------------------------------- */
 
-      var titles = navBar.querySelectorAll(".miki-menu-title");
-      var menus = navBar.querySelectorAll(".miki-menu");
+  var HOVER_OPEN_DELAY = 120;   // ms before hover opens a menu
+  var HOVER_CLOSE_DELAY = 250;  // ms before hover closes an un-hovered menu
 
-      for (var i = 0; i < titles.length; i++) {
-        (function (title) {
-          on(title, "click", function (e) {
-            e.stopPropagation();
-            var menu = title.nextElementSibling;
-            if (menu && menu.classList.contains("miki-menu")) {
-              // Close all other menus
-              var allMenus = navBar.querySelectorAll(".miki-menu");
-              for (var j = 0; j < allMenus.length; j++) {
-                if (allMenus[j] !== menu) {
-                  allMenus[j].style.display = "none";
-                }
-              }
-              menu.style.display = menu.style.display === "block" ? "none" : "block";
-            }
-          });
+  function stop(e) { e.stopPropagation(); }
 
-          on(title, "keydown", function (e) {
-            if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+  function mikiMenuBar() {}
+
+  mikiMenuBar.init = function (navBar) {
+    if (!navBar || navBar.dataset.mikiMenuInit === "true") return;
+    navBar.dataset.mikiMenuInit = "true";
+
+    var menus = Array.from(navBar.querySelectorAll(".miki-menu"));
+    var hoverOpenTimer = null;
+    var hoverCloseTimer = null;
+
+    function closeAllMenus() {
+      for (var i = 0; i < menus.length; i++) {
+        var m = menus[i];
+        if (m.style.display === "none") continue;
+        m.style.display = "none";
+        var btn = m.parentNode ? m.parentNode.querySelector(".miki-menu-title") : null;
+        if (btn) {
+          btn.setAttribute("aria-expanded", "false");
+          btn.classList.remove("miki-menu-title-active");
+        }
+        dispatch(navBar, "miki:menubar:close", { menu: m });
+      }
+    }
+
+    function openMenu(menu) {
+      closeAllMenus();
+      menu.style.display = "block";
+      var btn = menu.parentNode ? menu.parentNode.querySelector(".miki-menu-title") : null;
+      if (btn) {
+        btn.setAttribute("aria-expanded", "true");
+        btn.classList.add("miki-menu-title-active");
+      }
+      dispatch(navBar, "miki:menubar:open", { menu: menu });
+    }
+
+    function toggleMenu(menu) {
+      if (menu.style.display === "block") {
+        closeAllMenus();
+      } else {
+        openMenu(menu);
+      }
+    }
+
+    function focusFirstItem(menu) {
+      var item = menu.querySelector('.miki-menu-item > a, .miki-menu-item[tabindex]');
+      if (item) item.focus();
+    }
+
+    function focusLastItem(menu) {
+      var items = menu.querySelectorAll('.miki-menu-item > a, .miki-menu-item[tabindex]');
+      if (items.length) items[items.length - 1].focus();
+    }
+
+    for (var i = 0; i < menus.length; i++) {
+      (function (menu) {
+        var wrapper = menu.parentNode;
+        var title = wrapper ? wrapper.querySelector(".miki-menu-title") : null;
+        if (!title) return;
+
+        /* --- Toggle on click / tap --- */
+        on(title, "click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleMenu(menu);
+          focusFirstItem(menu);
+        });
+
+        /* --- Hover intent (pointer only, not touch) --- */
+        on(title, "mouseenter", function () {
+          if (isTouchDevice()) return;
+          clearTimeout(hoverCloseTimer);
+          hoverOpenTimer = setTimeout(function () { openMenu(menu); }, HOVER_OPEN_DELAY);
+        });
+
+        on(title, "mouseleave", function () {
+          if (isTouchDevice()) return;
+          clearTimeout(hoverOpenTimer);
+          hoverCloseTimer = setTimeout(closeAllMenus, HOVER_CLOSE_DELAY);
+        });
+
+        on(menu, "mouseenter", function () {
+          if (isTouchDevice()) return;
+          clearTimeout(hoverCloseTimer);
+        });
+
+        on(menu, "mouseleave", function () {
+          if (isTouchDevice()) return;
+          hoverCloseTimer = setTimeout(closeAllMenus, HOVER_CLOSE_DELAY);
+        });
+
+        /* --- Keyboard on the title button --- */
+        on(title, "keydown", function (e) {
+          switch (e.key) {
+            case "Enter":
+            case " ":
+            case "ArrowDown":
               e.preventDefault();
-              var menu = title.nextElementSibling;
-              if (menu && menu.classList.contains("miki-menu")) {
-                menu.style.display = "block";
-                var firstItem = menu.querySelector('.miki-menu-item');
-                if (firstItem) firstItem.focus();
+              openMenu(menu);
+              focusFirstItem(menu);
+              break;
+            case "ArrowUp":
+              e.preventDefault();
+              openMenu(menu);
+              focusLastItem(menu);
+              break;
+            case "ArrowRight":
+              e.preventDefault();
+              focusNextTitle(title);
+              break;
+            case "ArrowLeft":
+              e.preventDefault();
+              focusPrevTitle(title);
+              break;
+            case "Escape":
+              e.preventDefault();
+              closeAllMenus();
+              title.focus();
+              break;
+          }
+        });
+
+        /* --- Keyboard inside the dropdown --- */
+        on(menu, "keydown", function (e) {
+          var items = Array.from(menu.querySelectorAll('.miki-menu-item > a, .miki-menu-item[tabindex]'));
+          if (!items.length) return;
+          var idx = items.indexOf(document.activeElement);
+
+          switch (e.key) {
+            case "ArrowDown":
+              e.preventDefault();
+              if (idx < items.length - 1) items[idx + 1].focus();
+              break;
+            case "ArrowUp":
+              e.preventDefault();
+              if (idx > 0) items[idx - 1].focus();
+              else { closeAllMenus(); title.focus(); }
+              break;
+            case "ArrowRight":
+              e.preventDefault();
+              closeAllMenus();
+              var next = focusNextTitle(title);
+              if (next) {
+                var nm = next.parentNode ? next.parentNode.querySelector(".miki-menu-dropdown") : null;
+                if (nm) { openMenu(nm); focusFirstItem(nm); }
               }
-            }
-          });
-        })(titles[i]);
-      }
-
-      // Click-away to close all menus
-      on(document, "click", function () {
-        for (var k = 0; k < menus.length; k++) {
-          menus[k].style.display = "none";
-        }
-      });
-
-      // ESC to close menus
-      on(document, "keydown", function (e) {
-        if (e.key === "Escape") {
-          for (var m = 0; m < menus.length; m++) {
-            menus[m].style.display = "none";
-          }
-        }
-      });
-    }
-  };
-
-  window.mikiMenuBar = mikiMenuBar;
-
-  /* ===================== Auto-init System ===================== */
-
-  var widgetRegistry = [
-    { selector: '[data-miki-tabs="true"]', init: mikiTabs.init, name: "tabs" },
-    { selector: '[data-miki-dialog="true"]', init: mikiDialog.init, name: "dialog" },
-    { selector: '[data-miki-modal="true"]', init: mikiModal.init, name: "modal" },
-    { selector: '[data-miki-slider="true"]', init: mikiSlider.init, name: "slider" },
-    { selector: '[data-miki-dial="true"]', init: mikiDial.init, name: "dial" },
-    { selector: '[data-miki-progress="true"]', init: mikiProgress.init, name: "progress" },
-    { selector: '[data-miki-progress-dialog="true"]', init: mikiProgressDialog.init, name: "progressDialog" },
-    { selector: '[data-miki-collapsible="true"]', init: mikiCollapsible.init, name: "collapsible" },
-    { selector: '[data-miki-accordion="true"]', init: mikiAccordion.init, name: "accordion" },
-    { selector: '[data-miki-datagrid="true"]', init: mikiDataGrid.init, name: "dataGrid" },
-    { selector: '[data-miki-kanban="true"]', init: mikiKanban.init, name: "kanban" },
-    { selector: '[data-miki-chat="true"]', init: mikiChat.init, name: "chat" },
-    { selector: '[data-miki-dropzone="true"]', init: mikiDropzone.init, name: "dropzone" },
-    { selector: '[data-miki-carousel="true"]', init: mikiCarousel.init, name: "carousel" },
-    { selector: '[data-miki-messagebox="true"]', init: mikiMessageBox.init, name: "messageBox" },
-    { selector: '[data-miki-context-window="true"]', init: mikiContextWindow.init, name: "contextWindow" },
-    { selector: '[data-miki-menubar="true"]', init: mikiMenuBar.init, name: "menuBar" },
-    { selector: '[data-miki-dockable="true"]', init: mikiDockablePanel.init, name: "dockable" },
-    { selector: '[data-miki-splitview="true"]', init: mikiSplitView.init, name: "splitView" },
-    { selector: '[data-miki-drawer="true"]', init: mikiDrawer.init, name: "drawer" },
-    { selector: '[data-miki-toggle="true"]', init: mikiToggle.init, name: "toggle" },
-    { selector: '[data-miki-searchable="true"]', init: mikiSearchableSelect.init, name: "searchable" },
-  ];
-
-  function initAll(scope) {
-    scope = scope || document;
-
-    for (var i = 0; i < widgetRegistry.length; i++) {
-      var widgets = scope.querySelectorAll(widgetRegistry[i].selector);
-      for (var j = 0; j < widgets.length; j++) {
-        widgetRegistry[i].init(widgets[j]);
-      }
-    }
-
-    // Drawer close buttons (inside the drawer container)
-    var drawerCloseBtns = scope.querySelectorAll("[data-miki-drawer-close=\"true\"]");
-    for (var d = 0; d < drawerCloseBtns.length; d++) {
-      drawerCloseBtns[d].dataset.mikiInit = "true";
-    }
-
-    // Drawer overlay click-to-close
-    var drawerOverlays = scope.querySelectorAll("[data-miki-drawer-overlay=\"true\"]");
-    for (var o = 0; o < drawerOverlays.length; o++) {
-      if (drawerOverlays[o].dataset.mikiInit === "true") continue;
-      drawerOverlays[o].dataset.mikiInit = "true";
-      (function (overlay) {
-        on(overlay, "click", function () {
-          var drawer = overlay.closest(".miki-drawer");
-          if (drawer) {
-            drawer.classList.remove("miki-drawer-open");
-            drawer.setAttribute("aria-hidden", "true");
+              break;
+            case "ArrowLeft":
+              e.preventDefault();
+              closeAllMenus();
+              var prev = focusPrevTitle(title);
+              if (prev) {
+                var pm = prev.parentNode ? prev.parentNode.querySelector(".miki-menu-dropdown") : null;
+                if (pm) { openMenu(pm); focusFirstItem(pm); }
+              }
+              break;
+            case "Escape":
+              e.preventDefault();
+              closeAllMenus();
+              title.focus();
+              break;
+            case "Tab":
+              closeAllMenus();
+              break;
           }
         });
-      })(drawerOverlays[o]);
+
+        /* Prevent clicks inside dropdown from bubbling to document */
+        on(menu, "click", stop);
+      })(menus[i]);
     }
 
-    // Drawer toggle buttons (external)
-    var drawerToggles = scope.querySelectorAll("[data-miki-drawer-toggle=\"true\"]");
-    for (var t = 0; t < drawerToggles.length; t++) {
-      if (drawerToggles[t].dataset.mikiInit === "true") continue;
-      drawerToggles[t].dataset.mikiInit = "true";
-      (function (btn) {
-        on(btn, "click", function (e) {
-          e.preventDefault();
-          var target = btn.getAttribute("data-miki-drawer-target");
-          var drawer;
-          if (target) {
-            drawer = document.querySelector(target);
-          } else {
-            drawer = btn.closest(".miki-drawer") || document.querySelector(".miki-drawer");
-          }
-          if (drawer) {
-            drawer.classList.toggle("miki-drawer-open");
-            var isOpen = drawer.classList.contains("miki-drawer-open");
-            drawer.setAttribute("aria-hidden", !isOpen);
-            dispatch(drawer, "miki:drawer:toggled", { open: isOpen });
-          }
-        });
-      })(drawerToggles[t]);
+    function focusNextTitle(title) {
+      var titles = Array.from(navBar.querySelectorAll(".miki-menu-title"));
+      var idx = titles.indexOf(title);
+      if (idx < titles.length - 1) { titles[idx + 1].focus(); return titles[idx + 1]; }
+      return null;
     }
 
-    // Dockable panel action buttons (already bound via init, but handle
-    // dynamically-added buttons)
-    var dockActions = scope.querySelectorAll("[data-miki-dock-action]");
-    for (var u = 0; u < dockActions.length; u++) {
-      if (dockActions[u].dataset.mikiInit === "true") continue;
-      dockActions[u].dataset.mikiInit = "true";
-      (function (btn) {
-        var action = btn.getAttribute("data-miki-dock-action");
-        on(btn, "click", function (e) {
-          e.preventDefault();
-          var panel = btn.closest(".miki-dockable-panel");
-          if (!panel) return;
-          if (action === "toggle") mikiDockablePanel.toggle(panel);
-          else if (action === "close") mikiDockablePanel.close(panel);
-          else if (action === "detach") mikiDockablePanel.detach(panel);
-        });
-      })(dockActions[u]);
+    function focusPrevTitle(title) {
+      var titles = Array.from(navBar.querySelectorAll(".miki-menu-title"));
+      var idx = titles.indexOf(title);
+      if (idx > 0) { titles[idx - 1].focus(); return titles[idx - 1]; }
+      return null;
     }
-  }
 
-  /* ---- Global convenience functions (called from onclick attrs) ---- */
+    /* --- Click / tap outside closes menus --- */
+    on(document, "click", closeAllMenus);
+    on(document, "touchstart", function (e) {
+      if (!navBar.contains(e.target)) closeAllMenus();
+    });
 
-  window.mikiCloseDialog = function (btn) {
-    var dlg = btn.closest("dialog");
-    if (dlg) mikiDialog.close(dlg);
-  };
-
-  window.mikiClose = {
-    dialog: function (btn) {
-      var dlg = btn.closest("dialog");
-      if (dlg) mikiDialog.close(dlg);
-    },
-    modal: function (btn) {
-      var modal = btn.closest(".miki-modal");
-      if (modal) mikiModal.close(modal);
-    }
-  };
-
-  /* ---- Auto-init on DOM ready ---- */
-
-  window.MikiUI = {
-    init: initAll,
-    initAll: initAll,
-    version: "1.0",
+    /* --- Global Escape --- */
+    on(document, "keydown", function (e) {
+      if (e.key === "Escape") closeAllMenus();
+    });
   };
 
   window.mikiMenuBar = mikiMenuBar;

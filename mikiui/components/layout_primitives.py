@@ -121,6 +121,8 @@ class Stack(Component):
         if class_:
             classes.append(class_)
         attrs.setdefault("class_", " ".join(classes))
+        attrs.setdefault("role", "group")
+        attrs.setdefault("aria-label", "Stack")
         attrs.setdefault("style", f"display: flex; flex-direction: column; gap: {gap};")
         super().__init__(*children, **attrs)
 

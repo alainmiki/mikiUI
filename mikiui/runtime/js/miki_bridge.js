@@ -254,8 +254,14 @@
             widgets = [];
           }
           for (var j = 0; j < widgets.length; j++) {
+            var widget = widgets[j];
+            var tag = widget && widget.dataset ? widget.dataset.mikiWidgetInit : null;
+            if (tag === entry.name) continue;
             try {
-              entry.init(widgets[j]);
+              entry.init(widget);
+              if (widget && widget.dataset) {
+                widget.dataset.mikiWidgetInit = entry.name;
+              }
             } catch (e) {
               /* Widget init failed -- do not break the page */
             }

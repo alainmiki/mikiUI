@@ -19,6 +19,11 @@ class Dashboard(Component):
 
     def __init__(self, *cards: Any, columns: int = 3, **attrs: Any) -> None:
         attrs.setdefault("class_", "miki-dashboard")
+        attrs.setdefault("data-miki-dashboard", "true")
+        attrs.setdefault("touch-action", "manipulation")
+        attrs.setdefault("role", "region")
+        attrs.setdefault("aria_label", "Dashboard")
+        attrs.setdefault("tabindex", "0")
         attrs.setdefault(
             "style",
             {

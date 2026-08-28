@@ -226,6 +226,11 @@ DescriptionDetail = Dd
 class Menu(Component):
     tag = "menu"
 
+    def __init__(self, *children: Any, **attrs: Any) -> None:
+        attrs.setdefault("role", "menu")
+        attrs.setdefault("aria-label", "Menu")
+        super().__init__(*children, **attrs)
+
 
 class Img(Component):
     tag = "img"

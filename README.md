@@ -108,6 +108,25 @@ if __name__ == "__main__":
 - [Plugin System](docs/plugins.md)
 - [Full Spec](context/plan.md)
 
+## Production readiness
+
+Use the following commands to validate the package and production build flow before shipping a release:
+
+```bash
+pip install -e .
+python -m build
+mikiui build --target web
+mikiui build --target desktop
+pytest
+```
+
+The framework is intended to support:
+
+- web deployment via static HTML/HTMX + FastAPI
+- desktop deployment via pywebview or browser fallback
+- a single Python codebase for component and widget reuse
+- Tailwind or plain CSS styling without changing app logic
+
 ## License
 
 MIT

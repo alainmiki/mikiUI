@@ -18,7 +18,11 @@ class TerminalWidget(Component):
     def __init__(self, lines: list[str] | str = "", **attrs: Any) -> None:
         attrs.setdefault("class_", "miki-terminal")
         attrs.setdefault("role", "log")
-        attrs.setdefault("aria_live", "polite")
+        attrs.setdefault("aria-live", "polite")
+        attrs.setdefault("aria-label", "Terminal output")
+        attrs.setdefault("data-miki-terminal", "true")
+        attrs.setdefault("tabindex", "0")
+        attrs.setdefault("touch-action", "manipulation")
         if isinstance(lines, str):
             text = lines
         else:
