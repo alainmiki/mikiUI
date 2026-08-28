@@ -11,7 +11,7 @@ Security headers added:
 - ``Strict-Transport-Security`` — enables HSTS on HTTPS connections
 - ``Permissions-Policy`` — restricts browser APIs (camera, mic, location, etc.)
 - ``Cross-Origin-Opener-Policy: same-origin`` — prevents cross-origin opener attacks
-- ``Cross-Origin-Embedder-Policy: require-corp`` — prevents cross-origin embedder attacks
+- ``Cross-Origin-Embedder-Policy: unsafe-none`` — preserves compatibility with external CDNs/media while keeping a predictable policy baseline
 - ``X-Permitted-Cross-Domain-Policies: none`` — blocks cross-domain policy files
 """
 
@@ -26,13 +26,14 @@ from starlette.requests import Request
 
 _CSP_DEFAULT = (
     "default-src 'self'; "
-    "script-src-elem 'self' 'unsafe-inline'; "
+    "script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "script-src-attr 'unsafe-inline'; "
-    "style-src-elem 'self' 'unsafe-inline'; "
+    "style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "style-src-attr 'unsafe-inline'; "
     "img-src 'self' data: https:; "
     "font-src 'self' data:; "
-    "connect-src 'self'; "
+    "connect-src 'self' https://cdn.jsdelivr.net; "
+    "media-src 'self' https://commondatastorage.googleapis.com; "
     "frame-ancestors 'none'"
 )
 
@@ -69,13 +70,26 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
         csp = self._csp or ""
         if nonce:
+            # Scripts: nonce-based (blocks all inline scripts without nonce,
+            # except the 'unsafe-inline' fallback which is kept for dynamic
+            # event-handler attributes like on*="" set by Alpine x-on).
             csp = csp.replace(
                 "script-src-elem 'self' 'unsafe-inline'",
-                f"script-src-elem 'self' 'nonce-{nonce}'",
+                f"script-src-elem 'self' 'nonce-{nonce}' 'unsafe-inline'",
+            )
+            # Styles: NO nonce — only 'unsafe-inline'.  When a nonce is present
+            # alongside 'unsafe-inline', the browser ignores 'unsafe-inline'
+            # (per CSP spec) and blocks all dynamically-applied styles like
+            # `el.style.x = '...'` that HTMX and Alpine.js use.  Inline <style>
+            # tags from our renderer are safe by construction (we generate them
+            # server-side), so 'unsafe-inline' is acceptable here.
+            csp = csp.replace(
+                "style-src-elem 'self' 'unsafe-inline' 'nonce-{nonce}'",
+                "style-src-elem 'self' 'unsafe-inline'",
             )
             csp = csp.replace(
+                f"style-src-elem 'self' 'nonce-{nonce}' 'unsafe-inline'",
                 "style-src-elem 'self' 'unsafe-inline'",
-                f"style-src-elem 'self' 'nonce-{nonce}'",
             )
         response.headers.setdefault("Content-Security-Policy", csp)
         if self._hsts:
@@ -89,7 +103,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     f"max-age={self._hsts}; includeSubDomains",
                 )
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
-        response.headers.setdefault("Cross-Origin-Embedder-Policy", "require-corp")
+        response.headers.setdefault("Cross-Origin-Embedder-Policy", "unsafe-none")
+        response.headers.setdefault(
+            "Cross-Origin-Resource-Policy", "cross-origin"
+        )
         response.headers.setdefault(
             "Permissions-Policy",
             "geolocation=(), microphone=(), camera=(), payment=(), "

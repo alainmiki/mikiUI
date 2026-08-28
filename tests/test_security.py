@@ -486,7 +486,14 @@ def test_security_headers_cross_origin_opener_policy():
 
 
 def test_security_headers_cross_origin_embedder_policy():
-    """Cross-Origin-Embedder-Policy header is set."""
+    """Cross-Origin-Embedder-Policy and Cross-Origin-Resource-Policy headers are set.
+
+    COEP is set to ``unsafe-none`` so external CDNs and cross-origin media
+    (commondatastorage.googleapis.com) load without requiring explicit
+    ``Cross-Origin-Resource-Policy: cross-origin`` on the remote origin.
+    ``Cross-Origin-Resource-Policy: cross-origin`` is sent on our responses
+    so they can be embedded cross-origin when needed.
+    """
     app = MikiApp()
     fastapi_app = create_app(app)
 
@@ -498,7 +505,8 @@ def test_security_headers_cross_origin_embedder_policy():
 
     client = TestClient(fastapi_app)
     resp = client.get("/test")
-    assert resp.headers.get("Cross-Origin-Embedder-Policy") == "require-corp"
+    assert resp.headers.get("Cross-Origin-Embedder-Policy") == "unsafe-none"
+    assert resp.headers.get("Cross-Origin-Resource-Policy") == "cross-origin"
 
 
 def test_security_headers_permitted_cross_domain_policies():
