@@ -62,7 +62,7 @@
         (function (tab, idx) {
           // Tab click
           on(tab, "click", function (e) {
-            if (e.target.closest("[data-miki-tab-close=\"true\"])) return;
+            if (e.target.closest("[data-miki-tab-close=\"true\"]")) return;
             var groupId = tab.getAttribute("data-miki-tab-group");
             mikiEditorArea.showTab(groupId, idx);
           });
