@@ -4379,3 +4379,263 @@ input[type="range"].miki-slider {
   .miki-chat-log { scroll-behavior: auto; }
   .miki-chat-typing-dot { animation: none; }
 }
+
+/* ==================================================================
+   Responsive & Mobile Support
+   ================================================================== */
+
+/* Touch-friendly: ensure all interactive elements have adequate hit targets */
+@media (hover: none) and (pointer: coarse) {
+  .miki-btn,
+  .miki-menu-title,
+  .miki-stack-tab,
+  .miki-editor-tab,
+  .miki-tab,
+  .miki-dropdown-item,
+  .miki-mdi-controls button,
+  .miki-editor-tab-close,
+  .miki-chat-form button,
+  [role="tab"],
+  [role="menuitem"],
+  .miki-accordion-header,
+  .miki-collapsible-header {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Prevent double-tap zoom on interactive elements */
+  .miki-btn,
+  .miki-menu-title,
+  .miki-stack-tab,
+  .miki-editor-tab,
+  .miki-mdi-controls button,
+  .miki-editor-tab-close {
+    touch-action: manipulation;
+  }
+
+  /* Larger touch targets for form controls */
+  .miki-input,
+  .miki-textarea,
+  .miki-select,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+  }
+
+  /* Prevent text selection on double-tap for buttons */
+  .miki-btn,
+  .miki-menu-title,
+  .miki-stack-tab,
+  .miki-editor-tab {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Small phones (up to 480px) */
+@media (max-width: 480px) {
+  .miki-menubar {
+    flex-wrap: wrap;
+    padding: 0.2rem;
+  }
+
+  .miki-stack-tabs {
+    flex-direction: column;
+  }
+
+  .miki-stack-tab {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid var(--miki-border, #e2e8f0);
+  }
+
+  .miki-stack-tab-active {
+    border-bottom: 2px solid var(--miki-accent, #2563eb);
+  }
+
+  .miki-mdi-subwindow {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+  }
+
+  .miki-chat {
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  .miki-chat-msg {
+    max-width: 95%;
+  }
+
+  .miki-ide {
+    height: 100vh;
+  }
+
+  .miki-editor-area {
+    flex-direction: column;
+  }
+
+  .miki-editor-group {
+    min-height: 200px;
+  }
+
+  .miki-dialog,
+  .miki-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .miki-bottom-sheet {
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .miki-datagrid {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .miki-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .miki-splitview {
+    flex-direction: column !important;
+  }
+
+  .miki-splitter {
+    width: 100% !important;
+    height: 8px !important;
+    min-height: 8px !important;
+    cursor: row-resize !important;
+    flex: 0 0 8px !important;
+  }
+
+  .miki-progressdialog {
+    width: 90%;
+    max-width: 90%;
+  }
+}
+
+/* Tablets and small laptops (481px - 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  .miki-menubar {
+    flex-wrap: wrap;
+  }
+
+  .miki-mdi-subwindow {
+    min-width: 280px;
+    min-height: 200px;
+  }
+
+  .miki-chat {
+    height: 400px;
+  }
+
+  .miki-editor-group {
+    min-height: 200px;
+  }
+
+  .miki-splitview[data-orientation="horizontal"] {
+    flex-direction: column;
+  }
+
+  .miki-splitview[data-orientation="horizontal"] .miki-splitter {
+    width: 100%;
+    height: 6px;
+    min-height: 6px;
+    cursor: row-resize;
+    flex: 0 0 6px;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .miki-menubar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .miki-chat {
+    height: 100vh;
+  }
+
+  .miki-dialog,
+  .miki-modal {
+    max-height: 90vh;
+  }
+}
+
+/* Safe area insets for notched devices (iPhone X+, etc.) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .miki-menubar,
+  .miki-bottom-nav,
+  .miki-bottom-sheet {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .miki-chat-form {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  .miki-mdi-body,
+  .miki-dialog-body,
+  .miki-modal-body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Scrollbar styling for touch devices */
+@media (hover: none) {
+  .miki-chat-log::-webkit-scrollbar,
+  .miki-datagrid::-webkit-scrollbar,
+  .miki-table::-webkit-scrollbar,
+  .miki-mdi-body::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .miki-chat-log::-webkit-scrollbar-thumb,
+  .miki-datagrid::-webkit-scrollbar-thumb,
+  .miki-table::-webkit-scrollbar-thumb,
+  .miki-mdi-body::-webkit-scrollbar-thumb {
+    background: var(--miki-border, #e2e8f0);
+    border-radius: 2px;
+  }
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) {
+  .miki-btn:hover {
+    background: inherit;
+    color: inherit;
+  }
+
+  .miki-menu-title:hover {
+    background: transparent;
+  }
+
+  .miki-stack-tab:hover {
+    background: transparent;
+    color: inherit;
+  }
+}
+
+/* Viewport height fix for mobile browsers (address bar) */
+.miki-chat,
+.miki-ide,
+.miki-mdiarea {
+  height: 100vh;
+  height: 100dvh;
+}

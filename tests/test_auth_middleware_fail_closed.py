@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-
 from mikiui.router.auth import AuthRequirement
 from mikiui.router.auth_middleware import AuthMiddleware
 

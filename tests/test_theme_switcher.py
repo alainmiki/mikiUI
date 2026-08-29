@@ -1,9 +1,7 @@
 """Tests for ThemeSwitcher widget."""
 from __future__ import annotations
 
-import pytest
-
-from mikiui import MikiApp, Div
+from mikiui import Div, MikiApp
 from mikiui.widgets.theme_switcher import ThemeSwitcher
 
 
@@ -109,8 +107,9 @@ class TestThemeSwitcherIntegration:
         def home():
             return Div(ThemeSwitcher(app))
 
-        from mikiui.backend.server import create_app
         from starlette.testclient import TestClient
+
+        from mikiui.backend.server import create_app
 
         client = TestClient(create_app(app))
         resp = client.get("/")

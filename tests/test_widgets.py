@@ -221,7 +221,7 @@ def test_datagrid_has_pagination_controls():
 
 
 def test_navbar_and_sidebar_are_stable_accessible_contracts():
-    from mikiui.components import Menu, Navbar, BottomSheet, Tabs
+    from mikiui.components import BottomSheet, Menu, Navbar, Tabs
     from mikiui.components.layout_primitives import Stack
     from mikiui.widgets.layout_widgets import Hero, Sidebar
 

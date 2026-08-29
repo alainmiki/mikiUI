@@ -58,17 +58,80 @@ def route(
     name: str | None = None,
     title: str | None = None,
     requires_auth: bool = False,
+    auth: AuthRequirement | None = None,
+    summary: str | None = None,
+    description: str | None = None,
+    tags: list[str] | None = None,
 ) -> Callable[[Callable], Callable]
 ```
 
-Convenience shortcuts:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `path` | `str` | — | URL path. Use `{param}` or `{param:type}` for parameters |
+| `methods` | `tuple[str, ...]` | `("GET",)` | HTTP methods |
+| `name` | `str \| None` | handler name | Unique route name |
+| `title` | `str \| None` | — | Per-page `<title>` content |
+| `requires_auth` | `bool` | `False` | Require authentication |
+| `auth` | `AuthRequirement \| None` | — | Detailed auth requirement |
+| `summary` | `str \| None` | from docstring | API documentation summary |
+| `description` | `str \| None` | from docstring | API documentation description |
+| `tags` | `list[str] \| None` | `[]` | API documentation tags |
+
+Convenience shortcuts (all accept the same OpenAPI metadata parameters):
 
 ```python
-def get(self, path, name=None, title=None)
-def post(self, path, name=None, title=None)
+def get(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
+def post(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
+def put(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
+def patch(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
+def delete(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
+def head(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
+def options(self, path, name=None, title=None, auth=None, summary=None, description=None, tags=None)
 ```
 
 ### Path Parameters
+
+Type-coerced path parameters with validation:
+
+```python
+@app.route("/users/{user_id:int}")
+def show_user(ctx, user_id: int):
+    return Div(f"User {user_id}")
+```
+
+Supported types: `int`, `float`, `str` (default), `path` (matches slashes), `uuid`.
+
+### Route Lookup
+
+```python
+# Exact match
+route = app.get_route("/users/{user_id:int}")
+
+# Pattern match (matches parameterized routes)
+route = app.get_route("/users/42")  # matches /users/{user_id:int}
+```
+
+### Route Groups
+
+```python
+api = app.route_group("/api")
+api.auth(AuthRequirement(strategy="session"))
+api.rate_limit(limit=100, window=60)
+
+@api.get("/users")
+def list_users(ctx):
+    return Div("users")
+```
+
+Group-level auth and rate limiting propagate to all routes in the group.
+
+### Testing
+
+```python
+client = app.test_client(enable_csrf=False)
+resp = client.get("/")
+assert resp.status_code == 200
+```
 
 ```python
 @app.route("/users/{user_id}")
@@ -861,11 +924,50 @@ The backend automatically:
 ### WebSocket
 
 ```python
-from mikiui.backend import ConnectionManager, mount_websocket
+from mikiui.backend.websocket import ConnectionManager, WebSocketAuthHelper, mount_websocket
 
-manager = ConnectionManager()
-mount_websocket(app_fastapi, manager, "/ws")
+# Create a connection manager with auth integration
+auth_helper = WebSocketAuthHelper(app)
+manager = ConnectionManager(
+    max_connections_per_user=5,
+    max_connections_per_ip=10,
+    allowed_origins=["http://localhost:3000"],
+)
+
+# Define a handler
+async def chat_handler(ws, manager):
+    user_id = auth_helper.authenticate(ws)
+    manager.join_room(ws, "general")
+    try:
+        while True:
+            data = await ws.receive_text()
+            await manager.broadcast_to_room("general", {"user": user_id, "text": data})
+    except WebSocketDisconnect:
+        manager.disconnect(ws)
+
+# Mount the WebSocket route
+mount_websocket(router, "/ws/chat", manager=manager, handler=chat_handler)
 ```
+
+**Room/Channel API:**
+
+```python
+manager.join_room(ws, "room-name")
+manager.leave_room(ws, "room-name")
+manager.leave_all_rooms(ws)
+manager.broadcast_to_room("room-name", {"data": "value"})
+manager.broadcast_to_user("user-id", {"notification": "value"})
+manager.get_room_connections("room-name")
+manager.get_user_rooms(ws)
+manager.get_connection_info(ws)
+```
+
+**Auth Integration:**
+
+`WebSocketAuthHelper` integrates with the app's registered auth strategies. It checks:
+1. Session cookie (`mikiui_session`)
+2. `Authorization: Bearer <token>` header
+3. `?token=<token>` query parameter
 
 ### SSE
 
@@ -874,7 +976,7 @@ from mikiui.backend import sse_response
 
 @app_fastapi.get("/stream")
 async def stream():
-    return sse_response(generate_events())
+    return sse_response(generate_events()))
 ```
 
 ---

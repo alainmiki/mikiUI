@@ -12,6 +12,9 @@ from typing import Any
 
 from .auth import AuthRequirement
 
+# RouteDef is imported lazily to avoid circular imports
+# (routes.py imports from router.auth which imports from router.group)
+
 
 class RateLimitConfig:
     """Rate-limit settings for a route group."""
@@ -128,6 +131,9 @@ class RouteGroupBuilder:
     def __init__(self, app: Any, prefix: str) -> None:
         self._app = app
         self._group = RouteGroup(app, prefix)
+        # Store the group on the app for later retrieval
+        if hasattr(app, "_route_groups"):
+            app._route_groups[prefix] = self._group
 
     def use(self, middleware_cls: type) -> RouteGroupBuilder:
         self._group.use(middleware_cls)
@@ -166,15 +172,56 @@ class RouteGroupBuilder:
 
     def _build_decorator(self, methods: str | tuple[str, ...], path: str, **kwargs: Any) -> Callable[..., Any]:
         full_path = f"{self._group.prefix}{path}" if path != "/" else self._group.prefix or "/"
+        # Resolve auth: explicit kwargs > group-level > None
+        explicit_auth = kwargs.get("auth")
+        group_auth = self._group._auth if self._group._auth is not None else None
+        effective_auth = explicit_auth if explicit_auth is not None else group_auth
 
         def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
-            self._app.route(
-                full_path,
-                methods=methods if isinstance(methods, tuple) else (methods,),
-                **kwargs,
+            # Import here to avoid circular import
+            from ..app.routes import RouteDef
+            # Register the route directly by calling the inner registration
+            # logic, bypassing app.route() decorator pattern.
+            upper_methods = tuple(m.upper() for m in (methods if isinstance(methods, tuple) else (methods,)))
+            resolved_name = kwargs.get("name") or getattr(fn, "__name__", "route")
+            title = kwargs.get("title")
+            requires_auth = kwargs.get("requires_auth", False)
+            # Check for duplicate route name
+            existing = next(
+                (r for r in self._app.routes.values() if r.name == resolved_name), None
             )
+            if existing is not None:
+                raise ValueError(
+                    f"Route name {resolved_name!r} is already used by {existing.path!r}. "
+                    "Pass a unique `name=` to the decorator."
+                )
+            # Check for duplicate path with overlapping methods
+            auth_req = effective_auth
+            if full_path in self._app.routes:
+                existing_route = self._app.routes[full_path]
+                overlap = set(existing_route.methods) & set(upper_methods)
+                if overlap:
+                    raise ValueError(
+                        f"Route {full_path!r} with method(s) {sorted(overlap)} is already "
+                        f"registered by {existing_route.name!r}."
+                    )
+                merged_methods = tuple(sorted(set(existing_route.methods + upper_methods)))
+                self._app.routes[full_path] = RouteDef(
+                    full_path, fn, merged_methods, resolved_name, title,
+                    requires_auth or existing_route.requires_auth,
+                    auth=auth_req if auth_req is not None else existing_route._auth_requirement,
+                )
+            else:
+                self._app.routes[full_path] = RouteDef(
+                    full_path, fn, upper_methods, resolved_name, title,
+                    requires_auth, auth=auth_req,
+                )
             route = self._app.routes[full_path]
             route._route_group = self._group
+            # Notify plugins
+            for plugin in self._app.plugins:
+                if hasattr(plugin, "on_route_add"):
+                    plugin.on_route_add(full_path, upper_methods, fn)
             return fn
 
         return decorator

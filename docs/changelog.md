@@ -2,7 +2,60 @@
 
 All notable changes to MikiUI are documented in this file.
 
-## [Unreleased] — 2026-08-19
+## [Unreleased] — 2026-08-29
+
+### Hardening: Routing, Security, Build, Accessibility
+
+#### Routing & Path Parameters
+
+- **Type-coerced path parameters**: `{param:int}`, `{param:float}`, `{param:uuid}`, `{param:path}` with validation and clear error messages
+- **Route method merging**: Same path with different methods (e.g., GET + POST) merges into one RouteDef instead of overwriting
+- **Pattern-matched route lookup**: `get_route('/users/42')` now matches `/users/{user_id}` via `match_route()`
+- **New HTTP convenience methods**: `put()`, `patch()`, `delete()`, `head()`, `options()` — all accept OpenAPI metadata
+- **Route OpenAPI metadata**: `summary`, `description`, `tags` parameters on all route decorators; auto-extracted from docstrings
+- **Route group auth propagation**: Group-level `auth()` applies to all routes unless explicitly overridden
+- **Route group rate limiting**: Group `rate_limit()` configs collected and applied automatically in `server.py`
+
+#### Security
+
+- **CSRF protection by default**: `create_app()` enables CSRF with double-submit cookie pattern; opt-out via `enable_csrf=False`
+- **New CSRF helpers**: `generate_csrf_token()`, `default_get_session_token()`, `default_validate_csrf()`, `apply_csrf_middleware()`
+- **Auth middleware browser detection**: Returns `RedirectResponse` for browser navigations, JSON 401 for API requests
+- **Bridge action validation**: `validate_action()` for untrusted input; bridge attr values escaped
+- **Request ID middleware**: `X-Request-ID` header generated/propagated for distributed tracing
+- **Compression middleware**: `apply_compression_middleware()` using gzip
+
+#### Accessibility & Correctness
+
+- **SVG camelCase attributes**: `viewBox` and other SVG attributes preserved correctly
+- **Tabs ARIA fix**: Removed duplicate `role="tablist"` on outer container
+- **i18n wrapping**: Menu aria-label and other hardcoded strings wrapped in `_()`
+- **Ctx.form() rewrite**: Correct multi-value query parameter handling
+
+#### Build System
+
+- **Recursive asset copying**: Widget JS/CSS files in subdirectories now copied to build output
+- **Windows path separators**: Asset manifest uses forward slashes for URL correctness
+- **Fixed Windows .bat launcher**: Proper batch syntax with separate Python launcher script
+- **File watcher exclusions**: Excludes dist/, build/, node_modules/, __pycache__/ to prevent infinite rebuilds
+
+#### API Documentation
+
+- **RouteDef OpenAPI fields**: `summary`, `description`, `tags` carried through to FastAPI schema
+- **APIPlugin enhanced**: Path param support, ctx passing, proper error handling, security schemes in OpenAPI schema
+- **OpenAPI security schemes**: `bearerAuth` and `cookieAuth` documented in schema
+
+#### WebSocket
+
+- **WebSocketAuthHelper**: Integrates WS connections with app auth strategies (session, JWT, api_key)
+- **Room/channel support**: `join_room()`, `leave_room()`, `broadcast_to_room()`, `broadcast_to_user()`
+- **Connection info**: `get_connection_info()`, `get_user_rooms()`, `get_room_count()`
+- **Automatic cleanup**: Rooms cleaned up on disconnect
+
+#### Developer Experience
+
+- **MikiApp.test_client()**: One-line test client creation: `client = app.test_client()`
+- **match_route() utility**: Standalone function for pattern-matched route lookup
 
 ### Plugin System: Security, Sandboxing, Marketplace
 

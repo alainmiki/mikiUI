@@ -9,7 +9,7 @@ import pytest
 from mikiui import Div, MikiApp
 from mikiui.backend.server import create_app
 from mikiui.components import BottomSheet
-from mikiui.widgets import Drawer, Dial
+from mikiui.widgets import Dial, Drawer
 
 
 def _create_test_app() -> MikiApp:
@@ -18,7 +18,7 @@ def _create_test_app() -> MikiApp:
 
     @app.get("/")
     def home():
-        from mikiui import Div, P, Button, H4
+        from mikiui import H4, Button, Div, P
         return Div(
             Div("Hello E2E"),
             Div(
@@ -58,7 +58,7 @@ def _create_test_app() -> MikiApp:
     @app.get("/data")
     def data():
         from mikiui import Tabs
-        from mikiui.widgets import SplitView, KanbanBoard
+        from mikiui.widgets import KanbanBoard, SplitView
         return Div(
             Div(
                 SplitView(

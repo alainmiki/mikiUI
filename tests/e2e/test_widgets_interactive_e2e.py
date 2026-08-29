@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import expect, sync_playwright
 from starlette.testclient import TestClient
 
-from mikiui.examples.demo1 import app
 from mikiui.backend.server import create_app
+from mikiui.examples.demo1 import app
 
 
 @pytest.fixture(scope="module")
@@ -754,12 +754,14 @@ class TestKanbanTouch:
     def test_touch_drag_kanban_item(self, touch_context, server):
         context = touch_context
         page = context.new_page()
-        
+
         def load(url):
             resp = server.get(url)
             css_resp = server.get("/_miki/runtime/miki.css")
             js_files = [
-                "core.js", "miki_bridge.js", "mikieditorarea.js", "mikidialog.js", "mikimodal.js", "mikitabs.js",
+                "core.js", "miki_bridge.js", "mikieditorarea.js", "mikiide.js",
+                "mikimdi.js", "mikistackedpanel.js",
+                "mikidialog.js", "mikimodal.js", "mikitabs.js",
                 "mikidrawer.js", "mikisplitview.js", "mikidockablepanel.js",
                 "mikislider.js", "mikidial.js", "mikiprogress.js",
                 "mikiprogressdialog.js", "mikicollapsible.js", "mikiaccordion.js",
@@ -783,10 +785,11 @@ class TestKanbanTouch:
                 html = html.replace("</head>", f"{inject}</head>")
             else:
                 html = inject + html
-        page.set_content(html, timeout=60000)
+            return html
+
+        page.set_content(load("/data"), timeout=60000)
 
         page.set_viewport_size({"width": 375, "height": 667})
-        load("/data")
         page.wait_for_timeout(500)
 
         items = page.locator("[data-miki-kanban-item='true']")

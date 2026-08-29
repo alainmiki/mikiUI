@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..engine.dom import _  # noqa: F401 — re-exported for i18n
 from .base import Component
 
 
@@ -66,10 +67,12 @@ class H6(Component):
 class Heading(Component):
     """Configurable heading; ``level`` selects h1..h6 (default 1)."""
 
+    tag = "h1"
+
     def __init__(self, *children: Any, level: int = 1, **attrs: Any) -> None:
         if not 1 <= level <= 6:
             raise ValueError("Heading level must be between 1 and 6")
-        self.tag = f"h{level}"
+        attrs.setdefault("tag", f"h{level}")
         super().__init__(*children, **attrs)
 
 
@@ -228,7 +231,7 @@ class Menu(Component):
 
     def __init__(self, *children: Any, **attrs: Any) -> None:
         attrs.setdefault("role", "menu")
-        attrs.setdefault("aria-label", "Menu")
+        attrs.setdefault("aria-label", _("menu_label", "Menu"))
         super().__init__(*children, **attrs)
 
 

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from types import SimpleNamespace
 
 import pytest
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import JSONResponse
 
 from mikiui.middleware.error_handler import ErrorHandlerMiddleware
 

@@ -22,12 +22,22 @@ When neither is set, the app's global ``title`` is used.
 Path Parameters
 ---------------
 Route handlers can accept path parameters.  Declare them in the path string
-using FastAPI-style ``{param}`` syntax and the handler will receive them
-as keyword arguments::
+using ``{param}`` syntax and the handler will receive them as keyword
+arguments::
 
     @app.route("/users/{user_id}")
-    def show_user(user_id: int):
+    def show_user(user_id):
         return Div(f"User {user_id}")
+
+Path parameters are passed as strings by default.  Use FastAPI-style type
+hints in the path to request coercion::
+
+    @app.route("/items/{item_id:int}")
+    def show_item(item_id: int):
+        return Div(f"Item {item_id + 1}")
+
+Supported types: ``int``, ``float``, ``str`` (default), ``path`` (matches
+slashes), ``uuid`` (UUID validation).
 
 When the first parameter is named ``ctx`` or ``request``, it receives the
 :class:`Ctx` object (which itself provides ``ctx.path_params``,
@@ -38,6 +48,7 @@ from __future__ import annotations
 
 import inspect
 import re
+import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
@@ -45,7 +56,42 @@ from typing import Any
 from ..engine.dom import normalize
 from ..router.auth import AuthRequirement
 
-_PATH_PARAM_RE = re.compile(r"\{(\w+)\}")
+_PATH_PARAM_RE = re.compile(r"\{(\w+)(?::(\w+))?\}")
+
+# Supported path parameter type coercions
+_PATH_PARAM_TYPES: dict[str, Callable[[str], Any]] = {
+    "int": int,
+    "float": float,
+    "str": str,
+    "path": str,
+    "uuid": uuid.UUID,
+}
+
+
+class _PathParamSpec:
+    """A single path parameter specification."""
+
+    __slots__ = ("name", "type_name", "coerce")
+
+    def __init__(self, name: str, type_name: str = "str") -> None:
+        if type_name not in _PATH_PARAM_TYPES:
+            raise ValueError(
+                f"Unknown path parameter type {type_name!r} for {name!r}. "
+                f"Supported: {list(_PATH_PARAM_TYPES)}"
+            )
+        self.name = name
+        self.type_name = type_name
+        self.coerce = _PATH_PARAM_TYPES[type_name]
+
+    def convert(self, value: str) -> Any:
+        """Convert a string path param to the declared type."""
+        try:
+            return self.coerce(value)
+        except (ValueError, TypeError) as exc:
+            raise ValueError(
+                f"Cannot convert path parameter {self.name!r} to "
+                f"{self.type_name}: {value!r} ({exc})"
+            ) from exc
 
 
 class Ctx:
@@ -102,13 +148,20 @@ class Ctx:
         """Parse the incoming request form / query / path params (best-effort).
 
         Result priority: form body > query string > path params.
+        Multi-value query params are collected into lists.
         """
         if self.request is None:
             return dict(self.path_params)
         data: dict[str, Any] = dict(self.path_params)
         if hasattr(self.request, "query_params"):
             for k, v in self.request.query_params.multi_items():
-                data.setdefault(k, []).append(v) if k in data else data.update({k: v})
+                if k in data:
+                    if isinstance(data[k], list):
+                        data[k].append(v)
+                    else:
+                        data[k] = [data[k], v]
+                else:
+                    data[k] = v
             try:
                 form = await self.request.form()
                 data.update(dict(form))
@@ -124,8 +177,8 @@ class RouteDef:
     the app's global title is used (overridable at render time via
     ``ctx.meta["title"]``).
 
-    ``path_params`` is the list of parameter names extracted from ``{param}``
-    placeholders in the route path.
+    ``path_params`` is the list of :class:`_PathParamSpec` extracted from
+    ``{param}`` or ``{param:type}`` placeholders in the route path.
     """
 
     __slots__ = (
@@ -136,10 +189,13 @@ class RouteDef:
         "accepts_ctx",
         "title",
         "path_params",
-        "param_names",
         "requires_auth",
         "_auth_requirement",
         "_route_group",
+        "summary",
+        "description",
+        "tags",
+        "response_model",
     )
 
     def __init__(
@@ -151,6 +207,9 @@ class RouteDef:
         title: str | None = None,
         requires_auth: bool = False,
         auth: AuthRequirement | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ) -> None:
         self.path = path
         self.handler = handler
@@ -160,13 +219,14 @@ class RouteDef:
         self.requires_auth = requires_auth
         self._auth_requirement = auth
         self._route_group = None
-        # Extract {param} placeholders from the path
-        self.path_params: list[str] = self._extract_path_params(path)
+        self.summary = summary or (handler.__doc__.strip().split("\n")[0] if handler.__doc__ else None)
+        self.description = description or (handler.__doc__.strip() if handler.__doc__ else None)
+        self.tags = tags or []
+        self.response_model = None
+        # Extract {param} or {param:type} placeholders from the path
+        self.path_params: list[_PathParamSpec] = self._extract_path_params(path)
         params = list(inspect.signature(handler).parameters)
         self.accepts_ctx = bool(params) and params[0] in ("ctx", "request")
-        # Handler param names excluding ctx/request — these receive path params
-        all_params = set(params)
-        self.param_names = [p for p in self.path_params if p in all_params]
 
     def get_auth_requirement(self) -> AuthRequirement | None:
         """Return the effective auth requirement for this route."""
@@ -177,16 +237,33 @@ class RouteDef:
         return None
 
     @staticmethod
-    def _extract_path_params(path: str) -> list[str]:
-        """Extract parameter names from ``{param}`` placeholders in a path.
-
-        Supports FastAPI-style syntax: ``/users/{user_id}``.
-        """
-        return _PATH_PARAM_RE.findall(path)
+    def _extract_path_params(path: str) -> list[_PathParamSpec]:
+        """Extract parameter specs from ``{param}`` or ``{param:type}`` placeholders."""
+        return [_PathParamSpec(name, type_name or "str") for name, type_name in _PATH_PARAM_RE.findall(path)]
 
     def accepts_path_params(self) -> bool:
         """Return True if the handler declares path parameters."""
         return bool(self.path_params)
+
+    def convert_path_params(self, raw: dict[str, str]) -> dict[str, Any]:
+        """Convert raw string path parameters to their declared types."""
+        result: dict[str, Any] = {}
+        for spec in self.path_params:
+            if spec.name in raw:
+                result[spec.name] = spec.convert(raw[spec.name])
+        return result
+
+    @property
+    def param_names(self) -> list[str]:
+        """List of path param names that match handler parameters."""
+        params = list(inspect.signature(self.handler).parameters)
+        all_params = set(params)
+        return [p.name for p in self.path_params if p.name in all_params]
+
+    @property
+    def path_param_names(self) -> list[str]:
+        """List of all path parameter names (for backward compatibility)."""
+        return [p.name for p in self.path_params]
 
 
 def invoke_route(
@@ -200,6 +277,9 @@ def invoke_route(
     The ``result`` may be a sync return value or a coroutine (for async
     handlers).  The caller should ``await`` the result if it is awaitable.
 
+    Path parameters are automatically coerced to their declared types
+    (e.g. ``{item_id:int}`` converts the string to an ``int``).
+
     Parameters
     ----------
     route:
@@ -210,21 +290,23 @@ def invoke_route(
         The raw ASGI request (passed to ``Ctx``).
     path_params:
         Dict of path parameters extracted by FastAPI (e.g.
-        ``{"user_id": "42"}``).
+        ``{"user_id": "42"}``).  These are coerced to declared types.
     """
-    path_params = path_params or {}
-    missing = [p for p in route.path_params if p not in path_params]
+    raw_params = path_params or {}
+    missing = [p.name for p in route.path_params if p.name not in raw_params]
     if missing:
         raise ValueError(
             f"Missing required path parameters for {route.path!r}: {missing!r}. "
-            f"Provided: {list(path_params)}"
+            f"Provided: {list(raw_params)}"
         )
-    ctx = Ctx(request, app, path_params) if route.accepts_ctx else None
+    # Coerce path parameters to their declared types
+    coerced_params = route.convert_path_params({k: str(v) for k, v in raw_params.items()})
+    ctx = Ctx(request, app, coerced_params) if route.accepts_ctx else None
     if ctx is not None:
-        kwargs = {p: path_params[p] for p in route.param_names if p in path_params}
+        kwargs = {p: coerced_params[p] for p in route.param_names if p in coerced_params}
         result = route.handler(ctx, **kwargs)
     elif route.param_names:
-        kwargs = {p: path_params[p] for p in route.param_names if p in path_params}
+        kwargs = {p: coerced_params[p] for p in route.param_names if p in coerced_params}
         result = route.handler(**kwargs)
     else:
         result = route.handler()
@@ -249,5 +331,33 @@ def resolve_title(route: RouteDef, ctx: Ctx | None, fallback: str) -> str:
     return fallback
 
 
-__all__ = ["RouteDef", "Ctx", "invoke_route", "resolve_title", "normalize"]
+def match_route(path: str, routes: list[RouteDef]) -> RouteDef | None:
+    """Find a route that matches *path* using pattern matching.
+
+    Supports routes with ``{param}`` or ``{param:type}`` placeholders.
+    Returns the first matching route, or ``None`` if no match is found.
+    More specific routes (fewer parameters) are matched first.
+    """
+    import re
+    # Sort routes: fewer params first (more specific), then by path length descending
+    sorted_routes = sorted(routes, key=lambda r: (len(r.path_params), -len(r.path)))
+    for route in sorted_routes:
+        if not route.path_params:
+            continue
+        # Build a regex from the route path
+        pattern = route.path
+        for spec in route.path_params:
+            # Replace {param} or {param:type} with a capture group
+            pattern = re.sub(
+                r"\{" + re.escape(spec.name) + r"(?::\w+)?\}",
+                r"([^/]+)",
+                pattern,
+            )
+        pattern = "^" + pattern + "$"
+        if re.match(pattern, path):
+            return route
+    return None
+
+
+__all__ = ["RouteDef", "Ctx", "invoke_route", "resolve_title", "normalize", "match_route"]
 

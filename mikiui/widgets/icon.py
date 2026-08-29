@@ -213,7 +213,7 @@ class Icon(Component):
         attrs.setdefault("xmlns", "http://www.w3.org/2000/svg")
         attrs.setdefault("width", str(size))
         attrs.setdefault("height", str(size))
-        attrs.setdefault("viewbox", "0 0 24 24")
+        attrs.setdefault("viewBox", "0 0 24 24")
         attrs.setdefault("fill", "none")
         attrs.setdefault("stroke", "currentColor")
         attrs.setdefault("stroke-width", "2")
