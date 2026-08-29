@@ -192,6 +192,10 @@ class RouteDef:
         "requires_auth",
         "_auth_requirement",
         "_route_group",
+        "summary",
+        "description",
+        "tags",
+        "response_model",
     )
 
     def __init__(
@@ -203,6 +207,9 @@ class RouteDef:
         title: str | None = None,
         requires_auth: bool = False,
         auth: AuthRequirement | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ) -> None:
         self.path = path
         self.handler = handler
@@ -212,6 +219,10 @@ class RouteDef:
         self.requires_auth = requires_auth
         self._auth_requirement = auth
         self._route_group = None
+        self.summary = summary or (handler.__doc__.strip().split("\n")[0] if handler.__doc__ else None)
+        self.description = description or (handler.__doc__.strip() if handler.__doc__ else None)
+        self.tags = tags or []
+        self.response_model = None
         # Extract {param} or {param:type} placeholders from the path
         self.path_params: list[_PathParamSpec] = self._extract_path_params(path)
         params = list(inspect.signature(handler).parameters)

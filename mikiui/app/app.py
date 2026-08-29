@@ -138,6 +138,9 @@ class MikiApp:
         title: str | None = None,
         requires_auth: bool = False,
         auth: Any | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ):
         """Register a route handler for *path*.
 
@@ -150,7 +153,7 @@ class MikiApp:
         Parameters
         ----------
         path:
-            URL path.  Use ``{param}`` for path parameters.
+            URL path.  Use ``{param}`` or ``{param:type}`` for path parameters.
         methods:
             Tuple of HTTP methods.
         name:
@@ -160,6 +163,14 @@ class MikiApp:
         requires_auth:
             If ``True``, require a valid session token when the APIPlugin is
             active.
+        summary:
+            Short summary for API documentation (auto-extracted from docstring
+            if not provided).
+        description:
+            Longer description for API documentation (auto-extracted from
+            docstring if not provided).
+        tags:
+            List of tags for API documentation grouping.
         """
         path = self._normalize_path(path)
         def decorator(fn: Callable) -> Callable:
@@ -189,13 +200,15 @@ class MikiApp:
                     path, fn, merged_methods, resolved_name, title,
                     requires_auth or existing_route.requires_auth,
                     auth=auth if auth is not None else existing_route._auth_requirement,
+                    summary=summary, description=description, tags=tags,
                 )
                 # Preserve route group from existing registration
                 if existing_route._route_group is not None:
                     self.routes[path]._route_group = existing_route._route_group
             else:
                 self.routes[path] = RouteDef(
-                    path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth
+                    path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth,
+                    summary=summary, description=description, tags=tags,
                 )
             for plugin in self.plugins:
                 if hasattr(plugin, "on_route_add"):
@@ -355,20 +368,45 @@ class MikiApp:
         """Return a registered auth strategy by name."""
         return self._auth_strategies.get(name)
 
-    def get(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("GET",), name, title, auth=auth)
+    def get(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("GET",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
 
-    def post(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("POST",), name, title, auth=auth)
+    def post(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("POST",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
 
-    def put(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("PUT",), name, title, auth=auth)
+    def put(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("PUT",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
 
-    def patch(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("PATCH",), name, title, auth=auth)
+    def patch(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("PATCH",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
 
-    def delete(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("DELETE",), name, title, auth=auth)
+    def delete(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("DELETE",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
 
     def head(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
         return self.route(path, ("HEAD",), name, title, auth=auth)

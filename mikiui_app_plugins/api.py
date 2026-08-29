@@ -37,16 +37,20 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import logging
+from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import JSONResponse, Response
 
 from mikiui import MikiApp
 from mikiui.app.plugins import Plugin
 from mikiui.app.routes import RouteDef
+
 from .session import SessionPlugin
+
+logger = logging.getLogger(__name__)
 
 
 class APIPlugin(Plugin):
@@ -67,7 +71,7 @@ class APIPlugin(Plugin):
         self,
         title: str = "MikiUI API",
         version: str = "1.0.0",
-        session_plugin: Optional[SessionPlugin] = None,
+        session_plugin: SessionPlugin | None = None,
         openapi_path: str = "/openapi.json",
         docs_path: str = "/docs",
     ) -> None:
@@ -166,51 +170,105 @@ class APIPlugin(Plugin):
             handler = route_info.handler
             methods = route_info.methods
             requires_auth = route_info.requires_auth
+            summary = route_info.summary
+            description = route_info.description
+            tags = route_info.tags or ["api"]
+            path_params = route_info.path_params
+            auth_requirement = route_info.get_auth_requirement()
         else:
             handler = route_info["handler"]
             methods = route_info["methods"]
             requires_auth = route_info.get("requires_auth", False)
+            summary = route_info.get("summary")
+            description = route_info.get("description")
+            tags = route_info.get("tags", ["api"])
+            path_params = []
+            auth_requirement = None
+
+        # Build the endpoint with proper path param support
+        import inspect
+        sig = inspect.signature(handler)
+        handler_params = list(sig.parameters.keys())
+        accepts_ctx = bool(handler_params) and handler_params[0] in ("ctx", "request")
 
         async def endpoint(request: Request) -> Any:
-            if requires_auth and self.session_plugin:
-                auth_header = request.headers.get("Authorization", "")
-                token = (
-                    request.cookies.get("mikiui_session")
-                    or auth_header.replace("Bearer ", "")
-                )
-                app = self._app
-                if (
-                    not token
-                    or not hasattr(app, "validate_session")
-                    or not app.validate_session(token)
-                ):
+            # Auth check
+            if requires_auth or (auth_requirement and not auth_requirement.is_public()):
+                user = self._authenticate(request)
+                if user is None:
                     return JSONResponse(
                         {"error": "Unauthorized", "code": 401},
                         status_code=401,
                     )
 
-            result = handler()
+            # Build kwargs for the handler
+            kwargs: dict[str, Any] = {}
+            if accepts_ctx:
+                from mikiui.app.routes import Ctx
+                ctx = Ctx(request, self._app, dict(request.path_params))
+                kwargs[handler_params[0]] = ctx
+
+            # Add path params as kwargs
+            for p in path_params:
+                if p.name in request.path_params:
+                    try:
+                        kwargs[p.name] = p.convert(request.path_params[p.name])
+                    except ValueError as e:
+                        return JSONResponse(
+                            {"error": "Bad Request", "detail": str(e)},
+                            status_code=400,
+                        )
+
+            # Call handler
+            try:
+                if inspect.iscoroutinefunction(handler):
+                    result = await handler(**kwargs)
+                else:
+                    result = handler(**kwargs)
+            except Exception as e:
+                logger.exception("API handler %r failed: %s", path, e)
+                return JSONResponse(
+                    {"error": "Internal Server Error", "detail": str(e)},
+                    status_code=500,
+                )
+
+            if isinstance(result, Response):
+                return result
+
             if isinstance(result, tuple):
-                data, status_code = result
+                data, status_code = result if len(result) == 2 else (result[0], 200)
             else:
                 data = result
                 status_code = 200
 
-            if isinstance(data, Response):
-                return data
-
             if isinstance(data, dict) and "data" in data and "status" in data:
-                return data
+                return JSONResponse(data, status_code=status_code)
 
-            return {"data": data, "status": "ok", "code": status_code}
+            return JSONResponse({"data": data, "status": "ok", "code": status_code}, status_code=status_code)
 
         endpoint.__name__ = path.replace("/", "_").strip("_") or "api_root"
+
+        # Build OpenAPI extras
+        openapi_extra: dict[str, Any] = {}
+        if summary:
+            openapi_extra["summary"] = summary
+        if description:
+            openapi_extra["description"] = description
 
         router.add_api_route(
             path=path,
             endpoint=endpoint,
             methods=[m.upper() for m in methods],
             include_in_schema=True,
+            tags=tags,
+            summary=summary or handler.__doc__ or path,
+            description=description,
+            responses={
+                401: {"description": "Unauthorized"},
+                400: {"description": "Bad Request"},
+                500: {"description": "Internal Server Error"},
+            },
+            **openapi_extra,
         )
 
         return {
@@ -219,18 +277,55 @@ class APIPlugin(Plugin):
             "endpoint": endpoint,
             "include_in_schema": True,
             "name": endpoint.__name__,
-            "tags": ["api"],
+            "tags": tags,
         }
 
-    def _make_openapi_endpoint(self, router: APIRouter):
-        async def openapi_json():
-            from fastapi.openapi.utils import get_openapi
+    def _authenticate(self, request: Request) -> Any | None:
+        """Check authentication for an API request."""
+        if self.session_plugin:
+            auth_header = request.headers.get("Authorization", "")
+            token = (
+                request.cookies.get("mikiui_session")
+                or auth_header.replace("Bearer ", "")
+            )
+            if token and hasattr(self._app, "validate_session"):
+                return self._app.validate_session(token)
+        return None
 
-            return get_openapi(
+    def _make_openapi_endpoint(self, router: APIRouter):
+        from fastapi.openapi.utils import get_openapi
+
+        async def openapi_json():
+            # Collect routes from both the plugin router and the main app
+            all_routes = list(router.routes)
+            if hasattr(self, "_fastapi_app") and self._fastapi_app:
+                for r in self._fastapi_app.routes:
+                    if r not in all_routes:
+                        all_routes.append(r)
+
+            schema = get_openapi(
                 title=self.title,
                 version=self.version,
-                routes=router.routes,
+                description=f"API documentation for {self.title}",
+                routes=all_routes,
             )
+            # Add security schemes
+            schema["components"] = schema.get("components", {})
+            schema["components"]["securitySchemes"] = {
+                "bearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT or Session Token",
+                    "description": "Enter your session token or JWT as 'Bearer <token>'",
+                },
+                "cookieAuth": {
+                    "type": "apiKey",
+                    "in": "cookie",
+                    "name": "mikiui_session",
+                    "description": "Session cookie set by the server",
+                },
+            }
+            return schema
 
         openapi_json.__name__ = "openapi_json"
         return openapi_json

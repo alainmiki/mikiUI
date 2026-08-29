@@ -16,6 +16,69 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 logger = logging.getLogger(__name__)
 
 
+class WebSocketAuthHelper:
+    """Integrates WebSocket connections with MikiUI auth strategies.
+
+    Supports session cookies, Bearer tokens, and query-param tokens.
+    Uses the app's registered auth strategies for validation.
+
+    Usage::
+
+        auth_helper = WebSocketAuthHelper(app)
+        user_id = await auth_helper.authenticate(ws)
+    """
+
+    def __init__(self, app: Any) -> None:
+        self._app = app
+
+    async def authenticate(self, ws: WebSocket) -> Any | None:
+        """Authenticate a WebSocket connection.
+
+        Returns the user object from the auth strategy, or None for
+        unauthenticated connections.  Preference order:
+        1. Session cookie (mikiui_session)
+        2. Authorization: Bearer <token> header
+        3. ?token=<token> query param
+        """
+        # Extract token from various sources
+        token = (
+            ws.query_params.get("token")
+            or ws.cookies.get("mikiui_session")
+            or ws.headers.get("Authorization", "").replace("Bearer ", "").strip()
+            or None
+        )
+
+        if not token:
+            return None
+
+        # Try session strategy first, then any strategy that can validate
+        for strategy_name in ("session", "jwt", "api_key"):
+            strategy = self._app.get_auth_strategy(strategy_name)
+            if strategy is None:
+                continue
+            try:
+                if hasattr(strategy, "validate"):
+                    user = strategy.validate(ws)
+                    if user is not None:
+                        return user
+                elif callable(strategy):
+                    user = strategy(token)
+                    if user is not None:
+                        return user
+            except Exception:
+                continue
+        return None
+
+    def extract_token(self, ws: WebSocket) -> str | None:
+        """Extract the raw token from a WebSocket connection."""
+        return (
+            ws.query_params.get("token")
+            or ws.cookies.get("mikiui_session")
+            or ws.headers.get("Authorization", "").replace("Bearer ", "").strip()
+            or None
+        )
+
+
 class ConnectionManager:
     """Tracks active WebSocket connections for broadcast."""
 
@@ -36,6 +99,9 @@ class ConnectionManager:
         self._validate_token = validate_token
         self._user_counts: dict[str, int] = {}
         self._ip_counts: dict[str, int] = {}
+        # Room/channel support
+        self._rooms: dict[str, set[WebSocket]] = {}
+        self._ws_rooms: dict[WebSocket, set[str]] = {}
 
     async def connect(self, ws: WebSocket) -> str | None:
         """Accept a WebSocket connection after security checks.
@@ -87,6 +153,8 @@ class ConnectionManager:
     def disconnect(self, ws: WebSocket) -> None:
         if ws in self.active:
             self.active.remove(ws)
+        # Clean up rooms
+        self.leave_all_rooms(ws)
         user_id = getattr(ws.state, "mikiui_user_id", None)
         ip = getattr(ws.state, "mikiui_ip", None)
         if user_id and user_id in self._user_counts:
@@ -137,6 +205,77 @@ class ConnectionManager:
                 await ws.send_text("ping")
             except Exception:
                 self.disconnect(ws)
+
+    # -- Room / channel support -----------------------------------------------
+
+    def join_room(self, ws: WebSocket, room: str) -> None:
+        """Add a connection to a room."""
+        if room not in self._rooms:
+            self._rooms[room] = set()
+        self._rooms[room].add(ws)
+        if ws not in self._ws_rooms:
+            self._ws_rooms[ws] = set()
+        self._ws_rooms[ws].add(room)
+
+    def leave_room(self, ws: WebSocket, room: str) -> None:
+        """Remove a connection from a room."""
+        if room in self._rooms:
+            self._rooms[room].discard(ws)
+            if not self._rooms[room]:
+                del self._rooms[room]
+        if ws in self._ws_rooms:
+            self._ws_rooms[ws].discard(room)
+            if not self._ws_rooms[ws]:
+                del self._ws_rooms[ws]
+
+    def leave_all_rooms(self, ws: WebSocket) -> None:
+        """Remove a connection from all rooms it has joined."""
+        rooms = self._ws_rooms.pop(ws, set())
+        for room in rooms:
+            if room in self._rooms:
+                self._rooms[room].discard(ws)
+                if not self._rooms[room]:
+                    del self._rooms[room]
+
+    def get_room_connections(self, room: str) -> list[WebSocket]:
+        """Return all connections in a room."""
+        return list(self._rooms.get(room, set()))
+
+    def get_user_rooms(self, ws: WebSocket) -> list[str]:
+        """Return all rooms a connection has joined."""
+        return list(self._ws_rooms.get(ws, set()))
+
+    async def broadcast_to_room(self, room: str, message: Any, exclude: WebSocket | None = None) -> None:
+        """Send a JSON message to all connections in a room."""
+        for ws in list(self._rooms.get(room, set())):
+            if ws is exclude:
+                continue
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.disconnect(ws)
+                self.leave_all_rooms(ws)
+
+    async def broadcast_to_user(self, user_id: str, message: Any) -> None:
+        """Send a JSON message to all connections belonging to a user."""
+        for ws in list(self.active):
+            if getattr(ws.state, "mikiui_user_id", None) == user_id:
+                try:
+                    await ws.send_json(message)
+                except Exception:
+                    self.disconnect(ws)
+
+    def get_room_count(self, room: str) -> int:
+        """Return the number of connections in a room."""
+        return len(self._rooms.get(room, set()))
+
+    def get_connection_info(self, ws: WebSocket) -> dict[str, Any]:
+        """Return info about a connection (user_id, ip, rooms)."""
+        return {
+            "user_id": getattr(ws.state, "mikiui_user_id", None),
+            "ip": getattr(ws.state, "mikiui_ip", None),
+            "rooms": self.get_user_rooms(ws),
+        }
 
 
 def mount_websocket(
@@ -215,3 +354,10 @@ async def _size_limited_handler(
     ws.receive_text = _checked_receive_text  # type: ignore[method-assign]
     ws.receive_json = _checked_receive_json  # type: ignore[method-assign,assignment]
     await handler(ws, manager)
+
+
+__all__ = [
+    "ConnectionManager",
+    "WebSocketAuthHelper",
+    "mount_websocket",
+]
