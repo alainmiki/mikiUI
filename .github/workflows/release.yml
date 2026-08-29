@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  # ── Run full test suite before any release ──────────────────────────
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,build]"
+
+      - name: Lint
+        run: ruff check mikiui/ tests/
+
+      - name: Type check
+        run: mypy mikiui/
+
+      - name: Test
+        run: python -m pytest tests/ -q --no-cov --ignore=tests/e2e
+
+  # ── Build sdist + wheel ─────────────────────────────────────────────
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # ── Create GitHub Release (only on tag push) ────────────────────────
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Publish to PyPI (only on tag push) ──────────────────────────────
+  publish:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mikiui
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -72,7 +72,7 @@ class PluginManifest:
     description: str
     author: str
     license: str
-    min_mikiui_version: str = "0.1.0"
+    min_mikiui_version: str = "0.0.1"
     dependencies: list[str] = field(default_factory=list)
     capabilities: list[str] = field(default_factory=list)
     homepage: str | None = None

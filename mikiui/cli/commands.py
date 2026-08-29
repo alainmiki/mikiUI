@@ -30,7 +30,7 @@ def _print_banner() -> None:
 
         console = Console()
         console.print(Panel(
-            "[bold cyan]MikiUI[/bold cyan] v0.1.0 — Python-first UI framework\n\n"
+            "[bold cyan]MikiUI[/bold cyan] v0.0.1 — Python-first UI framework\n\n"
             "[dim]Commands:[/dim]\n"
             "  [cyan]mikiui new <name>[/cyan]    Scaffold a new project\n"
             "  [cyan]mikiui dev[/cyan]          Start dev server (auto-discovers app.py)\n"
@@ -43,7 +43,7 @@ def _print_banner() -> None:
             border_style="cyan",
         ))
     except ImportError:
-        typer.echo("MikiUI v0.1.0 — Python-first UI framework")
+        typer.echo("MikiUI v0.0.1 — Python-first UI framework")
         typer.echo("Commands: new, dev, desktop, build, tailwind, install")
         typer.echo("Run 'mikiui <command> --help' for help.")
 

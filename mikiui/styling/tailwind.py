@@ -144,7 +144,7 @@ def install_deps(
     pkg_json = project_dir / "package.json"
 
     deps = npm_dependencies(daisyui=daisyui)
-    pkg: dict[str, Any] = {"name": "mikiui-styling", "version": "0.1.0", "private": True}
+    pkg: dict[str, Any] = {"name": "mikiui-styling", "version": "0.0.1", "private": True}
     if pkg_json.is_file():
         try:
             pkg = json.loads(pkg_json.read_text(encoding="utf-8"))

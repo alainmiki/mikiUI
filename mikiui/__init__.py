@@ -16,7 +16,7 @@ from .engine import RawHtml, _, render, render_fragment, render_page, set_transl
 from .router import Router
 from .themes import Theme, get_theme, list_themes, register_theme
 
-__version__ = "0.1.0"
+__version__ = "0.0.1"
 
 __all__ = [
     "MikiApp",
