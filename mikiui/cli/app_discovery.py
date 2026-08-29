@@ -238,13 +238,18 @@ def resolve_app_spec(spec: str | None = None) -> str:
     AppDiscoveryError
         If no MikiApp instance is found via auto-discovery.
     ValueError
-        If the provided spec cannot be imported.
+        If the provided spec cannot be imported or is malformed.
     """
     if spec:
         module_name, _, attr = spec.partition(":")
+        if not module_name:
+            raise ValueError(
+                f"Invalid app spec: {spec!r}. "
+                "Expected format: 'module.path:attr' (e.g., 'app:app')"
+            )
         try:
             importlib.import_module(module_name)
-        except Exception as exc:  # pragma: no cover - user error
+        except Exception as exc:
             raise ValueError(f"Cannot import '{spec}': {exc}") from exc
         if not attr:
             spec = f"{module_name}:app"

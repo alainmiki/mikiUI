@@ -231,3 +231,36 @@ class TestRouteGroupAuthPropagation:
 
         route = app.routes["/api/public"]
         assert route.get_auth_requirement().strategy == "none"
+
+
+class TestCLIVersion:
+    """Test CLI --version flag."""
+
+    def test_version_flag(self):
+        from typer.testing import CliRunner
+        from mikiui.cli.commands import cli
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--version"])
+        assert result.exit_code == 0
+        assert "MikiUI v" in result.output
+
+
+class TestProjectNameValidation:
+    """Test project name validation."""
+
+    def test_valid_names(self):
+        from mikiui.cli.commands import _validate_project_name
+        assert _validate_project_name("myapp") == "myapp"
+        assert _validate_project_name("my-app") == "my-app"
+        assert _validate_project_name("my_app") == "my_app"
+        assert _validate_project_name("  myapp  ") == "myapp"
+
+    def test_invalid_names(self):
+        from mikiui.cli.commands import _validate_project_name
+        import pytest
+
+        invalid = ["", "  ", "my/app", "my:app", "my<app", ".hidden", "-dash"]
+        for name in invalid:
+            with pytest.raises(ValueError):
+                _validate_project_name(name)

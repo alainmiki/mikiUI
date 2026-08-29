@@ -16,6 +16,7 @@ UI_FRAMEWORKS: list[str] = ["tailwind", "daisyui", "plain"]
 
 FRAMEWORK_DESCRIPTIONS: dict[str, str] = {
     "tailwind": "Tailwind CSS — utility-first, JIT compilation (requires Node.js)",
+    "daisyui": "DaisyUI — Tailwind component library (requires Node.js)",
     "plain": "Plain CSS — no framework, just your own styles",
 }
 
@@ -83,6 +84,51 @@ You can change the CSS framework by editing `app.py` and changing the
 REQUIREMENTS_TEMPLATE = """# MikiUI
 mikiui
 {rich_line}
+"""
+
+GITIGNORE_TEMPLATE = """# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# MikiUI
+.mikiui.json
+tailwind.css
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
 """
 
 
@@ -235,6 +281,8 @@ def scaffold(
         REQUIREMENTS_TEMPLATE.format(rich_line=rich_line),
         encoding="utf-8",
     )
+
+    (target / ".gitignore").write_text(GITIGNORE_TEMPLATE, encoding="utf-8")
 
     custom_css = list(custom_css or [])
     ss = StylingSystem(project_dir=target)
