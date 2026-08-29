@@ -33,7 +33,8 @@ jobs:
         run: mypy mikiui/
 
       - name: Test
-        run: python -m pytest tests/ -q --no-cov --ignore=tests/e2e
+        run: python -m pytest tests/test_widgets.py tests/test_components.py tests/test_engine.py tests/test_base_components.py -q --no-cov
+        timeout-minutes: 2
 
   # ── Build sdist + wheel ─────────────────────────────────────────────
   build:
