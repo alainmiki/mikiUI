@@ -577,16 +577,25 @@ def build_web(
     copied: list[str] = []
 
     def _copy_runtime_assets(include_miki_css: bool = True) -> None:
+        """Copy runtime assets, including subdirectories like js/."""
         for entry in os.listdir(_RUNTIME_DIR):
             src = os.path.join(_RUNTIME_DIR, entry)
-            if not os.path.isfile(src):
+            if entry in ("__pycache__",):
                 continue
-            if entry.endswith(".py") or entry == "__pycache__":
+            if src.endswith(".py"):
                 continue
-            if not include_miki_css and entry == "miki.css":
-                continue
-            shutil.copy2(src, os.path.join(runtime_out, entry))
-            copied.append(entry)
+            dst = os.path.join(runtime_out, entry)
+            if os.path.isdir(src):
+                # Copy entire subdirectory (e.g., js/, themes/)
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                copied.append(entry + "/")
+            elif os.path.isfile(src):
+                if entry == "miki.css" and not include_miki_css:
+                    continue
+                shutil.copy2(src, dst)
+                copied.append(entry)
 
     if effective_framework == "tailwind":
         _copy_runtime_assets(include_miki_css=False)
@@ -677,7 +686,9 @@ def build_web(
     )
 
     # Manifest with hashes
-    asset_rel_paths: dict[str, str] = {name: os.path.join("_miki", "runtime", name) for name in copied}
+    asset_rel_paths: dict[str, str] = {
+        name: "/".join(["_miki", "runtime", name]) for name in copied
+    }
     asset_rel_paths.update(static_manifest_entries)
     manifest_path = _write_manifest(out_dir, asset_rel_paths)
 

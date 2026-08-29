@@ -174,12 +174,32 @@ def _render_child(child: Any) -> str:
     return html.escape(str(child), quote=False)
 
 
+# SVG attributes that must preserve camelCase (SVG is case-sensitive)
+_SVG_CAMELCASE_ATTRS = frozenset({
+    "viewBox", "preserveAspectRatio", "gradientTransform", "gradientUnits",
+    "patternTransform", "patternUnits", "clipPath", "clipPathUnits",
+    "maskContentUnits", "maskUnits", "pathLength", "pointsAtX", "pointsAtY",
+    "pointsAtZ", "refX", "refY", "markerHeight", "markerWidth", "markerUnits",
+    "textLength", "lengthAdjust", "spreadMethod", "stdDeviation", "baseFrequency",
+    "numOctaves", "stitchTiles", "surfaceScale", "specularConstant",
+    "specularExponent", "kernelMatrix", "kernelUnitLength", "targetX", "targetY",
+    "xChannelSelector", "yChannelSelector", "tableValues", "xHeight", "capHeight",
+    "horizAdvX", "horizOriginX", "vertAdvY", "vertOriginY", "unicodeRange",
+    "panose1", "bbox", "unitsPerEm", "stemv", "stemh", "slope", "overlinePosition",
+    "underlinePosition", "ascent", "descent", "mathline", "topline", "centerline",
+    "alphabetic", "ideographic", "hanging", "xmlnsXlink",
+})
+
+
 def _attr_name(key: str) -> str:
     # Python keyword collisions use a trailing underscore (class_, for_).
     if key == "class_":
         return "class"
     if key == "for_":
         return "for"
+    # Preserve camelCase for known SVG attributes
+    if key in _SVG_CAMELCASE_ATTRS:
+        return key
     # Generic mapping: underscores become hyphens so aria_label -> aria-label,
     # data_foo -> data-foo, and hx_get -> hx-get (HTMX attributes).
     return key.replace("_", "-")

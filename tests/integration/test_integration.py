@@ -106,8 +106,9 @@ class TestRouteIntegration:
             return Div("secret data")
 
         with TestClient(create_app(app)) as client:
-            resp = client.get("/secret")
+            resp = client.get("/secret", headers={"Accept": "application/json"})
             assert resp.status_code == 401
+            assert resp.json()["error"] == "Unauthorized"
 
     def test_post_route_with_query_data(self, app):
         @app.route("/api/items", methods=("POST",))

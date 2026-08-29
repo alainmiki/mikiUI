@@ -46,6 +46,7 @@ import uuid
 from typing import Any
 
 from ..engine.bridge import bridge_attr
+from ..engine.dom import _
 from .base import Component
 from .button import Button
 from .html import Div, P, Section, Span
@@ -77,10 +78,7 @@ class Tabs(Component):
     ) -> None:
         user_class = attrs.pop("class_", "")
         attrs["class_"] = f"miki-tabs miki-tabs-{orientation} {user_class}".strip()
-        attrs.setdefault("role", "tablist")
-        attrs.setdefault("aria-label", "Tab group")
         attrs.setdefault("data-miki-tabs", "true")
-        attrs.setdefault("touch-action", "manipulation")
 
         if orientation not in ("horizontal", "vertical"):
             raise ValueError("orientation must be 'horizontal' or 'vertical'")
@@ -168,6 +166,7 @@ class Tabs(Component):
         tablist_class = "miki-tablist" + (f" miki-tablist-{orientation}" if orientation == "vertical" else "")
         super().__init__(
             Div(*buttons, class_=tablist_class, role="tablist", **{
+                "aria-label": _("tablist_label", "Tab group"),
                 "data-miki-tablist": "true",
                 "id": f"{group}-tablist",
             }),

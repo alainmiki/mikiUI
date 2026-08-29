@@ -413,7 +413,7 @@ def test_rate_limit_blocks_excess_requests():
     from mikiui.router.rate_limit import RateLimitMiddleware
 
     app = MikiApp()
-    fastapi_app = create_app(app)
+    fastapi_app = create_app(app, enable_csrf=False)
 
     @fastapi_app.get("/test")
     def test_route():
@@ -441,7 +441,7 @@ def test_rate_limit_auth_endpoints_stricter():
     from mikiui.router.rate_limit import RateLimitMiddleware
 
     app = MikiApp()
-    fastapi_app = create_app(app)
+    fastapi_app = create_app(app, enable_csrf=False)
 
     @fastapi_app.post("/login")
     def login():

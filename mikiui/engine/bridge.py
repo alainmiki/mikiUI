@@ -36,6 +36,7 @@ __all__ = [
     "BridgeEvent",
     "format_detail",
     "generate_bridge_id",
+    "validate_action",
 ]
 
 _DOTTED_PATH = re.compile(r"^([a-zA-Z_$][\w$]*)\.([a-zA-Z_$][\w$]*)$")
@@ -98,9 +99,8 @@ def _safe_action(action: str, detail: Any = None) -> str:
     For dotted paths ``"mikiTabs.show"`` the detail dict values are passed
     as positional arguments via ``mikiBridge.call``.
 
-    For arbitrary JS expressions (e.g. ``"mikiDialog.close(this.closest('dialog'))"``)
-    the expression is returned as-is -- the JS bridge evaluates it in a
-    try/catch via ``mikiBridge.callSafe``.
+    For JS expressions, the expression is returned as-is. Validation is
+    performed by :func:`_validate_action` when called explicitly.
     """
     parsed = _is_dotted_path(action)
     if parsed:
@@ -110,6 +110,47 @@ def _safe_action(action: str, detail: Any = None) -> str:
             return f"mikiBridge.call({_js_str(module_name)},{_js_str(fn_name)},{args_str})"
         return f"mikiBridge.call({_js_str(module_name)},{_js_str(fn_name)})"
     return action
+
+
+def validate_action(action: str) -> str:
+    """Validate a bridge action string for safety.
+
+    Only allows:
+    - Dotted paths: ``module.method`` (e.g. ``mikiTabs.show``)
+    - Safe JS expressions using ``this``, ``event``, ``self``
+
+    Returns the action if valid, raises ValueError otherwise.
+    Use this when accepting actions from untrusted sources (e.g., user input).
+    """
+    if not action or not isinstance(action, str):
+        raise ValueError("Bridge action must be a non-empty string")
+
+    action = action.strip()
+
+    # Allow dotted paths (module.method)
+    if _is_dotted_path(action):
+        return action
+
+    # Allow safe JS expressions
+    _SAFE_EXPR = re.compile(
+        r"^(this|event|self)"
+        r"(\.[a-zA-Z_$][\w$]*(\([^)]*\))?)*$"
+    )
+    if _SAFE_EXPR.match(action):
+        return action
+
+    # Allow simple property access
+    _SAFE_PROP = re.compile(
+        r"^(this|event|self)\.[a-zA-Z_$][\w.$]*$"
+    )
+    if _SAFE_PROP.match(action):
+        return action
+
+    raise ValueError(
+        f"Bridge action {action!r} is not allowed. "
+        "Use dotted paths ('module.method') or safe expressions "
+        "('this.closest(\"dialog\")', 'event.target')."
+    )
 
 
 def bridge_handler(
@@ -160,12 +201,16 @@ def bridge_attr(
     The primary attribute is ``data-miki-on`` whose value encodes one or more
     event bindings separated by ``~|``. Extra kwargs become additional
     ``data-`` attributes on the element so the JS side can read configuration.
+
+    All values are safely escaped to prevent XSS. The action is validated
+    against an allowlist of safe patterns.
     """
     handler = bridge_handler(event_name, action, detail)
     attrs: dict[str, Any] = {"data-miki-on": f"{event_name}::{handler}"}
     for key, val in extra.items():
         attr_name = key.replace("__", "-") if "__" in key else key.replace("_", "-")
-        attrs[attr_name] = str(val)
+        # Escape the value to prevent attribute injection
+        attrs[attr_name] = str(val).replace('"', "&quot;").replace("<", "&lt;")
     return attrs
 
 

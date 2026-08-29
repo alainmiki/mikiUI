@@ -11,6 +11,7 @@ from __future__ import annotations
 import html as _html
 import logging
 import os
+import re as _re
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
     from ..router.router import Router
 from ..themes import Theme
 from .plugins import Plugin
-from .routes import RouteDef, invoke_route
+from .routes import RouteDef, invoke_route, match_route
 from .state import AppState
 from .theme_registry import ThemeRegistry
 from .widget_registry import WidgetRegistry
@@ -137,6 +138,9 @@ class MikiApp:
         title: str | None = None,
         requires_auth: bool = False,
         auth: Any | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ):
         """Register a route handler for *path*.
 
@@ -149,7 +153,7 @@ class MikiApp:
         Parameters
         ----------
         path:
-            URL path.  Use ``{param}`` for path parameters.
+            URL path.  Use ``{param}`` or ``{param:type}`` for path parameters.
         methods:
             Tuple of HTTP methods.
         name:
@@ -159,6 +163,14 @@ class MikiApp:
         requires_auth:
             If ``True``, require a valid session token when the APIPlugin is
             active.
+        summary:
+            Short summary for API documentation (auto-extracted from docstring
+            if not provided).
+        description:
+            Longer description for API documentation (auto-extracted from
+            docstring if not provided).
+        tags:
+            List of tags for API documentation grouping.
         """
         path = self._normalize_path(path)
         def decorator(fn: Callable) -> Callable:
@@ -173,14 +185,31 @@ class MikiApp:
                     "Pass a unique `name=` to the decorator."
                 )
             if path in self.routes:
-                existing = self.routes[path]
-                raise ValueError(
-                    f"Route {path!r} is already registered by {existing.name!r}. "
-                    "Use a different path or remove the existing route first."
+                existing_route = self.routes[path]
+                # Check for overlapping methods (same path + same method = error)
+                overlap = set(existing_route.methods) & set(upper_methods)
+                if overlap:
+                    raise ValueError(
+                        f"Route {path!r} with method(s) {sorted(overlap)} is already "
+                        f"registered by {existing_route.name!r}. Use a different path "
+                        "or remove the existing route first."
+                    )
+                # Merge methods for the same path (e.g., GET /users/{id} + POST /users/{id})
+                merged_methods = tuple(sorted(set(existing_route.methods + upper_methods)))
+                self.routes[path] = RouteDef(
+                    path, fn, merged_methods, resolved_name, title,
+                    requires_auth or existing_route.requires_auth,
+                    auth=auth if auth is not None else existing_route._auth_requirement,
+                    summary=summary, description=description, tags=tags,
                 )
-            self.routes[path] = RouteDef(
-                path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth
-            )
+                # Preserve route group from existing registration
+                if existing_route._route_group is not None:
+                    self.routes[path]._route_group = existing_route._route_group
+            else:
+                self.routes[path] = RouteDef(
+                    path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth,
+                    summary=summary, description=description, tags=tags,
+                )
             for plugin in self.plugins:
                 if hasattr(plugin, "on_route_add"):
                     plugin.on_route_add(path, upper_methods, fn)
@@ -339,11 +368,51 @@ class MikiApp:
         """Return a registered auth strategy by name."""
         return self._auth_strategies.get(name)
 
-    def get(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("GET",), name, title, auth=auth)
+    def get(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("GET",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
 
-    def post(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
-        return self.route(path, ("POST",), name, title, auth=auth)
+    def post(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("POST",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
+
+    def put(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("PUT",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
+
+    def patch(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("PATCH",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
+
+    def delete(
+        self, path: str, name: str | None = None, title: str | None = None,
+        auth: Any | None = None, summary: str | None = None,
+        description: str | None = None, tags: list[str] | None = None,
+    ):
+        return self.route(path, ("DELETE",), name, title, auth=auth,
+                          summary=summary, description=description, tags=tags)
+
+    def head(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
+        return self.route(path, ("HEAD",), name, title, auth=auth)
+
+    def options(self, path: str, name: str | None = None, title: str | None = None, auth: Any | None = None):
+        return self.route(path, ("OPTIONS",), name, title, auth=auth)
 
     # -- themes ---------------------------------------------------------------
     def set_theme(self, name: str) -> MikiApp:
@@ -628,6 +697,21 @@ class MikiApp:
         """
         return list(self._middleware_classes)
 
+    def get_route_group_rate_limits(self) -> list[tuple[str, int, int]]:
+        """Return rate-limit configs from all route groups.
+
+        Returns a list of ``(path_prefix, limit, window)`` tuples.
+        """
+        configs: list[tuple[str, int, int]] = []
+        for group in self._route_groups.values():
+            if group._rate_limit is not None:
+                configs.append((
+                    group.prefix,
+                    group._rate_limit.limit,
+                    group._rate_limit.window,
+                ))
+        return configs
+
     def get_plugin_assets(self) -> list[str]:
         """Return all static assets from plugins.
 
@@ -703,18 +787,49 @@ class MikiApp:
         if route is None:
             raise ValueError(f"No route named {name!r}. Available: {[r.name for r in self.routes.values()]}")
         path = route.path
-        for param in route.path_params:
+        for param in route.path_param_names:
             if param not in path_params:
                 raise ValueError(
                     f"Route {name!r} requires path parameter {param!r}. "
                     f"Provided: {list(path_params)}"
                 )
-            path = path.replace("{" + param + "}", str(path_params[param]))
+            # Replace both {param} and {param:type} forms
+            path = _re.sub(r"\{" + _re.escape(param) + r"(?::\w+)?\}", str(path_params[param]), path)
         return path
 
     def get_route(self, path: str) -> RouteDef | None:
+        """Look up a route by exact path or by pattern match.
+
+        First tries an exact match, then falls back to matching against
+        registered route patterns (e.g. ``/users/42`` matches
+        ``/users/{user_id}``).
+        """
         path = self._normalize_path(path)
-        return self.routes.get(path)
+        # Exact match first
+        if path in self.routes:
+            return self.routes[path]
+        # Pattern match against parameterized routes
+        return match_route(path, list(self.routes.values()))
+
+    # -- testing ---------------------------------------------------------------
+    def test_client(self, **kwargs: Any) -> Any:
+        """Return a Starlette ``TestClient`` for this app.
+
+        Convenience wrapper around ``create_app`` + ``TestClient``::
+
+            client = app.test_client()
+            resp = client.get("/")
+            assert resp.status_code == 200
+
+        Parameters
+        ----------
+        **kwargs:
+            Forwarded to :func:`mikiui.backend.create_app`.
+        """
+        from starlette.testclient import TestClient
+
+        from ..backend import create_app
+        return TestClient(create_app(self, **kwargs))
 
     # -- convenience ------------------------------------------------------------
     def run(

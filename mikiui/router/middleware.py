@@ -119,6 +119,7 @@ def apply_default_middleware(
     app: Any,
     content_security_policy: str | None = _CSP_DEFAULT,
     strict_transport_security: int | None = 31536000,
+    enable_csrf: bool = False,
 ) -> None:
     """Attach MikiUI's default middleware stack to a FastAPI app.
 
@@ -130,7 +131,15 @@ def apply_default_middleware(
         Custom CSP string, or ``None`` to disable CSP.
     strict_transport_security:
         HSTS max-age in seconds, or ``None`` to disable HSTS.
+    enable_csrf:
+        If ``True``, enable CSRF protection with default token generation.
+        Defaults to ``False`` for backward compatibility.  When enabled,
+        use :func:`generate_csrf_token` to generate tokens for forms.
     """
+    if enable_csrf:
+        from .csrf import apply_csrf_middleware
+
+        apply_csrf_middleware(app)
     app.add_middleware(
         SecurityHeadersMiddleware,
         content_security_policy=content_security_policy,
