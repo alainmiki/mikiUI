@@ -48,7 +48,7 @@ handlers across files.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi.responses import JSONResponse
 
@@ -298,7 +298,9 @@ def add_pwa_manifest(
             manifest_data["background_color_splash"] = splash_background_color
         if splash_images:
             manifest_data["screenshots"] = [
-                {"src": img, "sizes": "1920x1080", "form_factor": "wide"},
-                {"src": img, "sizes": "1080x1920", "form_factor": "vertical"},
+                {"src": img, "sizes": "1920x1080", "form_factor": "wide"}
+                if i == 0
+                else {"src": img, "sizes": "1080x1920", "form_factor": "vertical"}
+                for i, img in enumerate(splash_images)
             ]
         return JSONResponse(manifest_data)

@@ -19,7 +19,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +27,7 @@ from typing import Any
 # Enumerations
 # ---------------------------------------------------------------------------
 
-class Framework(str, Enum):
+class Framework(StrEnum):
     TAILWIND = "tailwind"
     PLAIN = "plain"
 
@@ -42,7 +42,7 @@ def normalize_framework(value: str) -> tuple[str, bool]:
     return value, False
 
 
-class StylingMode(str, Enum):
+class StylingMode(StrEnum):
     DEV = "dev"
     PROD = "prod"
 

@@ -90,4 +90,4 @@ class Filters:
             A new list of clamped samples.
         """
         low = Filters.low_pass(samples, cutoff)
-        return [_clamp(s - l) for s, l in zip(samples, low)]
+        return [_clamp(s - low_val) for s, low_val in zip(samples, low)]

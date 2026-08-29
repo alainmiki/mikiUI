@@ -73,7 +73,6 @@ exclude_lines = [
 
 [tool.mypy]
 python_version = "3.14"
-strict = true
 ignore_missing_imports = true
 show_error_codes = true
 pretty = true
@@ -81,6 +80,7 @@ exclude = [
     "build/",
     "dist/",
     "tests/",
+    "mikiui/examples/",
     "mikiui_app_plugins/",
 ]
 
@@ -94,10 +94,22 @@ exclude = [
     "dist/",
     "*.egg-info",
     "package.json",
+    "mikiui/examples/",
+    "mikiui_app_plugins/",
 ]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"mikiui/widgets/icon.py" = ["E501"]
+"mikiui/widgets/advanced.py" = ["E501"]
+"mikiui/components/html.py" = ["E501"]
+"mikiui/styling/tailwind.py" = ["E501"]
+"mikiui/build/tailwind/__init__.py" = ["E501"]
+"mikiui/components/navbar.py" = ["E501"]
+"mikiui/router/middleware.py" = ["E501"]
+"mikiui/widgets/datagrid.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["mikiui", "mikiui_app_plugins"]

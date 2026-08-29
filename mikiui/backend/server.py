@@ -17,7 +17,7 @@ import os
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from ..app import MikiApp, RouteDef
 from ..app.routes import resolve_title
@@ -133,7 +133,7 @@ class RequestLoggingMiddleware:
 def _make_endpoint(miki_app: MikiApp, route: RouteDef):
     auth_middleware = AuthMiddleware(miki_app)
 
-    async def endpoint(request: Request) -> HTMLResponse:
+    async def endpoint(request: Request) -> Response:
         auth_result = auth_middleware.enforce(request, route)
         if auth_result is not None:
             return auth_result
@@ -218,9 +218,7 @@ def create_app(
     app = FastAPI(title=miki_app.title, lifespan=lifespan)
 
     # Health-check endpoint for load balancers and monitoring
-    async def _health_check(request: Request) -> HTMLResponse:
-        from fastapi.responses import JSONResponse
-
+    async def _health_check(request: Request) -> Response:
         return JSONResponse({"status": "ok", "app": miki_app.title})
 
     app.add_api_route("/health", _health_check, methods=["GET"], include_in_schema=False)
@@ -339,7 +337,7 @@ def create_app(
     )
 
     # Add plugin-provided backend routes
-    plugin_routes = getattr(miki_app, "get_backend_routes", lambda: [])()
+    plugin_routes: list[dict[str, Any]] = getattr(miki_app, "get_backend_routes", lambda: [])()
     if plugin_routes:
         plugin_router = APIRouter()
         for route_def in plugin_routes:
@@ -384,7 +382,7 @@ def create_app(
         app.include_router(ws_router)
 
     # Add plugin-provided middleware
-    middleware_classes = getattr(miki_app, "get_middleware_classes", lambda: [])()
+    middleware_classes: list[Any] = getattr(miki_app, "get_middleware_classes", lambda: [])()
     for middleware_cls in middleware_classes:
         try:
             app.add_middleware(middleware_cls)

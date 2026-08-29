@@ -44,7 +44,7 @@ def optimize(assets: list[str], *, level: str = "balanced") -> dict[str, Any]:
     for path in assets:
         if not os.path.isfile(path):
             continue
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             text = fh.read()
         if level == "none":
             done.append(path)

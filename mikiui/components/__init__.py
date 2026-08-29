@@ -100,7 +100,7 @@ from .navbar import Navbar
 from .picture import Picture
 from .progressbar import Meter, Output, Progress, ProgressBar
 from .splitview.splitview import EditorArea, EditorGroup, EditorTab
-from .surfaces import BottomSheet, BottomNavigation, FloatingActionButton, SafeAreaView
+from .surfaces import BottomNavigation, BottomSheet, FloatingActionButton, SafeAreaView
 from .table import Caption, Table, Tbody, Td, Tfoot, Th, Thead, Tr
 from .tabs import Tabs
 from .tooltip import Tooltip

@@ -51,8 +51,8 @@ from .panels import (
 )
 from .property_grid import PropertyGrid
 from .splitview import SplitView
-from .theme_switcher import ThemeSwitcher
 from .terminal_widget import TerminalWidget
+from .theme_switcher import ThemeSwitcher
 
 __all__ = [
     "Avatar",

@@ -110,7 +110,7 @@ def _tailwind_config_script(theme_name: str, daisyui: bool = False, csp_nonce: s
     
     all_vars = "\n".join(theme_vars_lines) + daisyui_theme
     if not all_vars.strip():
-        return f'<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>'
+        return '<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>'
     
     return f'''<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <style{nonce_attr} type="text/tailwindcss">

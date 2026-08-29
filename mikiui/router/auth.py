@@ -7,7 +7,7 @@ the :class:`AuthStrategy` protocol that concrete auth backends implement.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 
 @dataclass

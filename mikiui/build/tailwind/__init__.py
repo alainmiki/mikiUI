@@ -29,7 +29,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from ...themes import Theme, get_theme, list_themes, THEME_DIR
+from ...themes import THEME_DIR, Theme, get_theme, list_themes
 
 #: MikiUI CSS class prefixes that the Tailwind JIT should scan for.
 MIKI_PREFIXES = ["miki-"]
@@ -431,7 +431,7 @@ def build_css(
 
     if optimize and not watch:
         try:
-            with open(result_path, "r") as f:
+            with open(result_path) as f:
                 text = f.read()
             minified = "\n".join(line.rstrip() for line in text.splitlines() if line.strip())
             with open(result_path, "w") as f:

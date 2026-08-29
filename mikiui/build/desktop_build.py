@@ -15,7 +15,6 @@ import importlib
 import os
 import platform
 import sys
-import tempfile
 import threading
 import time
 import urllib.request
@@ -238,7 +237,6 @@ def _run_browser(
     directory and restarts the server on file changes, then reloads the browser
     tab automatically.
     """
-    import webbrowser
 
     url = f"http://{host}:{port}/"
     holder = _start_server(app, host, port, runtime=runtime)
@@ -519,7 +517,7 @@ def build_desktop(
 
     # 1. Produce the web build inside the desktop bundle.
     web_build_dir = os.path.join(out, "web")
-    web_report = _build_web_for_desktop(miki_app, out_dir=web_build_dir, app_spec=app_spec)
+    _build_web_for_desktop(miki_app, out_dir=web_build_dir, app_spec=app_spec)
 
     # 2. Write the portable launcher script.
     spec = app_spec or _infer_app_spec(miki_app)

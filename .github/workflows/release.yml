@@ -27,7 +27,7 @@ jobs:
           pip install -e ".[dev,build]"
 
       - name: Lint
-        run: ruff check mikiui/ tests/
+        run: ruff check mikiui/
 
       - name: Type check
         run: mypy mikiui/

@@ -7,7 +7,8 @@ returned by :meth:`MikiApp.route_group`.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .auth import AuthRequirement
 
@@ -70,12 +71,12 @@ class RouteGroup:
         self._rate_limit: RateLimitConfig | None = None
         self._csrf: CSRFConfig | None = None
 
-    def use(self, middleware_cls: type) -> "RouteGroup":
+    def use(self, middleware_cls: type) -> RouteGroup:
         """Add a middleware class to this group."""
         self.middleware.append(middleware_cls)
         return self
 
-    def auth(self, requirement: AuthRequirement) -> "RouteGroup":
+    def auth(self, requirement: AuthRequirement) -> RouteGroup:
         """Set the auth requirement for this group."""
         self._auth = requirement
         return self
@@ -86,7 +87,7 @@ class RouteGroup:
         window: int = 60,
         *,
         key_func: Callable[[Any], str] | None = None,
-    ) -> "RouteGroup":
+    ) -> RouteGroup:
         """Enable rate limiting for this group."""
         self._rate_limit = RateLimitConfig(
             limit=limit, window=window, key_func=key_func
@@ -97,7 +98,7 @@ class RouteGroup:
         self,
         exempt_paths: list[str] | None = None,
         exempt_methods: tuple[str, ...] = ("GET", "HEAD", "OPTIONS"),
-    ) -> "RouteGroup":
+    ) -> RouteGroup:
         """Enable CSRF protection for this group."""
         self._csrf = CSRFConfig(
             exempt_paths=exempt_paths, exempt_methods=exempt_methods
@@ -128,11 +129,11 @@ class RouteGroupBuilder:
         self._app = app
         self._group = RouteGroup(app, prefix)
 
-    def use(self, middleware_cls: type) -> "RouteGroupBuilder":
+    def use(self, middleware_cls: type) -> RouteGroupBuilder:
         self._group.use(middleware_cls)
         return self
 
-    def auth(self, requirement: AuthRequirement) -> "RouteGroupBuilder":
+    def auth(self, requirement: AuthRequirement) -> RouteGroupBuilder:
         self._group.auth(requirement)
         return self
 
@@ -142,7 +143,7 @@ class RouteGroupBuilder:
         window: int = 60,
         *,
         key_func: Callable[[Any], str] | None = None,
-    ) -> "RouteGroupBuilder":
+    ) -> RouteGroupBuilder:
         self._group.rate_limit(limit=limit, window=window, key_func=key_func)
         return self
 
@@ -150,7 +151,7 @@ class RouteGroupBuilder:
         self,
         exempt_paths: list[str] | None = None,
         exempt_methods: tuple[str, ...] = ("GET", "HEAD", "OPTIONS"),
-    ) -> "RouteGroupBuilder":
+    ) -> RouteGroupBuilder:
         self._group.csrf(exempt_paths=exempt_paths, exempt_methods=exempt_methods)
         return self
 

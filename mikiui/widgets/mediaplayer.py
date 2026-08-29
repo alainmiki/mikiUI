@@ -32,6 +32,7 @@ class MediaPlayer(Component):
         attrs.setdefault("role", "region")
         attrs.setdefault("touch-action", "manipulation")
         label = _("mediaplayer_label", "Media player")
+        media: Any
         if kind == "audio":
             media = Audio(src=source, controls=controls, aria_label=label)
         else:
