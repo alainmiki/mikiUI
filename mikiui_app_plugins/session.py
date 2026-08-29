@@ -48,12 +48,11 @@ from __future__ import annotations
 import hmac
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from mikiui import MikiApp
 from mikiui.app.plugins import Plugin
-
 
 _TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")
 _TOKEN_BYTES = 32
@@ -69,7 +68,7 @@ def _sign(token: str, secret_key: str) -> str:
 
 def _now() -> datetime:
     """Return the current UTC time as a timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class SessionPlugin(Plugin):
@@ -181,7 +180,7 @@ class SessionPlugin(Plugin):
             while len(existing_user_sessions) >= plugin_self.max_sessions_per_user:
                 oldest_token = min(
                     existing_user_sessions,
-                    key=lambda t: plugin_self._sessions[t].get("created", datetime.min.replace(tzinfo=timezone.utc))
+                    key=lambda t: plugin_self._sessions[t].get("created", datetime.min.replace(tzinfo=UTC))
                 )
                 plugin_self._sessions.pop(oldest_token, None)
                 existing_user_sessions.remove(oldest_token)
@@ -394,7 +393,7 @@ class SessionPlugin(Plugin):
             now = _now()
             expired = [
                 t for t, s in plugin_self._sessions.items()
-                if s.get("expires", datetime.min.replace(tzinfo=timezone.utc)) < now
+                if s.get("expires", datetime.min.replace(tzinfo=UTC)) < now
             ]
             for t in expired:
                 plugin_self._sessions.pop(t, None)

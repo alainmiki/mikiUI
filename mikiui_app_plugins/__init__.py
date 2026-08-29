@@ -29,8 +29,8 @@ Usage:
     uvicorn.run(fastapi_app, host="127.0.0.1", port=8000)
 """
 
-from .session import SessionPlugin
 from .api import APIPlugin
 from .notifications import NotificationPlugin
+from .session import SessionPlugin
 
 __all__ = ["SessionPlugin", "APIPlugin", "NotificationPlugin"]

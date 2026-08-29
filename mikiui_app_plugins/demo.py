@@ -17,13 +17,11 @@ Run with:
 
 from datetime import timedelta
 
-from mikiui import MikiApp, Div, A, H1, P
+from mikiui import H1, A, Div, MikiApp, P
 from mikiui.widgets import Card
-from mikiui.backend import create_app
 
-from .session import SessionPlugin
 from .notifications import NotificationPlugin
-
+from .session import SessionPlugin
 
 app = MikiApp(title="MikiUI Plugin Demo", lang="en")
 
@@ -63,8 +61,6 @@ def api_users():
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
-    from fastapi import Request
-    import json
     body = {"username": "demo-user"}
     token = app.create_session(body["username"])
     return {"token": token, "user_id": body["username"]}
@@ -79,6 +75,7 @@ def create_demo_app():
     """Create FastAPI app with web pages and API endpoints."""
     from fastapi import FastAPI
     from fastapi.openapi.docs import get_swagger_ui_html
+
     from mikiui.engine.renderer import render_page
 
     fastapi_app = FastAPI(title=app.title, version="1.0.0")
