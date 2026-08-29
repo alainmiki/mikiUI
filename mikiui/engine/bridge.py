@@ -93,47 +93,6 @@ def _is_dotted_path(action: str) -> tuple[str, str] | None:
     return None
 
 
-def validate_action(action: str) -> str:
-    """Validate a bridge action string for safety.
-
-    Only allows:
-    - Dotted paths: ``module.method`` (e.g. ``mikiTabs.show``)
-    - Safe JS expressions using ``this``, ``event``, ``self``
-
-    Returns the action if valid, raises ValueError otherwise.
-    Use this when accepting actions from untrusted sources (e.g., user input).
-    """
-    if not action or not isinstance(action, str):
-        raise ValueError("Bridge action must be a non-empty string")
-
-    action = action.strip()
-
-    # Allow dotted paths (module.method)
-    if _is_dotted_path(action):
-        return action
-
-    # Allow safe JS expressions: method calls on this/event/self
-    _SAFE_EXPR = re.compile(
-        r"^(this|event|self)"
-        r"(\.[a-zA-Z_$][\w$]*(\([^)]*\))?)*$"
-    )
-    if _SAFE_EXPR.match(action):
-        return action
-
-    # Allow simple property access: this.value, this.dataset.x, event.target
-    _SAFE_PROP = re.compile(
-        r"^(this|event|self)\.[a-zA-Z_$][\w.$]*$"
-    )
-    if _SAFE_PROP.match(action):
-        return action
-
-    raise ValueError(
-        f"Bridge action {action!r} is not allowed. "
-        "Use dotted paths ('module.method') or safe expressions "
-        "('this.closest(\"dialog\")', 'event.target')."
-    )
-
-
 def _safe_action(action: str, detail: Any = None) -> str:
     """Wrap *action* so missing modules do not throw ReferenceErrors.
 

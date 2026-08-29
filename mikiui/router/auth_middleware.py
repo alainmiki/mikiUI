@@ -11,7 +11,7 @@ import logging
 from typing import Any, cast
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse
+from starlette.responses import JSONResponse, RedirectResponse, Response
 
 from ..router.auth import AuthRequirement
 from ..router.group import _get_route_group
@@ -55,7 +55,7 @@ class AuthMiddleware:
     def __init__(self, app: Any) -> None:
         self._app = app
 
-    def enforce(self, request: Request, route: Any) -> JSONResponse | None:
+    def enforce(self, request: Request, route: Any) -> Response | None:
         """Validate the request against *route*'s auth requirement.
 
         Returns a JSONResponse if auth fails, or ``None`` if auth passes

@@ -536,10 +536,18 @@ def build_desktop(
     launcher_path = os.path.join(out, launcher_name)
 
     if platform.system().lower() == "windows":
+        # Write a Python launcher script that the .bat can call
+        py_launcher = os.path.join(out, "_launch.py")
+        with open(py_launcher, "w", encoding="utf-8") as fh:
+            fh.write(
+                f"from mikiui.build.desktop_build import run_desktop\n"
+                f"run_desktop(None, host='127.0.0.1', port=8000, "
+                f"title={miki_app.title!r}, app_spec={spec!r})\n"
+            )
         launcher_script = (
             "@echo off\r\n"
             "REM Launch the MikiUI desktop app\r\n"
-            f'python -c "import sys; sys.path.insert(0, \'.\'); from mikiui.build.desktop_build import run_desktop; run_desktop(None, host=\'127.0.0.1\', port=8000, title={miki_app.title!r}, app_spec={spec!r})"\r\n'
+            f"python \"{py_launcher}\"\r\n"
             "pause\r\n"
         )
     elif platform.system().lower() == "darwin":
