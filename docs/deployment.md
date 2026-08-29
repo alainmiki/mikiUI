@@ -493,7 +493,48 @@ sentry_sdk.init(
 
 ---
 
-## Checklist
+## Mobile & PWA Deployment
+
+MikiUI apps are mobile-responsive by default. The framework generates semantic HTML with ARIA attributes, and the CSS adapts to any screen size.
+
+### Building a PWA
+
+```bash
+mikiui build --target web
+```
+
+This generates a `dist/` directory with:
+- Pre-rendered HTML pages for each route
+- A `manifest.webmanifest` for installability
+- Responsive CSS that works on phones, tablets, and desktops
+- Offline-capable service worker (via PWA plugin)
+
+### Deploying Static Builds
+
+Deploy `dist/` to any static host:
+
+```bash
+# Netlify
+netlify deploy --dir=dist --prod
+
+# Vercel
+vercel --prod
+
+# GitHub Pages
+cp -r dist/* docs/ && git push
+
+# S3 + CloudFront
+aws s3 sync dist/ s3://my-bucket --acl public-read
+```
+
+### Mobile Optimization Tips
+
+- Use responsive Tailwind classes (`sm:`, `md:`, `lg:`) in your components
+- The `Meta` component sets viewport meta automatically
+- Touch-friendly hit targets (min 44px) are built into all interactive components
+- For native mobile apps, wrap the PWA in a WebView or use Capacitor
+
+---
 
 Before going to production, verify:
 

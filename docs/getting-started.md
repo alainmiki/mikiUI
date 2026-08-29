@@ -21,20 +21,27 @@ directly to HTML elements.
 
 ## Installation
 
-Install MikiUI from the project root in editable mode:
+Install MikiUI from PyPI:
 
 ```bash
-cd C:\Users\Coder Miki\Desktop\mikiUI
-pip install -e .
+pip install mikiui
 ```
 
-For development dependencies (testing, linting, type-checking):
+### Optional extras
 
 ```bash
-pip install -e .[dev]
+# Tailwind CSS support
+pip install mikiui[tailwind]
+npm install  # installs Tailwind + DaisyUI
+
+# Desktop app support (pywebview)
+pip install mikiui[desktop]
+
+# All extras
+pip install mikiui[dev,build,desktop,tailwind]
 ```
 
-Verify the installation:
+### Verify
 
 ```bash
 mikiui --help
@@ -158,6 +165,26 @@ mikiui desktop --reload      # Auto-refresh on file changes
 mikiui desktop --browser     # Force browser fallback
 mikiui desktop --width 1280 --height 800  # Window size
 ```
+
+## Mobile & PWA
+
+MikiUI apps are mobile-responsive by default. The framework generates semantic HTML with ARIA attributes, and the CSS is responsive out of the box.
+
+To build an installable Progressive Web App:
+
+```bash
+mikiui build --target web
+```
+
+This generates a `dist/` directory with:
+- Pre-rendered HTML pages
+- A `manifest.webmanifest` for installability
+- Service worker support via the PWA plugin
+- Responsive CSS that adapts to any screen size
+
+Deploy `dist/` to any static host (Netlify, Vercel, GitHub Pages, S3) and your app is accessible on phones, tablets, and desktops.
+
+---
 
 ## Next Steps
 

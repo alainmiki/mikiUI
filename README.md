@@ -1,132 +1,267 @@
+<div align="center">
+
 # MikiUI
 
-A Python-first UI framework that renders UIs as standalone desktops or websites.
+**Build beautiful web, desktop, and mobile apps — entirely in Python.**
+
+[![PyPI version](https://img.shields.io/pypi/v/mikiui)](https://pypi.org/project/mikiui/)
+[![Python](https://img.shields.io/pypi/pyversions/mikiui)](https://pypi.org/project/mikiui/)
+[![License](https://img.shields.io/pypi/l/mikiui)](LICENSE)
+
+[Installation](#installation) · [Quick Start](#quick-start) · [Documentation](#documentation) · [Examples](#examples)
+
+</div>
+
+---
+
+MikiUI is a Python-first UI framework that lets you build **web applications, native desktop windows, and mobile-friendly interfaces** from a single codebase. No JavaScript required for logic — just Python classes that map to HTML, with a modern component API, built-in security, and real-time capabilities.
+
+## Why MikiUI?
+
+- **One codebase, every target** — deploy as a website, a desktop app (pywebview), or a mobile-responsive PWA
+- **Python-first** — write routes, components, and state in pure Python; the framework handles HTML, CSS, and JS interop
+- **60+ components and widgets** — from buttons and forms to data grids, IDE editors, chat UIs, and MDI workspaces
+- **Real-time built in** — WebSocket with rooms/channels, SSE, and auth integration
+- **Secure by default** — CSRF protection, security headers, CSP nonces, and plugin sandboxing
+- **API-ready** — auto-generated OpenAPI docs, type-coerced path params, and route groups
+- **Theming** — 4 built-in themes (light, dark, solarized, dracula) with custom theme support
+- **Plugin ecosystem** — extend with custom components, widgets, themes, and backend routes
+
+## Installation
+
+### From PyPI (recommended)
+
+```bash
+pip install mikiui
+```
+
+### With Tailwind CSS support
+
+```bash
+pip install mikiui[tailwind]
+npm install  # installs Tailwind + DaisyUI
+```
+
+### For desktop apps
+
+```bash
+pip install mikiui[desktop]
+```
+
+### Verify
+
+```bash
+mikiui --help
+```
+
+---
 
 ## Quick Start
 
+### 1. Create a new project
+
 ```bash
-pip install -e .
 mikiui new myapp
 cd myapp
-mikiui dev           # development server
+```
+
+### 2. Write your app
+
+```python
+# app.py
+from mikiui import MikiApp, Div, H1, P, Button
+
+app = MikiApp(title="My App")
+
+@app.route("/", title="Home")
+def home():
+    return Div(
+        H1("Welcome to MikiUI!"),
+        P("Build web, desktop, and mobile apps in Python."),
+        Button("Get Started", class_="miki-btn-primary"),
+        class="flex flex-col items-center justify-center h-screen gap-4",
+    )
+
+if __name__ == "__main__":
+    app.run()           # web server
+    # app.run(desktop=True)  # native window
+```
+
+### 3. Run it
+
+```bash
+mikiui dev            # development server with hot-reload
 # or
-mikiui desktop        # native desktop window
+python app.py         # direct execution
 ```
 
-## Styling
+Open `http://127.0.0.1:8000` in your browser.
 
-MikiUI supports two styling frameworks. Choose one during project creation:
+---
 
-```bash
-mikiui new myapp
-# Follow the prompts to choose Tailwind or plain CSS
+## What You Can Build
+
+| Target | Command | Description |
+|--------|---------|-------------|
+| **Website** | `mikiui dev` | FastAPI + HTMX dev server |
+| **Desktop App** | `mikiui desktop` | Native pywebview window |
+| **Mobile PWA** | `mikiui build --target web` | Installable progressive web app |
+| **Static Site** | `mikiui build --target web` | Pre-rendered HTML for any host |
+| **API Backend** | `create_app(app)` | FastAPI with OpenAPI docs |
+
+---
+
+## Features
+
+### Components & Widgets
+All HTML elements as Python classes (`Button`, `Input`, `Form`, `Table`, `Dialog`, `Tabs`) plus high-level widgets (`DataGrid`, `MediaPlayer`, `DockablePanel`, `IDEEditor`, `ChatUI`, `KanbanBoard`, `Calendar`, `Carousel`, and more).
+
+### Routing
+Type-coerled path params, route groups, pattern-matched lookup, and per-route auth:
+
+```python
+@app.route("/users/{user_id:int}", summary="Get user", tags=["users"])
+def get_user(ctx, user_id: int):
+    return Div(f"User {user_id}")
 ```
 
-| Framework | Description | Node.js Required |
-|-----------|-------------|-----------------|
-| `tailwind` | Tailwind CSS + optional DaisyUI | Yes |
-| `plain` | Plain CSS, no framework | No |
+### Real-Time
+WebSocket with rooms, channels, and auth integration:
 
-### Tailwind CSS
-
-```bash
-cd myapp
-npm install          # Install Node.js dependencies
-mikiui dev           # Start dev server
-mikiui tailwind dev  # Watch & rebuild CSS (second terminal)
+```python
+manager = ConnectionManager()
+manager.join_room(ws, "chat-room")
+await manager.broadcast_to_room("chat-room", {"message": "Hello!"})
 ```
 
-Production build:
+### Security
+CSRF by default, security headers, CSP nonces, rate limiting, and plugin sandboxing.
 
-```bash
-mikiui build --target web --theme tailwind
+### API Documentation
+Auto-generated OpenAPI schema with Swagger UI and ReDoc at `/docs` and `/redoc`.
+
+### Theming
+4 built-in themes with custom theme support. Switch at runtime:
+
+```python
+app.set_theme("dark")
 ```
 
-Add DaisyUI:
+### Styling
+Tailwind CSS (with optional DaisyUI) or plain CSS — switch without changing app logic.
 
-```bash
-mikiui install tailwind daisyui
-```
-
-### Plain CSS
-
-```bash
-cd myapp
-mikiui dev           # No extra setup needed
-```
-
-## What's Available
-
-- **Components** — all HTML elements as Python classes (Button, Input, Form, Table, Dialog, Tabs, etc.)
-- **Widgets** — high-level composite UI (DataGrid, MediaPlayer, DockablePanel, IDE Editor, ThemeSwitcher, etc.)
-- **Themes** — 4 built-in themes (light, dark, solarized-dark, dracula) with custom theme support
-- **Styling** — Tailwind CSS or plain CSS
-- **Plugins** — extend with custom themes, components, and widgets
-- **Desktop** — native pywebview window or system browser fallback
-- **Full-stack** — FastAPI backend with HTMX + Alpine.js runtime
+---
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `mikiui new <name>` | Scaffold a new project (prompts for framework) |
-| `mikiui dev` | Development server (auto-discovers `app.py`) |
-| `mikiui desktop` | Native desktop window (pywebview) |
-| `mikiui desktop --reload` | Desktop with auto-reload |
-| `mikiui desktop --browser` | Force system browser |
+| `mikiui new <name>` | Scaffold a new project |
+| `mikiui dev` | Development server with hot-reload |
+| `mikiui desktop` | Native desktop window |
 | `mikiui build --target web` | Static web build |
-| `mikiui build --target desktop` | Desktop package build |
-| `mikiui tailwind dev` | Watch and rebuild Tailwind CSS |
-| `mikiui tailwind build` | Production Tailwind build |
+| `mikiui build --target desktop` | Desktop package |
+| `mikiui tailwind dev` | Watch & rebuild Tailwind CSS |
 | `mikiui install tailwind` | Install Tailwind + npm deps |
 
-## Running Your App
-
-```python
-# app.py
-from mikiui import MikiApp, Div, H1, Button
-
-app = MikiApp(title="My App")
-app.set_theme("dark")
-
-@app.route("/", title="Home")
-def home():
-    return Div(H1("Welcome to MikiUI!"), Button("Click me"))
-
-if __name__ == "__main__":
-    app.run()       # python app.py
-    # or: app.run(desktop=True)  for native window
-```
+---
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md)
-- [Styling Guide](docs/styling.md)
-- [Theme Reference](docs/theme-reference.md)
-- [Theming Guide](docs/themes.md)
-- [App Discovery & Running](docs/app-discovery.md)
-- [Plugin System](docs/plugins.md)
-- [Full Spec](context/plan.md)
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/getting-started.md) | Installation, first app, CLI reference |
+| [API Reference](docs/api-reference.md) | Full method signatures and examples |
+| [Widget Catalog](docs/widgets.md) | All 60+ widgets with examples |
+| [Router Guide](docs/router-guide.md) | Routing, groups, middleware |
+| [Security Guide](docs/security.md) | CSRF, auth, headers, plugin security |
+| [Styling Guide](docs/styling.md) | Tailwind, plain CSS, themes |
+| [Plugin System](docs/plugins.md) | Creating and publishing plugins |
+| [Deployment](docs/deployment.md) | Production setup, static export |
+| [Themes](docs/themes.md) | Built-in and custom themes |
+| [Changelog](docs/changelog.md) | Version history |
 
-## Production readiness
+---
 
-Use the following commands to validate the package and production build flow before shipping a release:
+## Examples
+
+### API with docs
+```python
+from mikiui import MikiApp
+from mikiui.backend import create_app
+from mikiui_app_plugins import APIPlugin, SessionPlugin
+
+app = MikiApp(title="My API")
+session = SessionPlugin(secret_key="change-me")
+app.use(session)
+app.use(APIPlugin(title="My API", version="1.0.0", session_plugin=session))
+
+@app.get("/api/items", summary="List items", tags=["items"])
+def list_items(ctx):
+    return [{"id": 1, "name": "Widget"}]
+
+@app.post("/api/items", summary="Create item", tags=["items"])
+def create_item(ctx):
+    return {"id": 2, "name": "New Item"}, 201
+
+fastapi_app = create_app(app)
+# OpenAPI docs at /docs, ReDoc at /redoc
+```
+
+### WebSocket chat with rooms
+```python
+from mikiui.backend.websocket import ConnectionManager, mount_websocket
+
+manager = ConnectionManager(max_connections_per_user=5)
+
+async def chat_handler(ws, manager):
+    user_id = ws.state.mikiui_user_id
+    manager.join_room(ws, "general")
+    try:
+        while True:
+            data = await ws.receive_text()
+            await manager.broadcast_to_room("general", {"user": user_id, "text": data})
+    except WebSocketDisconnect:
+        manager.disconnect(ws)
+```
+
+---
+
+## Development Setup (Contributors)
+
+To set up the project for development:
 
 ```bash
-pip install -e .
+git clone https://github.com/alainmiki/mikiUI.git
+cd mikiUI
+pip install -e ".[dev,build,desktop,tailwind]"
+pip install pytest-playwright
+playwright install --with-deps chromium
+```
+
+Run tests:
+
+```bash
+python -m pytest tests/ --ignore=tests/e2e    # unit + integration
+python -m pytest tests/e2e/                    # browser e2e (needs Chromium)
+```
+
+Build and validate:
+
+```bash
 python -m build
 mikiui build --target web
 mikiui build --target desktop
-pytest
 ```
 
-The framework is intended to support:
+---
 
-- web deployment via static HTML/HTMX + FastAPI
-- desktop deployment via pywebview or browser fallback
-- a single Python codebase for component and widget reuse
-- Tailwind or plain CSS styling without changing app logic
+## Requirements
+
+- **Python 3.14+**
+- **Node.js 18+** (only for Tailwind CSS)
+- **pywebview** (only for desktop mode, auto-installed with `[desktop]`)
 
 ## License
 
-MIT
+[MIT](LICENSE)
