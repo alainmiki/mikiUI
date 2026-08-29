@@ -112,6 +112,7 @@ select = ["E", "F", "I", "UP"]
 "mikiui/components/navbar.py" = ["E501"]
 "mikiui/router/middleware.py" = ["E501"]
 "mikiui/widgets/datagrid.py" = ["E501"]
+"mikiui_app_plugins/" = ["E501", "F401", "UP017"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["mikiui", "mikiui_app_plugins"]

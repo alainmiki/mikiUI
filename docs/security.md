@@ -69,34 +69,57 @@ app = create_app(
 
 ## 3. CSRF Protection
 
-MikiUI includes `CSRFMiddleware` that validates tokens on state-changing
-requests.
+CSRF protection is **enabled by default** in `create_app()`. MikiUI includes
+`CSRFMiddleware` that validates tokens on state-changing requests using the
+double-submit cookie pattern.
 
 ### How it works
 
 - **Safe methods** (`GET`, `HEAD`, `OPTIONS`) bypass validation.
 - **Unsafe methods** (`POST`, `PUT`, `PATCH`, `DELETE`) require a valid
   CSRF token.
+- The server sets a `mikiui_csrf` cookie on responses.
+- The client echoes the cookie value in the `X-CSRF-Token` header or
+  `_csrf` form field.
+- Tokens expire after 1 hour (configurable via `_DEFAULT_TOKEN_TTL`).
 - Tokens are checked from:
   1. `X-CSRF-Token` header (preferred for AJAX/HTMX)
   2. `_csrf` form field (for HTML forms)
 - Tokens are bound to the session and signed with HMAC-SHA256.
 - Validation uses timing-safe comparison (`hmac.compare_digest`).
 
-### Usage
+### Default Configuration
+
+CSRF is enabled automatically when using `create_app()`:
 
 ```python
-from mikiui.router.csrf import CSRFMiddleware
 from mikiui.backend.server import create_app
 
-app = create_app(miki_app)
+# CSRF enabled by default
+fastapi_app = create_app(miki_app)
 
-app.add_middleware(
-    CSRFMiddleware,
-    get_session_token=lambda request: request.cookies.get("mikiui_session"),
-    validate_csrf=lambda session_token, csrf_token: miki_app.validate_csrf(session_token, csrf_token),
+# Disable for API-only apps
+fastapi_app = create_app(miki_app, enable_csrf=False)
+```
+
+### Custom Configuration
+
+```python
+from mikiui.router.csrf import apply_csrf_middleware
+
+apply_csrf_middleware(
+    app,
+    secret="your-secret-key",
     exempt_paths=["/webhook/"],
 )
+```
+
+### Generating Tokens Manually
+
+```python
+from mikiui.router.csrf import generate_csrf_token
+
+token = generate_csrf_token(secret="your-secret", session_id="user-123")
 ```
 
 ### Frontend integration
