@@ -47,7 +47,7 @@ def test_get_returns_full_page():
 
 def test_post_returns_full_page():
     app = make_app()
-    client = TestClient(create_app(app))
+    client = TestClient(create_app(app, enable_csrf=False))
     resp = client.post("/inc")
     assert resp.status_code == 200
     assert "count=1" in resp.text
@@ -56,7 +56,7 @@ def test_post_returns_full_page():
 
 def test_state_persists_across_requests():
     app = make_app()
-    client = TestClient(create_app(app))
+    client = TestClient(create_app(app, enable_csrf=False))
     assert "count=1" in client.post("/inc").text
     assert "count=2" in client.post("/inc").text
 

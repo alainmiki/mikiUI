@@ -11,7 +11,7 @@ import logging
 from typing import Any, cast
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 
 from ..router.auth import AuthRequirement
 from ..router.group import _get_route_group
@@ -82,11 +82,30 @@ class AuthMiddleware:
         user = strategy.validate(request)
         if user is None:
             is_hx = request.headers.get("HX-Request") is not None
-            headers = {"HX-Redirect": requirement.redirect_to or "/login"} if is_hx else {}
-            return JSONResponse(
-                {"error": "Unauthorized", "detail": "Login required"},
-                status_code=401,
-                headers=headers,
+            redirect_url = requirement.redirect_to or "/login"
+            if is_hx:
+                # HTMX: return HX-Redirect header for client-side redirect
+                return JSONResponse(
+                    {"error": "Unauthorized", "detail": "Login required"},
+                    status_code=401,
+                    headers={"HX-Redirect": redirect_url},
+                )
+            # Browser navigation: check if it's an API/AJAX request
+            accept = request.headers.get("accept", "")
+            is_json_request = (
+                "application/json" in accept
+                or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            )
+            if is_json_request:
+                return JSONResponse(
+                    {"error": "Unauthorized", "detail": "Login required"},
+                    status_code=401,
+                    headers={"WWW-Authenticate": 'Bearer realm="mikiui"'},
+                )
+            # Regular browser request: redirect to login
+            return RedirectResponse(
+                url=f"{redirect_url}?next={str(request.url.path)}",
+                status_code=303,
             )
 
         request.state.mikiui_user = user

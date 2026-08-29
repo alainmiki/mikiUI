@@ -179,6 +179,7 @@ def create_app(
     runtime: str = "local",
     cors_origins: list[str] | None = None,
     runtime_dir: str | None = None,
+    enable_csrf: bool = True,
 ) -> FastAPI:
     """Create a FastAPI ASGI app from a MikiApp.
 
@@ -191,6 +192,10 @@ def create_app(
     cors_origins:
         Allowed CORS origins.  When ``None``, CORS middleware is not added.
         Pass ``["*"]`` to allow all origins (development only).
+    enable_csrf:
+        If ``True`` (default), enable CSRF protection with automatic
+        token generation.  Set to ``False`` for API-only apps or when
+        using a custom CSRF implementation.
     """
     has_api_plugin = any(
         getattr(p, "name", None) == "api" for p in miki_app.plugins
@@ -389,7 +394,7 @@ def create_app(
         except Exception:
             logger.exception("Failed to add plugin middleware: %s", middleware_cls)
 
-    apply_default_middleware(app)
+    apply_default_middleware(app, enable_csrf=enable_csrf)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(ErrorHandlerMiddleware)
     register_exception_handlers(app)

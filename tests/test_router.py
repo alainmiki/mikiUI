@@ -215,7 +215,7 @@ def test_path_param_extracted_from_route():
         return Div(f"user-{user_id}")
 
     route = app.routes["/users/{user_id}"]
-    assert "user_id" in route.path_params
+    assert "user_id" in route.path_param_names
 
 
 def test_path_param_handler_receives_value():
@@ -451,16 +451,34 @@ def test_plugin_error_isolation():
 
 
 def test_duplicate_route_raises():
+    """Registering the same path with the same method raises."""
     app = MikiApp()
 
-    @app.route("/same")
+    @app.route("/same", methods=["GET"])
     def first():
         return Div("first")
 
     with pytest.raises(ValueError, match="already registered"):
-        @app.route("/same")
+        @app.route("/same", methods=["GET"])
         def second():
             return Div("second")
+
+
+def test_duplicate_route_merges_methods():
+    """Registering the same path with different methods merges them."""
+    app = MikiApp()
+
+    @app.route("/same", methods=["GET"])
+    def get_handler():
+        return Div("get")
+
+    @app.route("/same", methods=["POST"])
+    def post_handler():
+        return Div("post")
+
+    route = app.routes["/same"]
+    assert "GET" in route.methods
+    assert "POST" in route.methods
 
 
 def test_plugin_depends_on_ordering():

@@ -173,14 +173,29 @@ class MikiApp:
                     "Pass a unique `name=` to the decorator."
                 )
             if path in self.routes:
-                existing = self.routes[path]
-                raise ValueError(
-                    f"Route {path!r} is already registered by {existing.name!r}. "
-                    "Use a different path or remove the existing route first."
+                existing_route = self.routes[path]
+                # Check for overlapping methods (same path + same method = error)
+                overlap = set(existing_route.methods) & set(upper_methods)
+                if overlap:
+                    raise ValueError(
+                        f"Route {path!r} with method(s) {sorted(overlap)} is already "
+                        f"registered by {existing_route.name!r}. Use a different path "
+                        "or remove the existing route first."
+                    )
+                # Merge methods for the same path (e.g., GET /users/{id} + POST /users/{id})
+                merged_methods = tuple(sorted(set(existing_route.methods + upper_methods)))
+                self.routes[path] = RouteDef(
+                    path, fn, merged_methods, resolved_name, title,
+                    requires_auth or existing_route.requires_auth,
+                    auth=auth if auth is not None else existing_route._auth_requirement,
                 )
-            self.routes[path] = RouteDef(
-                path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth
-            )
+                # Preserve route group from existing registration
+                if existing_route._route_group is not None:
+                    self.routes[path]._route_group = existing_route._route_group
+            else:
+                self.routes[path] = RouteDef(
+                    path, fn, upper_methods, resolved_name, title, requires_auth, auth=auth
+                )
             for plugin in self.plugins:
                 if hasattr(plugin, "on_route_add"):
                     plugin.on_route_add(path, upper_methods, fn)
@@ -703,7 +718,7 @@ class MikiApp:
         if route is None:
             raise ValueError(f"No route named {name!r}. Available: {[r.name for r in self.routes.values()]}")
         path = route.path
-        for param in route.path_params:
+        for param in route.path_param_names:
             if param not in path_params:
                 raise ValueError(
                     f"Route {name!r} requires path parameter {param!r}. "

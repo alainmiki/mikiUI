@@ -387,8 +387,18 @@ def _watch_and_restart(
     root = os.getcwd()
 
     # watchfiles watch() can accept a stop_event for graceful shutdown
+    # Exclude common non-source directories to prevent infinite rebuild loops
+    _WATCH_EXCLUDES = (
+        "dist", "build", "node_modules", "__pycache__", ".git",
+        ".miki", "mikiui.egg-info", ".venv", "venv", ".tox",
+    )
     try:
-        for _changes in watch(root, stop_event=stop_event, watch_filter=None):
+        from watchfiles import DefaultFilter
+        watch_filter = DefaultFilter(ignore_dirs=_WATCH_EXCLUDES)
+    except Exception:
+        watch_filter = None
+    try:
+        for _changes in watch(root, stop_event=stop_event, watch_filter=watch_filter):
             _restart_server(app_spec, host, port, runtime, app, window)
     except Exception:
         pass
@@ -528,12 +538,8 @@ def build_desktop(
     if platform.system().lower() == "windows":
         launcher_script = (
             "@echo off\r\n"
-            '"""Launch the MikiUI desktop app."""\r\n'
-            "python -c "
-            '"import sys; sys.path.insert(0, \\".\\"); '
-            f"from mikiui.build.desktop_build import run_desktop; "
-            f"run_desktop(None, host=\\'127.0.0.1\\', port=8000, title=\\'{miki_app.title}\\', app_spec={spec!r})"
-            '"\r\n'
+            "REM Launch the MikiUI desktop app\r\n"
+            f'python -c "import sys; sys.path.insert(0, \'.\'); from mikiui.build.desktop_build import run_desktop; run_desktop(None, host=\'127.0.0.1\', port=8000, title={miki_app.title!r}, app_spec={spec!r})"\r\n'
             "pause\r\n"
         )
     elif platform.system().lower() == "darwin":
