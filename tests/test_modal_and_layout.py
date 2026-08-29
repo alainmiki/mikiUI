@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
-from mikiui.components.layout_primitives import Column, Row, Spacer, Divider, Shape, Stack
+from mikiui.components.layout_primitives import Column, Divider, Row, Shape, Spacer, Stack
 from mikiui.components.modal import Modal
-from mikiui.engine.dom import Element
 
 
 def test_modal_defaults():

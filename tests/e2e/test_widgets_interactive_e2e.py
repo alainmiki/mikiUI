@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import expect, sync_playwright
 from starlette.testclient import TestClient
 
-from mikiui.examples.demo1 import app
 from mikiui.backend.server import create_app
+from mikiui.examples.demo1 import app
 
 
 @pytest.fixture(scope="module")

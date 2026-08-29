@@ -1,12 +1,10 @@
 """Tests for enhanced API documentation and WebSocket features."""
-import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
-from mikiui import MikiApp, Div, P
+from mikiui import Div, MikiApp
 from mikiui.backend import create_app
-from mikiui.backend.websocket import ConnectionManager, WebSocketAuthHelper, mount_websocket
-from starlette.websockets import WebSocketDisconnect
+from mikiui.backend.websocket import ConnectionManager
 
 
 class TestOpenAPIMetadata:
@@ -238,6 +236,7 @@ class TestCLIVersion:
 
     def test_version_flag(self):
         from typer.testing import CliRunner
+
         from mikiui.cli.commands import cli
 
         runner = CliRunner()
@@ -258,9 +257,111 @@ class TestProjectNameValidation:
 
     def test_invalid_names(self):
         from mikiui.cli.commands import _validate_project_name
-        import pytest
 
         invalid = ["", "  ", "my/app", "my:app", "my<app", ".hidden", "-dash"]
         for name in invalid:
             with pytest.raises(ValueError):
                 _validate_project_name(name)
+
+
+class TestKeyboardNavigation:
+    """Test keyboard accessibility of core widgets."""
+
+    def test_tabs_keyboard_nav(self):
+        from mikiui.components import Tabs
+
+        tabs = Tabs([
+            ("Tab A", "Content A"),
+            ("Tab B", "Content B"),
+            ("Tab C", "Content C"),
+        ])
+        html = str(tabs)
+        assert 'role="tablist"' in html
+        assert 'role="tab"' in html
+        assert 'role="tabpanel"' in html
+        assert 'tabindex="0"' in html
+        assert 'tabindex="-1"' in html
+        assert 'aria-selected="true"' in html
+        assert 'aria-selected="false"' in html
+
+    def test_menu_keyboard_attrs(self):
+        from mikiui.widgets import MenuBar
+
+        menubar = MenuBar(items=[
+            ("File", [("New", "/new"), ("Open", "/open")]),
+            ("Edit", [("Cut", "/cut")]),
+        ])
+        html = str(menubar)
+        assert 'role="menubar"' in html
+        assert 'role="menu"' in html
+        assert 'role="menuitem"' in html
+        assert 'aria-haspopup="true"' in html
+        assert 'aria-expanded="false"' in html
+        assert 'tabindex="-1"' in html
+
+    def test_dialog_keyboard_attrs(self):
+        from mikiui.components import Dialog
+
+        dlg = Dialog("Content", title="Test", open=True)
+        html = str(dlg)
+        assert 'role="dialog"' in html
+        assert 'aria-modal="true"' in html
+
+    def test_form_labels(self):
+        from mikiui.components import Form, Input
+
+        form = Form(
+            Input(name="email", aria_label="Email address"),
+            method="POST",
+        )
+        html = str(form)
+        assert 'aria-label="Email address"' in html
+
+    def test_button_accessible(self):
+        from mikiui.components import Button
+
+        btn = Button("Submit", aria_label="Submit form")
+        html = str(btn)
+        assert 'aria-label="Submit form"' in html
+
+
+class TestResponsiveCSS:
+    """Test that responsive CSS rules are present."""
+
+    def test_mobile_media_queries_exist(self):
+        import os
+        css_path = os.path.join(os.path.dirname(__file__), "..", "mikiui", "runtime", "miki.css")
+        with open(css_path, encoding="utf-8") as f:
+            css = f.read()
+        assert "@media (max-width: 480px)" in css
+        assert "@media (min-width: 481px) and (max-width: 768px)" in css
+        assert "@media (hover: none)" in css
+
+    def test_touch_css_rules(self):
+        import os
+        css_path = os.path.join(os.path.dirname(__file__), "..", "mikiui", "runtime", "miki.css")
+        with open(css_path, encoding="utf-8") as f:
+            css = f.read()
+        assert "44px" in css
+        assert "touch-action: manipulation" in css
+
+    def test_safe_area_support(self):
+        import os
+        css_path = os.path.join(os.path.dirname(__file__), "..", "mikiui", "runtime", "miki.css")
+        with open(css_path, encoding="utf-8") as f:
+            css = f.read()
+        assert "env(safe-area-inset-bottom)" in css
+
+    def test_reduced_motion_support(self):
+        import os
+        css_path = os.path.join(os.path.dirname(__file__), "..", "mikiui", "runtime", "miki.css")
+        with open(css_path, encoding="utf-8") as f:
+            css = f.read()
+        assert "prefers-reduced-motion" in css
+
+    def test_viewport_height_fix(self):
+        import os
+        css_path = os.path.join(os.path.dirname(__file__), "..", "mikiui", "runtime", "miki.css")
+        with open(css_path, encoding="utf-8") as f:
+            css = f.read()
+        assert "100dvh" in css

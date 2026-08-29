@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from mikiui.router.auth import AuthRequirement
 from mikiui.router.group import RouteGroup, RouteGroupBuilder
 

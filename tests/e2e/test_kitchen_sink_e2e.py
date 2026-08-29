@@ -7,11 +7,11 @@ from __future__ import annotations
 import re
 
 import pytest
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright
 from starlette.testclient import TestClient
 
-from mikiui.examples.kitchen_sink import app
 from mikiui.backend.server import create_app
+from mikiui.examples.kitchen_sink import app
 
 
 @pytest.fixture(scope="module")
