@@ -31,6 +31,7 @@ from ..app.static_assets import (
 )
 from ..engine.renderer import render_fragment, render_page
 from ..middleware.error_handler import ErrorHandlerMiddleware, register_exception_handlers
+from ..middleware.request_id import RequestIDMiddleware
 from ..router.auth_middleware import AuthMiddleware, ensure_auth_strategies
 from ..router.group import _get_route_group
 from ..router.middleware import apply_default_middleware
@@ -394,7 +395,28 @@ def create_app(
         except Exception:
             logger.exception("Failed to add plugin middleware: %s", middleware_cls)
 
+    # Apply rate limiting from route groups (if any are configured)
+    rate_limit_configs = miki_app.get_route_group_rate_limits()
+    if rate_limit_configs:
+        # Use the strictest general limit across all groups
+        min_limit = min(cfg[1] for cfg in rate_limit_configs)
+        min_window = min(cfg[2] for cfg in rate_limit_configs)
+        # Collect all rate-limited path prefixes
+        rate_limited_prefixes = tuple(cfg[0] for cfg in rate_limit_configs)
+        from ..router.rate_limit import RateLimitMiddleware
+        app.add_middleware(
+            RateLimitMiddleware,
+            general_limit=min_limit,
+            general_window=min_window,
+            auth_path_prefixes=("/login", "/auth", "/api/auth", *rate_limited_prefixes),
+        )
+        logger.info(
+            "Rate limiting enabled for prefixes: %s (limit=%d/%ds)",
+            rate_limited_prefixes, min_limit, min_window,
+        )
+
     apply_default_middleware(app, enable_csrf=enable_csrf)
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(ErrorHandlerMiddleware)
     register_exception_handlers(app)

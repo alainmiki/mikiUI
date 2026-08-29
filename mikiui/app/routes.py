@@ -148,13 +148,20 @@ class Ctx:
         """Parse the incoming request form / query / path params (best-effort).
 
         Result priority: form body > query string > path params.
+        Multi-value query params are collected into lists.
         """
         if self.request is None:
             return dict(self.path_params)
         data: dict[str, Any] = dict(self.path_params)
         if hasattr(self.request, "query_params"):
             for k, v in self.request.query_params.multi_items():
-                data.setdefault(k, []).append(v) if k in data else data.update({k: v})
+                if k in data:
+                    if isinstance(data[k], list):
+                        data[k].append(v)
+                    else:
+                        data[k] = [data[k], v]
+                else:
+                    data[k] = v
             try:
                 form = await self.request.form()
                 data.update(dict(form))
@@ -313,5 +320,33 @@ def resolve_title(route: RouteDef, ctx: Ctx | None, fallback: str) -> str:
     return fallback
 
 
-__all__ = ["RouteDef", "Ctx", "invoke_route", "resolve_title", "normalize"]
+def match_route(path: str, routes: list[RouteDef]) -> RouteDef | None:
+    """Find a route that matches *path* using pattern matching.
+
+    Supports routes with ``{param}`` or ``{param:type}`` placeholders.
+    Returns the first matching route, or ``None`` if no match is found.
+    More specific routes (fewer parameters) are matched first.
+    """
+    import re
+    # Sort routes: fewer params first (more specific), then by path length descending
+    sorted_routes = sorted(routes, key=lambda r: (len(r.path_params), -len(r.path)))
+    for route in sorted_routes:
+        if not route.path_params:
+            continue
+        # Build a regex from the route path
+        pattern = route.path
+        for spec in route.path_params:
+            # Replace {param} or {param:type} with a capture group
+            pattern = re.sub(
+                r"\{" + re.escape(spec.name) + r"(?::\w+)?\}",
+                r"([^/]+)",
+                pattern,
+            )
+        pattern = "^" + pattern + "$"
+        if re.match(pattern, path):
+            return route
+    return None
+
+
+__all__ = ["RouteDef", "Ctx", "invoke_route", "resolve_title", "normalize", "match_route"]
 
