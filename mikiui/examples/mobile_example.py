@@ -5,7 +5,7 @@ Run with:
   # or
   mikiui mobile build --target android
 """
-from mikiui import MikiApp, Div, H1, H2, P, Button, Card
+from mikiui import MikiApp, Div, H1, H2, P, Button
 from mikiui.components import Tabs, Form, Input
 from mikiui.app.mobile import MobileConfig
 
@@ -29,7 +29,7 @@ def home():
     return Div(
         H1("Mobile Demo"),
         P("This app demonstrates MikiUI's mobile capabilities."),
-        Card(
+        Div(
             H2("Features"),
             Ul(
                 Li("Cloud mode (Capacitor)"),
@@ -40,6 +40,7 @@ def home():
                 Li("Push notifications"),
                 Li("Touch-optimized UI"),
             ),
+            class_="miki-card p-4",
         ),
         class_="p-4 space-y-4",
     )
