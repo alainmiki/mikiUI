@@ -848,5 +848,189 @@ def mobile_open(
         raise typer.Exit(code=1)
 
 
+@mobile_cli.command("setup")
+def mobile_setup() -> None:
+    """Interactive mobile setup wizard for beginners."""
+    from ..app.mobile import CAPABILITY_MAP, MobileConfig
+
+    typer.echo("[bold]MikiUI Mobile Setup Wizard[/bold]")
+    typer.echo("=" * 40)
+    typer.echo("")
+
+    # Step 1: Backend mode
+    typer.echo("[cyan]Step 1:[/cyan] Choose your backend mode")
+    typer.echo("  [1] Cloud (recommended for beginners)")
+    typer.echo("      Connects to a remote backend. Smaller app (~8-20MB).")
+    typer.echo("  [2] On-device (Android only, advanced)")
+    typer.echo("      Runs Python on device. Larger app (~33-40MB). Offline.")
+    typer.echo("")
+    backend_choice = typer.prompt("Choose (1 or 2)", default="1")
+    backend = "cloud" if backend_choice == "1" else "ondevice"
+
+    # Step 2: Target platform
+    typer.echo("")
+    typer.echo("[cyan]Step 2:[/cyan] Choose your target platform")
+    if backend == "ondevice":
+        typer.echo("  On-device mode only supports Android.")
+        target_platform = "android"
+    else:
+        typer.echo("  [1] Both iOS and Android (recommended)")
+        typer.echo("  [2] Android only")
+        typer.echo("  [3] iOS only")
+        platform_choice = typer.prompt("Choose (1, 2, or 3)", default="1")
+        target_platform = {1: "both", 2: "android", 3: "ios"}.get(int(platform_choice), "both")
+
+    # Step 3: App ID
+    typer.echo("")
+    typer.echo("[cyan]Step 3:[/cyan] Enter your app ID (e.g. com.example.myapp)")
+    app_id = typer.prompt("App ID", default="com.example.myapp")
+
+    # Step 4: App name
+    typer.echo("")
+    typer.echo("[cyan]Step 4:[/cyan] Enter your app name")
+    app_name = typer.prompt("App name", default="My App")
+
+    # Step 5: Plugins
+    typer.echo("")
+    typer.echo("[cyan]Step 5:[/cyan] Select plugins (comma-separated numbers)")
+    plugin_options = list(CAPABILITY_MAP.keys())
+    for i, cap in enumerate(plugin_options, 1):
+        info = CAPABILITY_MAP[cap]
+        typer.echo(f"  [{i}] {cap} ({info.get('capacitor_plugin', 'N/A')})")
+    typer.echo("  [0] None (skip)")
+    plugin_choice = typer.prompt("Choose plugins (e.g. 1,3,5 or 0)", default="0")
+
+    plugins = []
+    if plugin_choice != "0":
+        try:
+            indices = [int(x.strip()) - 1 for x in plugin_choice.split(",")]
+            plugins = [plugin_options[i] for i in indices if 0 <= i < len(plugin_options)]
+        except (ValueError, IndexError):
+            typer.echo("[yellow]Invalid selection, skipping plugins.[/yellow]")
+
+    # Step 6: API base URL (cloud mode only)
+    api_base = None
+    if backend == "cloud":
+        typer.echo("")
+        typer.echo("[cyan]Step 6:[/cyan] Backend API URL (leave empty if not deployed)")
+        api_base = typer.prompt("API URL", default="") or None
+
+    # Create config
+    config = MobileConfig(
+        backend=backend,
+        target_platform=target_platform,
+        app_id=app_id,
+        app_name=app_name,
+        plugins=plugins,
+        api_base=api_base,
+    )
+
+    # Show summary
+    typer.echo("")
+    typer.echo("[bold]Configuration Summary:[/bold]")
+    typer.echo(f"  Backend: {config.backend}")
+    typer.echo(f"  Platform: {config.target_platform}")
+    typer.echo(f"  App ID: {config.app_id}")
+    typer.echo(f"  App Name: {config.app_name}")
+    typer.echo(f"  Plugins: {', '.join(config.plugins) or 'None'}")
+    typer.echo(f"  API Base: {config.api_base or '(not set)'}")
+    typer.echo("")
+    typer.echo("[bold]Add this to your app.py:[/bold]")
+    typer.echo("")
+    typer.echo("from mikiui import MikiApp, Div")
+    typer.echo("from mikiui.app.mobile import MobileConfig")
+    typer.echo("")
+    typer.echo("app = MikiApp(")
+    typer.echo(f'    title="{config.app_name}",')
+    typer.echo("    mobile=MobileConfig(")
+    typer.echo(f'        backend="{config.backend}",')
+    typer.echo(f'        target_platform="{config.target_platform}",')
+    typer.echo(f'        app_id="{config.app_id}",')
+    typer.echo(f'        app_name="{config.app_name}",')
+    if plugins:
+        typer.echo(f"        plugins={plugins},")
+    if api_base:
+        typer.echo(f'        api_base="{config.api_base}",')
+    typer.echo("    ),")
+    typer.echo(")")
+    typer.echo("")
+    typer.echo("[green]Setup complete![/green] Run [bold]mikiui mobile build[/bold] to generate your mobile project.")
+
+
+@mobile_cli.command("doctor")
+def mobile_doctor() -> None:
+    """Check your system for mobile build readiness."""
+    import shutil
+    import sys
+
+    typer.echo("[bold]MikiUI Mobile Doctor[/bold]")
+    typer.echo("Checking your system for mobile build readiness...")
+    typer.echo("")
+
+    all_ok = True
+
+    # Check Python
+    py_version = sys.version.split()[0]
+    typer.echo(f"  [green]OK[/green] Python {py_version}")
+
+    # Check Node.js
+    node_path = shutil.which("node")
+    if node_path:
+        import subprocess
+        try:
+            node_version = subprocess.run(["node", "--version"], capture_output=True, text=True).stdout.strip()
+            typer.echo(f"  [green]OK[/green] Node.js {node_version}")
+        except Exception:
+            typer.echo("  [green]OK[/green] Node.js (installed)")
+    else:
+        typer.echo("  [red]MISSING[/red] Node.js — https://nodejs.org/")
+        all_ok = False
+
+    # Check npm
+    npm_path = shutil.which("npm")
+    if npm_path:
+        typer.echo("  [green]OK[/green] npm (installed)")
+    else:
+        typer.echo("  [red]MISSING[/red] npm — comes with Node.js")
+        all_ok = False
+
+    # Check Android Studio (optional)
+    android_studio = shutil.which("studio") or shutil.which("android-studio")
+    if android_studio:
+        typer.echo("  [green]OK[/green] Android Studio (installed)")
+    else:
+        typer.echo("  [yellow]OPTIONAL[/yellow] Android Studio — https://developer.android.com/studio")
+
+    # Check Xcode (optional, macOS only)
+    if sys.platform == "darwin":
+        xcode_path = shutil.which("xcodebuild")
+        if xcode_path:
+            typer.echo("  [green]OK[/green] Xcode (installed)")
+        else:
+            typer.echo("  [yellow]OPTIONAL[/yellow] Xcode — needed for iOS builds")
+
+    # Check Java (for Android)
+    java_path = shutil.which("java")
+    if java_path:
+        typer.echo("  [green]OK[/green] Java (installed)")
+    else:
+        typer.echo("  [yellow]OPTIONAL[/yellow] Java — needed for Android builds")
+
+    # Check ANDROID_HOME
+    android_home = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if android_home:
+        typer.echo(f"  [green]OK[/green] ANDROID_HOME={android_home}")
+    else:
+        typer.echo("  [yellow]OPTIONAL[/yellow] ANDROID_HOME — set for Android builds")
+
+    typer.echo("")
+    if all_ok:
+        typer.echo("[green]Your system is ready for mobile development![/green]")
+        typer.echo("Run [bold]mikiui mobile setup[/bold] to configure your app.")
+    else:
+        typer.echo("[yellow]Some required tools are missing.[/yellow]")
+        typer.echo("Install them and run this check again.")
+
+
 if __name__ == "__main__":
     cli()

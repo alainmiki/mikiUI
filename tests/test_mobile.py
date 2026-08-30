@@ -220,8 +220,12 @@ class TestMobileBuild:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             build_mobile(app, out_dir=tmpdir)
-            bridge = Path(tmpdir) / "bridge" / "ondevice_bridge.py"
+            # On-device mode generates chaquopy_bridge.py (copied from framework)
+            bridge = Path(tmpdir) / "bridge" / "chaquopy_bridge.py"
             assert bridge.exists()
+            # Also generates Kotlin bridge
+            kotlin = Path(tmpdir) / "bridge" / "kotlin" / "com" / "mikiui" / "app" / "OnDeviceBridge.kt"
+            assert kotlin.exists()
 
     def test_build_rejects_ios_ondevice(self):
         from mikiui.app.mobile import MobileConfig
@@ -444,12 +448,12 @@ class TestMobileBuildComplete:
 
         @app.route("/")
         def home():
-            return {"page": "home"}
+            return Div("Hello")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             report = build_mobile(app, out_dir=tmpdir)
             assert report["status"] == "ok"
-            assert (Path(tmpdir) / "bridge" / "ondevice_bridge.py").exists()
+            assert (Path(tmpdir) / "bridge" / "chaquopy_bridge.py").exists()
             assert (Path(tmpdir) / "android" / "chaquopy.gradle").exists()
 
 
