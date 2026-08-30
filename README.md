@@ -23,11 +23,13 @@ MikiUI is a Python-first UI framework that lets you build **web applications and
 - **One codebase, multiple targets** — deploy as a website, a native desktop app (pywebview), or a static site
 - **Python-first** — write routes, components, and state in pure Python; the framework handles HTML, CSS, and JS interop
 - **60+ components and widgets** — from buttons and forms to data grids, IDE editors, chat UIs, and MDI workspaces
-- **Real-time built in** — WebSocket with rooms/channels, SSE, and auth integration
+- **Mobile-native apps** — build iOS and Android apps with Capacitor (cloud or on-device backend)
+- **Real-time built in** — WebSocket with rooms/channels, SSE, WebRTC signaling, and auth integration
 - **Secure by default** — CSRF protection, security headers, CSP nonces, and plugin sandboxing
 - **API-ready** — auto-generated OpenAPI docs, type-coerced path params, and route groups
 - **Theming** — 4 built-in themes (light, dark, solarized, dracula) with custom theme support
 - **Plugin ecosystem** — extend with custom components, widgets, themes, and backend routes
+- **Native device features** — camera, geolocation, push notifications, haptics, clipboard, and more
 
 ## Installation
 
@@ -259,11 +261,11 @@ mikiui build --target desktop
 
 ## Roadmap
 
-| Version | Focus |
-|---------|-------|
-| v0.2 | Core framework hardening, security, API docs, CLI |
-| v0.3 | Mobile wrappers (Capacitor), PWA, native bridges |
-| v0.4 | Plugin marketplace, database/Redis integration |
+| Version | Focus | Status |
+|---------|-------|--------|
+| v0.2 | Core framework hardening, security, API docs, CLI | ✅ Complete |
+| v0.3 | Mobile wrappers (Capacitor), PWA, native bridges | ✅ Complete |
+| v0.4 | Plugin marketplace, database/Redis integration | Planned |
 
 ---
 
