@@ -11,6 +11,7 @@ module: app, components, widgets, router, backend, and build.
 - [Components](#components)
 - [Widgets](#widgets)
 - [Backend (`create_app`)](#backend-create_app)
+- [Mobile](#mobile)
 - [Build Functions](#build-functions)
 
 ---
@@ -977,6 +978,122 @@ from mikiui.backend import sse_response
 @app_fastapi.get("/stream")
 async def stream():
     return sse_response(generate_events()))
+```
+
+---
+
+## Mobile
+
+### `MobileConfig`
+
+Configuration for mobile builds (Capacitor-based native apps).
+
+```python
+from mikiui.app.mobile import MobileConfig, MobileBackend, MobilePlatform
+
+config = MobileConfig(
+    backend="cloud",                    # "cloud" (default) or "ondevice" (Android only)
+    api_base="https://api.example.com", # Backend API URL (cloud mode)
+    ws_base="wss://api.example.com/ws", # WebSocket URL (cloud mode)
+    target_platform="both",             # "android", "ios", or "both"
+    plugins=["Camera", "Geolocation"],  # Capacitor plugins to include
+    app_id="com.example.app",           # Bundle ID / Application ID
+    app_name="My App",                  # Display name
+    orientation="default",              # "portrait", "landscape", or "default"
+    background_color="#ffffff",         # App background color
+    splash_duration=3000,               # Splash screen duration (ms)
+    chaquopy_deps=["fastapi", "uvicorn"], # Python deps (on-device only)
+    min_sdk=23,                         # Minimum Android SDK
+    target_sdk=34,                      # Target Android SDK
+)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `backend` | `str` | `"cloud"` | `"cloud"` or `"ondevice"` |
+| `api_base` | `str \| None` | `None` | Backend API URL |
+| `ws_base` | `str \| None` | `None` | WebSocket URL |
+| `target_platform` | `str` | `"both"` | `"android"`, `"ios"`, or `"both"` |
+| `plugins` | `list[str]` | `[]` | Capacitor plugins |
+| `app_id` | `str` | `"com.mikiui.app"` | Bundle/Application ID |
+| `app_name` | `str \| None` | `None` | Display name |
+| `orientation` | `str` | `"default"` | Screen orientation |
+| `background_color` | `str` | `"#"` | Background color |
+| `splash_duration` | `int` | `3000` | Splash duration (ms) |
+| `chaquopy_deps` | `list[str]` | `[]` | Python deps for on-device |
+| `min_sdk` | `int` | `23` | Minimum Android SDK |
+| `target_sdk` | `int` | `34` | Target Android SDK |
+
+**Methods:**
+
+```python
+config.is_cloud()              # True if cloud mode
+config.is_ondevice()           # True if on-device mode
+config.targets_android()       # True if targets Android
+config.targets_ios()           # True if targets iOS
+config.get_android_permissions()  # List of Android permissions
+config.get_ios_privacy_keys()     # Dict of iOS privacy keys
+config.get_capacitor_plugins()    # List of npm plugin packages
+config.get_cors_origins()         # List of CORS origins
+config.from_env()                 # Create from environment variables
+```
+
+### `build_mobile`
+
+Generate a Capacitor project from a MikiApp.
+
+```python
+from mikiui.build.mobile_build import build_mobile
+
+report = build_mobile(
+    app,
+    out_dir="dist_mobile",
+    backend="cloud",
+    target_platform="both",
+)
+```
+
+### CLI Commands
+
+```bash
+# Build mobile project
+mikiui mobile build --target android --backend cloud
+mikiui mobile build --target ios --backend cloud
+mikiui mobile build --target android --backend ondevice
+
+# Show current mobile config
+mikiui mobile info
+
+# List available Capacitor plugins
+mikiui mobile plugins
+```
+
+### Mobile Bridge (JavaScript)
+
+The mobile bridge provides a unified API for all platforms:
+
+```javascript
+// Unified backend call (works on web, desktop, cloud, on-device)
+const result = await MikiBackend.call('GET', '/api/users');
+
+// Platform detection
+MikiBackend.isDesktop()    // pywebview detected
+MikiBackend.isNative()     // Capacitor detected
+MikiBackend.isChaquopy()   // Chaquopy detected
+MikiBackend.transport()    // "web" | "desktop" | "cloud" | "ondevice"
+
+// Native features with Web API fallback
+await MikiFeatures.takePhoto()
+await MikiFeatures.getCurrentPosition()
+MikiFeatures.hapticImpact('medium')
+await MikiFeatures.copyToClipboard('text')
+await MikiFeatures.shareContent({ title: 'Share', text: 'Hello' })
+
+// Event bus
+MikiEvents.on('notification', (data) => { ... })
+MikiEvents.emit('location_changed', { lat: 48.8566, lng: 2.3522 })
 ```
 
 ---

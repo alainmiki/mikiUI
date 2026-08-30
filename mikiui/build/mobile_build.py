@@ -92,6 +92,13 @@ def build_mobile(
     if config.is_ondevice():
         _generate_ondevice_bridge(config, out_dir)
 
+    # Step 6: Generate PWA manifest and mobile HTML template
+    _generate_pwa_manifest(config, out_dir)
+    _generate_mobile_html_template(config, out_dir)
+
+    # Step 7: Security scan
+    security_warnings = _security_scan(out_dir)
+
     return {
         "status": "ok",
         "out_dir": os.path.abspath(out_dir),
@@ -99,6 +106,7 @@ def build_mobile(
         "platforms": config.target_platform,
         "web_report": web_report,
         "capacitor_config": capacitor_config,
+        "security_warnings": security_warnings,
     }
 
 
@@ -106,6 +114,41 @@ def _validate_config(config: MobileConfig) -> None:
     """Validate mobile config and raise on errors."""
     if config.is_ondevice() and not config.targets_android():
         raise ValueError("On-device mode is only supported on Android.")
+
+
+def _security_scan(out_dir: str) -> list[str]:
+    """Scan generated files for security issues.
+
+    Returns a list of warnings found.
+    """
+    import re
+
+    warnings: list[str] = []
+    dangerous_patterns = {
+        r"ServerSocket\(": "Listening socket detected (ServerSocket)",
+        r"ServerSocketChannel\(": "Listening socket detected (ServerSocketChannel)",
+        r"\.bind\(\(InetAddress": "Socket bind detected",
+        r"DatagramSocket\(": "Datagram socket detected",
+        r"eval\(": "Dangerous eval() detected",
+        r"exec\(": "Dangerous exec() detected",
+        r"os\.system\(": "Dangerous os.system() detected",
+        r"subprocess\.": "Subprocess usage detected",
+    }
+
+    for root, _dirs, files in os.walk(out_dir):
+        for fname in files:
+            if fname.endswith((".py", ".kt", ".java", ".js")):
+                path = os.path.join(root, fname)
+                try:
+                    with open(path, encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    for pattern, description in dangerous_patterns.items():
+                        if re.search(pattern, content):
+                            warnings.append(f"{description} in {path}")
+                except OSError:
+                    pass
+
+    return warnings
 
 
 def _generate_capacitor_config(app: Any, config: MobileConfig) -> dict[str, Any]:
@@ -269,6 +312,13 @@ def _generate_ios_project(config: MobileConfig, out_dir: str) -> None:
         plist_entries.append(f"    <key>{key}</key>")
         plist_entries.append(f"    <string>{description}</string>")
 
+    # Add UIBackgroundModes for push if needed
+    if "push" in config.capabilities:
+        plist_entries.append("    <key>UIBackgroundModes</key>")
+        plist_entries.append("    <array>")
+        plist_entries.append("        <string>remote-notification</string>")
+        plist_entries.append("    </array>")
+
     plist = textwrap.dedent(f"""\
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -296,6 +346,11 @@ def _generate_ios_project(config: MobileConfig, out_dir: str) -> None:
                 <string>UIInterfaceOrientationLandscapeLeft</string>
                 <string>UIInterfaceOrientationLandscapeRight</string>
             </array>
+            <key>NSAppTransportSecurity</key>
+            <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <{str(config.allow_cleartext).lower()}/>
+            </dict>
         {chr(10).join(plist_entries)}
         </dict>
         </plist>
@@ -303,6 +358,63 @@ def _generate_ios_project(config: MobileConfig, out_dir: str) -> None:
 
     with open(os.path.join(ios_dir, "Info.plist"), "w", encoding="utf-8") as f:
         f.write(plist)
+
+
+def _generate_pwa_manifest(config: MobileConfig, out_dir: str) -> None:
+    """Generate PWA manifest.webmanifest for installable web apps."""
+    manifest = {
+        "name": config.app_name or "MikiUI App",
+        "short_name": (config.app_name or "MikiUI")[:12],
+        "description": f"{config.app_name or 'MikiUI'} mobile app",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": config.background_color,
+        "theme_color": config.background_color,
+        "orientation": config.orientation if config.orientation != "default" else "any",
+        "icons": [
+            {
+                "src": "/_miki/runtime/icons/icon-192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable",
+            },
+            {
+                "src": "/_miki/runtime/icons/icon-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable",
+            },
+        ],
+        "categories": ["productivity"],
+        "prefer_related_applications": False,
+    }
+
+    manifest_path = os.path.join(out_dir, "www", "manifest.webmanifest")
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+
+def _generate_mobile_html_template(config: MobileConfig, out_dir: str) -> None:
+    """Generate mobile-optimized index.html template with PWA support."""
+    # This is injected into the existing index.html by adding mobile-specific meta tags
+    mobile_meta = [
+        '<meta name="mobile-web-app-capable" content="yes">',
+        '<meta name="apple-mobile-web-app-capable" content="yes">',
+        '<meta name="apple-mobile-web-app-status-bar-style" content="default">',
+        '<meta name="apple-mobile-web-app-title" content="{}">'.format(
+            config.app_name or "MikiUI"
+        ),
+        f'<meta name="theme-color" content="{config.background_color}">',
+        '<link rel="manifest" href="/manifest.webmanifest">',
+        '<link rel="apple-touch-icon" href="/_miki/runtime/icons/icon-192.png">',
+        '<meta name="format-detection" content="telephone=no">',
+        '<meta name="msapplication-tap-highlight" content="no">',
+    ]
+
+    # Write the mobile meta tags to a file that can be included
+    meta_path = os.path.join(out_dir, "www", "_mobile_meta.html")
+    with open(meta_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(mobile_meta))
 
 
 def _generate_chaquopy_gradle(config: MobileConfig, android_dir: str) -> None:

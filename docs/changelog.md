@@ -2,7 +2,56 @@
 
 All notable changes to MikiUI are documented in this file.
 
-## [Unreleased] — 2026-08-29
+## [Unreleased] — 2026-08-30
+
+### Mobile Support (Capacitor + Chaquopy)
+
+#### Mobile Configuration
+- **MobileConfig dataclass**: Full configuration for mobile builds (backend, platform, plugins, permissions)
+- **MobileBackend enum**: `CLOUD` (default) and `ONDEVICE` (Android only)
+- **MobilePlatform enum**: `ANDROID`, `IOS`, `BOTH`
+- **Capability mapping**: Python capabilities auto-mapped to Capacitor plugins + native permissions
+- **Android permission generation**: Auto-generates `AndroidManifest.xml` permissions from capabilities
+- **iOS privacy key generation**: Auto-generates `Info.plist` privacy descriptions
+- **CORS origin computation**: Mobile origins auto-added to CORS middleware
+
+#### Mobile Build System
+- **build_mobile()**: Generates complete Capacitor project from MikiApp
+- **Cloud mode**: Static web frontend + remote FastAPI backend
+- **On-device mode**: Embedded CPython via Chaquopy (Android only)
+- **PWA manifest**: Auto-generates `manifest.webmanifest` for installable apps
+- **Mobile HTML template**: Mobile-optimized meta tags (viewport, theme-color, apple-mobile-web-app)
+- **package.json generation**: Includes all Capacitor plugins and platform packages
+- **AndroidManifest.xml generation**: With permissions from capability mapping
+- **Info.plist generation**: With iOS privacy keys from capability mapping
+- **Chaquopy Gradle config**: Auto-generated for on-device mode
+- **On-device bridge**: Python + Kotlin bridge files for Chaquopy integration
+- **Security scanning**: Scans generated files for dangerous patterns (listening sockets, eval, exec)
+
+#### Mobile Bridge (JavaScript)
+- **backend_bridge.js**: Unified transport layer (web/desktop/cloud/ondevice auto-detection)
+- **websocket_bridge.js**: Platform-aware WebSocket URL selection + auto-reconnect
+- **capacitor_bridge.js**: Platform detection + safe plugin access with no-op fallback
+- **capacitor_features.js**: Native features (Camera, Geo, Haptics, Clipboard, etc.) with Web API fallback
+- **event_bridge.js**: Bidirectional JS <-> Python event bus
+
+#### Mobile CLI Commands
+- **mikiui mobile build**: Build mobile project (--target, --backend, --out)
+- **mikiui mobile info**: Show current mobile configuration
+- **mikiui mobile plugins**: List available Capacitor plugins
+
+#### Mobile CI/CD
+- **mobile-build.yml**: CI workflow for mobile build smoke tests
+- Tests cloud mode (Android + iOS) and on-device mode
+- Security guardrails: iOS on-device rejection, no listening sockets scan
+- Verifies web/desktop builds still work
+
+#### Mobile Example
+- **examples/mobile_example.py**: Complete mobile app demo with camera, location, settings, contact
+
+---
+
+## [0.2.0] — 2026-08-29
 
 ### Hardening: Routing, Security, Build, Accessibility
 

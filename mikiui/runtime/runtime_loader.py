@@ -56,6 +56,7 @@ def runtime_scripts(mode: str = "local") -> list[str]:
         "/_miki/runtime/js/websocket_bridge.js",
         "/_miki/runtime/js/capacitor_bridge.js",
         "/_miki/runtime/js/capacitor_features.js",
+        "/_miki/runtime/js/event_bridge.js",
         "/_miki/runtime/js/init.js",
     ]
 

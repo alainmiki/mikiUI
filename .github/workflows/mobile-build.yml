@@ -1,0 +1,173 @@
+name: Mobile Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mikiui/build/mobile_build.py"
+      - "mikiui/app/mobile.py"
+      - "mikiui/runtime/js/backend_bridge.js"
+      - "mikiui/runtime/js/websocket_bridge.js"
+      - "mikiui/runtime/js/capacitor_bridge.js"
+      - "mikiui/runtime/js/capacitor_features.js"
+      - "mikiui/runtime/js/event_bridge.js"
+  pull_request:
+    paths:
+      - "mikiui/build/mobile_build.py"
+      - "mikiui/app/mobile.py"
+      - "mikiui/runtime/js/backend_bridge.js"
+      - "mikiui/runtime/js/websocket_bridge.js"
+      - "mikiui/runtime/js/capacitor_bridge.js"
+      - "mikiui/runtime/js/capacitor_features.js"
+      - "mikiui/runtime/js/event_bridge.js"
+
+jobs:
+  mobile-smoke-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,build]"
+
+      - name: Mobile build import check
+        run: |
+          python -c "from mikiui.build.mobile_build import build_mobile; print('Mobile build import OK')"
+          python -c "from mikiui.app.mobile import MobileConfig, MobileBackend, MobilePlatform; print('Mobile config import OK')"
+
+      - name: Mobile build smoke test (cloud, Android)
+        run: |
+          python -c "
+          import tempfile
+          from pathlib import Path
+          from mikiui import MikiApp, Div
+          from mikiui.app.mobile import MobileConfig
+          from mikiui.build.mobile_build import build_mobile
+
+          app = MikiApp(title='Test', mobile=MobileConfig(backend='cloud', target_platform='android'))
+          @app.route('/')
+          def home(): return Div('Hello')
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              report = build_mobile(app, out_dir=tmpdir)
+              assert report['status'] == 'ok', f'Build failed: {report}'
+              assert (Path(tmpdir) / 'capacitor.config.json').exists()
+              assert (Path(tmpdir) / 'package.json').exists()
+              assert (Path(tmpdir) / 'android' / 'AndroidManifest.xml').exists()
+              print('Cloud Android build: OK')
+          "
+
+      - name: Mobile build smoke test (cloud, iOS)
+        run: |
+          python -c "
+          import tempfile
+          from pathlib import Path
+          from mikiui import MikiApp, Div
+          from mikiui.app.mobile import MobileConfig
+          from mikiui.build.mobile_build import build_mobile
+
+          app = MikiApp(title='Test', mobile=MobileConfig(backend='cloud', target_platform='ios'))
+          @app.route('/')
+          def home(): return Div('Hello')
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              report = build_mobile(app, out_dir=tmpdir)
+              assert report['status'] == 'ok', f'Build failed: {report}'
+              assert (Path(tmpdir) / 'ios' / 'Info.plist').exists()
+              print('Cloud iOS build: OK')
+          "
+
+      - name: Mobile build smoke test (on-device, Android)
+        run: |
+          python -c "
+          import tempfile
+          from pathlib import Path
+          from mikiui import MikiApp, Div
+          from mikiui.app.mobile import MobileConfig
+          from mikiui.build.mobile_build import build_mobile
+
+          app = MikiApp(title='Test', mobile=MobileConfig(backend='ondevice', target_platform='android'))
+          @app.route('/')
+          def home(): return Div('Hello')
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              report = build_mobile(app, out_dir=tmpdir)
+              assert report['status'] == 'ok', f'Build failed: {report}'
+              assert (Path(tmpdir) / 'bridge' / 'ondevice_bridge.py').exists()
+              assert (Path(tmpdir) / 'android' / 'chaquopy.gradle').exists()
+              print('On-device Android build: OK')
+          "
+
+      - name: Security guardrail — iOS on-device rejection
+        run: |
+          python -c "
+          from mikiui.app.mobile import MobileConfig
+          try:
+              MobileConfig(backend='ondevice', target_platform='ios')
+              assert False, 'Should have raised ValueError'
+          except ValueError as e:
+              assert 'iOS does not support on-device' in str(e)
+              print('iOS on-device rejection: OK')
+          "
+
+      - name: Security guardrail — no listening sockets in on-device output
+        run: |
+          python -c "
+          import os
+          import tempfile
+          from pathlib import Path
+          from mikiui import MikiApp, Div
+          from mikiui.app.mobile import MobileConfig
+          from mikiui.build.mobile_build import build_mobile
+
+          app = MikiApp(title='Test', mobile=MobileConfig(backend='ondevice', target_platform='android'))
+          @app.route('/')
+          def home(): return Div('Hello')
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              build_mobile(app, out_dir=tmpdir)
+              import re
+              dangerous_patterns = [
+                  r'ServerSocket\(',
+                  r'ServerSocketChannel\(',
+                  r'\.bind\(',
+                  r'DatagramSocket\(',
+              ]
+              for root, dirs, files in os.walk(tmpdir):
+                  for f in files:
+                      if f.endswith(('.py', '.kt', '.java', '.js')):
+                          path = Path(root) / f
+                          content = path.read_text(errors='ignore')
+                          for pattern in dangerous_patterns:
+                              if re.search(pattern, content):
+                                  raise AssertionError(f'Found dangerous pattern {pattern} in {path}')
+              print('No listening sockets in on-device output: OK')
+          "
+
+      - name: Run mobile unit tests
+        run: |
+          python -m pytest tests/test_mobile.py -v --no-cov
+
+      - name: Verify web/desktop builds still work
+        run: |
+          python -c "
+          from mikiui import MikiApp, Div, H1
+          from mikiui.backend import create_app
+
+          # Web build (no mobile config)
+          app = MikiApp(title='Web Test')
+          @app.route('/')
+          def home(): return Div(H1('Web'))
+          fastapi_app = create_app(app)
+          print('Web build: OK')
+          "
