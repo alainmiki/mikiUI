@@ -99,6 +99,10 @@ def build_mobile(
     # Step 7: Security scan
     security_warnings = _security_scan(out_dir)
 
+    # Step 8: Size budget check
+    size_warnings = _check_size_budget(config, out_dir)
+    security_warnings.extend(size_warnings)
+
     return {
         "status": "ok",
         "out_dir": os.path.abspath(out_dir),
@@ -359,6 +363,9 @@ def _generate_ios_project(config: MobileConfig, out_dir: str) -> None:
     with open(os.path.join(ios_dir, "Info.plist"), "w", encoding="utf-8") as f:
         f.write(plist)
 
+    # Generate PrivacyInfo.xcprivacy (Apple privacy manifest)
+    _generate_ios_privacy_manifest(config, ios_dir)
+
 
 def _generate_pwa_manifest(config: MobileConfig, out_dir: str) -> None:
     """Generate PWA manifest.webmanifest for installable web apps."""
@@ -417,8 +424,141 @@ def _generate_mobile_html_template(config: MobileConfig, out_dir: str) -> None:
         f.write("\n".join(mobile_meta))
 
 
+def _generate_ios_privacy_manifest(config: MobileConfig, ios_dir: str) -> None:
+    """Generate PrivacyInfo.xcprivacy for Apple App Store privacy requirements.
+
+    Apple requires a privacy manifest file declaring what data types and
+    APIs the app uses. This is auto-generated from the plugin capabilities.
+    """
+    # Map capabilities to Apple privacy API types
+    privacy_apis: list[dict[str, str]] = []
+    data_types: list[dict[str, str]] = []
+
+    for cap in config.capabilities:
+        if cap == "camera":
+            privacy_apis.append({
+                "api": "NSPrivacyAccessedAPICamera",
+                "reason": "To capture photos for the app.",
+            })
+        elif cap == "geolocation":
+            privacy_apis.append({
+                "api": "NSPrivacyAccessedAPILocation",
+                "reason": "To provide location-based features.",
+            })
+            data_types.append({
+                "type": "NSPrivacyDataTypeLocation",
+                "reason": "To determine user location.",
+            })
+        elif cap == "push":
+            privacy_apis.append({
+                "api": "NSPrivacyAccessedAPINotifications",
+                "reason": "To deliver push notifications.",
+            })
+        elif cap == "clipboard":
+            data_types.append({
+                "type": "NSPrivacyDataTypeClipboard",
+                "reason": "To copy and paste content.",
+            })
+        elif cap == "filesystem":
+            privacy_apis.append({
+                "api": "NSPrivacyAccessedAPIFileTimestamp",
+                "reason": "To read and write files.",
+            })
+
+    # Build the XML
+    api_entries = []
+    for api in privacy_apis:
+        api_entries.append(
+            f"        <dict>\n"
+            f"            <key>NSPrivacyAccessedAPIType</key>\n"
+            f"            <string>{api['api']}</string>\n"
+            f"            <key>NSPrivacyAccessedAPITypeReasons</key>\n"
+            f"            <array>\n"
+            f"                <string>{api['reason']}</string>\n"
+            f"            </array>\n"
+            f"        </dict>"
+        )
+
+    data_entries = []
+    for dt in data_types:
+        data_entries.append(
+            f"        <dict>\n"
+            f"            <key>NSPrivacyDataType</key>\n"
+            f"            <string>{dt['type']}</string>\n"
+            f"            <key>NSPrivacyDataTypesReasons</key>\n"
+            f"            <array>\n"
+            f"                <string>{dt['reason']}</string>\n"
+            f"            </array>\n"
+            f"        </dict>"
+        )
+
+    privacy_manifest = textwrap.dedent(f"""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>NSPrivacyAccessedAPITypes</key>
+            <array>
+        {chr(10).join(api_entries) if api_entries else "        <!-- No privacy APIs used -->"}
+            </array>
+            <key>NSPrivacyCollectedDataTypes</key>
+            <array>
+        {chr(10).join(data_entries) if data_entries else "        <!-- No data collected -->"}
+            </array>
+        </dict>
+        </plist>
+    """)
+
+    with open(os.path.join(ios_dir, "PrivacyInfo.xcprivacy"), "w", encoding="utf-8") as f:
+        f.write(privacy_manifest)
+
+
+def _check_size_budget(config: MobileConfig, out_dir: str) -> list[str]:
+    """Check if the build meets size budget requirements.
+
+    Returns a list of warnings if budgets are exceeded.
+    """
+    warnings: list[str] = []
+
+    # Calculate total size of www directory
+    www_dir = os.path.join(out_dir, "www")
+    total_size = 0
+    if os.path.isdir(www_dir):
+        for root, _dirs, files in os.walk(www_dir):
+            for f in files:
+                fp = os.path.join(root, f)
+                if os.path.isfile(fp):
+                    total_size += os.path.getsize(fp)
+
+    # Size budgets (in bytes)
+    if config.is_cloud():
+        # Cloud mode: ~8-20MB target
+        max_size = 25 * 1024 * 1024  # 25MB warning threshold
+        if total_size > max_size:
+            warnings.append(
+                f"Cloud mode build size ({total_size / 1024 / 1024:.1f}MB) exceeds "
+                f"recommended budget (25MB). Consider reducing static assets."
+            )
+    else:
+        # On-device mode: ~33-40MB target
+        max_size = 50 * 1024 * 1024  # 50MB warning threshold
+        if total_size > max_size:
+            warnings.append(
+                f"On-device mode build size ({total_size / 1024 / 1024:.1f}MB) exceeds "
+                f"recommended budget (50MB). Consider reducing chaquopy_deps or static assets."
+            )
+
+    # Check Chaquopy deps count
+    if config.is_ondevice() and len(config.chaquopy_deps) > 10:
+        warnings.append(
+            f"Large number of Chaquopy dependencies ({len(config.chaquopy_deps)}). "
+            "Each Python package adds to APK size. Consider minimizing deps."
+        )
+
+    return warnings
+
+
 def _generate_chaquopy_gradle(config: MobileConfig, android_dir: str) -> None:
-    """Generate Chaquopy Gradle configuration for on-device mode."""
     deps = config.chaquopy_deps or ["fastapi", "uvicorn", "pydantic"]
     dep_lines = []
     for dep in deps:

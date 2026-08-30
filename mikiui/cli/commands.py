@@ -230,6 +230,14 @@ def dev(
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind"),
     reload: bool = typer.Option(True, "--reload/--no-reload", help="Enable auto-reload (default: on)"),
     browser: bool = typer.Option(False, "--browser", help="Open browser automatically"),
+    mobile: bool = typer.Option(
+        False, "--mobile",
+        help="Enable Capacitor live reload",
+    ),
+    mobile_target: str = typer.Option(
+        "android", "--mobile-target",
+        help="Mobile platform for live reload: android | ios",
+    ),
 ) -> None:
     """Start the development server.
 
@@ -240,11 +248,15 @@ def dev(
     For Tailwind users: run ``mikiui tailwind dev`` in another terminal to
     watch and rebuild CSS on change.
 
+    For mobile development, use ``--mobile`` to enable Capacitor live reload.
+    This builds the mobile project and syncs changes to the native app.
+
     Examples:
       mikiui dev
       mikiui dev --app myapp:app
       mikiui dev --port 3000 --no-reload
       mikiui dev --browser
+      mikiui dev --mobile --mobile-target android
     """
     import uvicorn
 
@@ -264,6 +276,24 @@ def dev(
     url = f"http://{host}:{port}"
     typer.echo(f"[cyan]Serving[/cyan] MikiUI app from '{spec}' at {url}")
     typer.echo("[dim]Press Ctrl-C to stop.[/dim]")
+
+    # Mobile live reload setup
+    mobile_out_dir = None
+    if mobile:
+        mobile_out_dir = os.path.join(os.getcwd(), "dist_mobile")
+        typer.echo(f"[cyan]Mobile live reload enabled[/cyan] (target: {mobile_target})")
+        typer.echo(f"[dim]Mobile project: {mobile_out_dir}[/dim]")
+
+        # Build mobile project initially
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+        from ..build.mobile_build import build_mobile
+        try:
+            report = build_mobile(miki_app, out_dir=mobile_out_dir, target_platform=mobile_target)
+            if report.get("status") == "ok":
+                typer.echo(f"[green]Mobile project built:[/green] {mobile_out_dir}")
+        except Exception as exc:
+            typer.echo(f"[yellow]Mobile build warning:[/yellow] {exc}", err=True)
 
     if browser:
         import threading
@@ -288,7 +318,7 @@ def dev(
 
 @cli.command()
 def build(
-    target: str = typer.Option("web", "--target", "-t", help="Build target: web | desktop"),
+    target: str = typer.Option("web", "--target", "-t", help="Build target: web | desktop | mobile"),
     mode: str = typer.Option("fullstack", "--mode", "-m", help="Build mode: fullstack | separate"),
     app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp (auto-discovered if omitted)"),
     out_dir: str = typer.Option("dist", "--out", "-o", help="Output directory"),
@@ -297,12 +327,15 @@ def build(
     optimize_css: bool = typer.Option(True, "--optimize/--no-optimize", help="Minify built CSS"),
     watch: bool = typer.Option(False, "--watch", help="Watch mode (rebuild CSS on change) — for dev"),
     clean: bool = typer.Option(False, "--clean", help="Clean output directory before building"),
+    backend: str = typer.Option("cloud", "--backend", "-b", help="Mobile backend: cloud | ondevice"),
+    target_platform: str = typer.Option("both", "--target-platform", help="Mobile platform: android | ios | both"),
 ) -> None:
     """Build the app for production.
 
     Creates an optimized build in the output directory. For web targets,
     this produces static assets. For desktop targets, it generates a launch
-    script for a native window.
+    script for a native window. For mobile targets, it generates a Capacitor
+    project ready for native compilation.
 
     Styling is fully automated:
 
@@ -310,17 +343,21 @@ def build(
       mikiui build --theme tailwind --daisyui  # + DaisyUI component library
       mikiui build --target web                # plain web build (miki.css)
       mikiui build --target desktop            # desktop launcher
+      mikiui build --target mobile             # Capacitor project
 
     Examples:
       mikiui build --target web
       mikiui build --target desktop
+      mikiui build --target mobile
+      mikiui build --target mobile --backend cloud --target-platform android
+      mikiui build --target mobile --backend ondevice --target-platform android
       mikiui build --target web --mode separate --out dist/
       mikiui build --theme tailwind --daisyui
     """
     from ..build import build_desktop, build_web, optimize
 
-    if target not in ("web", "desktop"):
-        typer.echo(f"[red]Invalid target:[/red] {target} (choose: web, desktop)", err=True)
+    if target not in ("web", "desktop", "mobile"):
+        typer.echo(f"[red]Invalid target:[/red] {target} (choose: web, desktop, mobile)", err=True)
         raise typer.Exit(code=1)
     if mode not in ("fullstack", "separate"):
         typer.echo(f"[red]Invalid mode:[/red] {mode} (choose: fullstack, separate)", err=True)
@@ -334,6 +371,42 @@ def build(
     except Exception as exc:
         typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
         raise typer.Exit(code=1)
+
+    # Mobile target delegates to mobile_build
+    if target == "mobile":
+        from ..build.mobile_build import build_mobile
+        try:
+            report = build_mobile(
+                miki_app,
+                out_dir=out_dir,
+                backend=backend,
+                target_platform=target_platform,
+            )
+        except ValueError as exc:
+            typer.echo(f"[red]Build error:[/red] {exc}", err=True)
+            raise typer.Exit(code=1)
+        except Exception as exc:
+            typer.echo(f"[red]Build failed:[/red] {exc}", err=True)
+            raise typer.Exit(code=1)
+
+        typer.echo(f"[green]Build complete:[/green] {report.get('status', 'ok')}")
+        typer.echo(f"  Output: {report.get('out_dir', out_dir)}")
+        typer.echo(f"  Backend: {report.get('backend')}")
+        typer.echo(f"  Platforms: {report.get('platforms')}")
+        if report.get("security_warnings"):
+            typer.echo("[yellow]Security warnings:[/yellow]")
+            for warning in report["security_warnings"]:
+                typer.echo(f"  - {warning}")
+        typer.echo("")
+        typer.echo("Next steps:")
+        typer.echo(f"  cd {os.path.basename(out_dir)}")
+        typer.echo("  npm install")
+        typer.echo("  npx cap sync")
+        if target_platform in ("android", "both"):
+            typer.echo("  npx cap open android")
+        if target_platform in ("ios", "both"):
+            typer.echo("  npx cap open ios")
+        return
 
     # Tailwind/DaisyUI styling build
     app_framework = getattr(miki_app, "style_framework", "plain")
@@ -639,12 +712,140 @@ def mobile_plugins() -> None:
     typer.echo("")
     for cap, info in sorted(CAPABILITY_MAP.items()):
         typer.echo(f"  [cyan]{cap}[/cyan]")
-        typer.echo(f"    Plugin: {info.get('acitor_plugin', 'N/A')}")
+        typer.echo(f"    Plugin: {info.get('capacitor_plugin', 'N/A')}")
         if info.get("android_permission"):
             typer.echo(f"    Android: {info['android_permission']}")
         if info.get("ios_privacy_key"):
             typer.echo(f"    iOS: {info['ios_privacy_key']}")
         typer.echo("")
+
+
+@mobile_cli.command("run")
+def mobile_run(
+    target: str = typer.Option("android", "--target", "-t", help="Target platform: android | ios"),
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+    device: str = typer.Option(None, "--device", "-d", help="Device ID (default: first available"),
+) -> None:
+    """Build and run the mobile app on a connected device or emulator.
+
+    Requires Android Studio (for Android) or Xcode (for iOS) to be installed.
+
+    Examples:
+      mikiui mobile run --target android
+      mikiui mobile run --target ios --device "iPhone 15 Pro"
+    """
+    import subprocess
+
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    # Build first
+    from ..build.mobile_build import build_mobile
+
+    try:
+        report = build_mobile(miki_app, out_dir=out_dir, target_platform=target)
+    except Exception as exc:
+        typer.echo(f"[red]Build failed:[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    if report.get("security_warnings"):
+        typer.echo("[yellow]Security warnings:[/yellow]")
+        for warning in report["security_warnings"]:
+            typer.echo(f"  - {warning}")
+
+    # Run on device
+    if target == "android":
+        typer.echo("[cyan]Running on Android device/emulator...[/cyan]")
+        try:
+            subprocess.run(
+                ["npx", "cap", "run", "android", "--target", device or ""],
+                cwd=out_dir,
+                check=True,
+            )
+        except FileNotFoundError:
+            typer.echo("[red]npx not found. Run `npm install` in the project directory first.[/red]", err=True)
+            raise typer.Exit(code=1)
+        except subprocess.CalledProcessError as exc:
+            typer.echo(f"[red]Run failed:[/red] {exc}", err=True)
+            raise typer.Exit(code=1)
+    elif target == "ios":
+        typer.echo("[cyan]Running on iOS simulator/device...[/cyan]")
+        try:
+            subprocess.run(
+                ["npx", "cap", "run", "ios", "--target", device or ""],
+                cwd=out_dir,
+                check=True,
+            )
+        except FileNotFoundError:
+            typer.echo("[red]npx not found. Run `npm install` in the project directory first.[/red]", err=True)
+            raise typer.Exit(code=1)
+        except subprocess.CalledProcessError as exc:
+            typer.echo(f"[red]Run failed:[/red] {exc}", err=True)
+            raise typer.Exit(code=1)
+    else:
+        typer.echo(f"[red]Invalid target:[/red] {target}", err=True)
+        raise typer.Exit(code=1)
+
+
+@mobile_cli.command("open")
+def mobile_open(
+    target: str = typer.Option("android", "--target", "-t", help="Target platform: android | ios"),
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Open the mobile project in the native IDE.
+
+    Opens Android Studio (for Android) or Xcode (for iOS).
+
+    Examples:
+      mikiui mobile open --target android
+      mikiui mobile open --target ios
+    """
+    import subprocess
+
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    # Build mobile project first
+    from ..build.mobile_build import build_mobile
+
+    try:
+        build_mobile(miki_app, out_dir=out_dir, target_platform=target)
+    except Exception as exc:
+        typer.echo(f"[red]Build failed:[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    # Open in IDE
+    if target == "android":
+        typer.echo("[cyan]Opening in Android Studio...[/cyan]")
+        try:
+            subprocess.run(["npx", "cap", "open", "android"], cwd=out_dir, check=True)
+        except FileNotFoundError:
+            typer.echo("[red]npx not found.[/red]", err=True)
+            raise typer.Exit(code=1)
+    elif target == "ios":
+        typer.echo("[cyan]Opening in Xcode...[/cyan]")
+        try:
+            subprocess.run(["npx", "cap", "open", "ios"], cwd=out_dir, check=True)
+        except FileNotFoundError:
+            typer.echo("[red]npx not found.[/red]", err=True)
+            raise typer.Exit(code=1)
+    else:
+        typer.echo(f"[red]Invalid target:[/red] {target}", err=True)
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

@@ -356,8 +356,70 @@ async def _size_limited_handler(
     await handler(ws, manager)
 
 
+def create_webrtc_signaling_handler(manager: ConnectionManager) -> Callable:
+    """Create a WebRTC signaling handler that relays SDP/ICE between peers.
+
+    WebRTC runs entirely in the WebView JavaScript context. Python only
+    relays JSON signaling messages between peers in the same room.
+
+    Usage::
+
+        from mikiui.backend.websocket import ConnectionManager, create_webrtc_signaling_handler
+
+        manager = ConnectionManager()
+
+        @app.websocket("/ws/webrtc/{room_id}")
+        async def webrtc_signaling(ws: WebSocket, room_id: str):
+            handler = create_webrtc_signaling_handler(manager)
+            await handler(ws, room_id)
+
+    Parameters
+    ----------
+    manager:
+        The ConnectionManager instance to track connections.
+
+    Returns
+    -------
+    An async handler function suitable for a FastAPI WebSocket endpoint.
+    """
+    import json
+
+    async def handler(ws: WebSocket, room_id: str) -> None:
+        await ws.accept()
+        manager.join_room(ws, f"webrtc-{room_id}")
+        logger.debug("WebRTC peer connected to room %s", room_id)
+
+        try:
+            while True:
+                raw = await ws.receive_text()
+                try:
+                    msg = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+
+                # Validate signaling message structure
+                msg_type = msg.get("type")
+                if msg_type not in ("offer", "answer", "ice-candidate", "join", "leave"):
+                    continue
+
+                # Relay to all other peers in the room
+                await manager.broadcast_to_room(
+                    f"webrtc-{room_id}",
+                    msg,
+                    exclude=ws,
+                )
+        except WebSocketDisconnect:
+            pass
+        finally:
+            manager.leave_room(ws, f"webrtc-{room_id}")
+            logger.debug("WebRTC peer disconnected from room %s", room_id)
+
+    return handler
+
+
 __all__ = [
     "ConnectionManager",
     "WebSocketAuthHelper",
     "mount_websocket",
+    "create_webrtc_signaling_handler",
 ]

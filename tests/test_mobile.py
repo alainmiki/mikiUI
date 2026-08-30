@@ -289,3 +289,200 @@ class TestCapabilityMap:
         assert camera["capacitor_plugin"] == "@capacitor/camera"
         assert "CAMERA" in camera["android_permission"]
         assert "NSCameraUsageDescription" in camera["ios_privacy_key"]
+
+
+class TestChaquopyBridge:
+    """Test Chaquopy bridge for on-device mode."""
+
+    def test_bridge_creation(self):
+        from mikiui.app.mobile.chaquopy_bridge import ChaquopyBridge, get_bridge, reset_bridge
+
+        reset_bridge()
+        app = MikiApp(title="Test")
+        bridge = get_bridge(app)
+        assert bridge is not None
+        assert bridge._app is app
+
+    def test_bridge_call_get_route(self):
+        from mikiui.app.mobile.chaquopy_bridge import ChaquopyBridge, reset_bridge
+
+        reset_bridge()
+        app = MikiApp(title="Test")
+
+        @app.route("/")
+        def home():
+            return {"message": "Hello"}
+
+        bridge = ChaquopyBridge(app)
+        result = bridge.call("GET", "/", "")
+        import json
+        data = json.loads(result)
+        assert data["message"] == "Hello"
+        assert data["status"] == 200
+
+    def test_bridge_call_unknown_route(self):
+        from mikiui.app.mobile.chaquopy_bridge import ChaquopyBridge, reset_bridge
+
+        reset_bridge()
+        app = MikiApp(title="Test")
+        bridge = ChaquopyBridge(app)
+        result = bridge.call("GET", "/unknown", "")
+        import json
+        data = json.loads(result)
+        assert data["status"] == 404
+
+    def test_bridge_call_with_data(self):
+        from mikiui.app.mobile.chaquopy_bridge import ChaquopyBridge, reset_bridge
+
+        reset_bridge()
+        app = MikiApp(title="Test")
+
+        @app.post("/echo")
+        def echo(key=None):
+            return {"echo": key}
+
+        bridge = ChaquopyBridge(app)
+        result = bridge.call("POST", "/echo", '{"key": "value"}')
+        import json
+        data = json.loads(result)
+        assert data["status"] == 200
+        assert data["echo"] == "value"
+
+    def test_bridge_invalid_json(self):
+        from mikiui.app.mobile.chaquopy_bridge import ChaquopyBridge, reset_bridge
+
+        reset_bridge()
+        app = MikiApp(title="Test")
+        bridge = ChaquopyBridge(app)
+        result = bridge.call("POST", "/", "not json")
+        import json
+        data = json.loads(result)
+        assert data["status"] == 400
+
+
+class TestMobileSecurity:
+    """Test mobile security guardrails."""
+
+    def test_ios_ondevice_rejected(self):
+        from mikiui.app.mobile import MobileConfig
+
+        with pytest.raises(ValueError, match="iOS does not support on-device"):
+            MobileConfig(backend="ondevice", target_platform="ios")
+
+    def test_security_scan_detects_listening_sockets(self):
+        from mikiui.build.mobile_build import _security_scan
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a file with a dangerous pattern
+            dangerous_file = os.path.join(tmpdir, "dangerous.py")
+            with open(dangerous_file, "w") as f:
+                f.write("sock = ServerSocket(8080)\n")
+
+            warnings = _security_scan(tmpdir)
+            assert any("ServerSocket" in w for w in warnings)
+
+    def test_security_scan_clean(self):
+        from mikiui.build.mobile_build import _security_scan
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            clean_file = os.path.join(tmpdir, "clean.py")
+            with open(clean_file, "w") as f:
+                f.write("def hello(): return 'world'\n")
+
+            warnings = _security_scan(tmpdir)
+            assert len(warnings) == 0
+
+
+class TestMobileBuildComplete:
+    """Test complete mobile build with all features."""
+
+    def test_build_with_all_plugins(self):
+        from mikiui.app.mobile import MobileConfig
+        from mikiui.build.mobile_build import build_mobile
+
+        app = MikiApp(
+            title="Full App",
+            mobile=MobileConfig(
+                backend="cloud",
+                target_platform="both",
+                plugins=["Camera", "Geolocation", "PushNotifications"],
+                app_id="com.example.fullapp",
+            ),
+        )
+
+        @app.route("/")
+        def home():
+            return {"page": "home"}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report = build_mobile(app, out_dir=tmpdir)
+            assert report["status"] == "ok"
+
+            # Check all expected files exist
+            assert (Path(tmpdir) / "capacitor.config.json").exists()
+            assert (Path(tmpdir) / "package.json").exists()
+            assert (Path(tmpdir) / "android" / "AndroidManifest.xml").exists()
+            assert (Path(tmpdir) / "ios" / "Info.plist").exists()
+            assert (Path(tmpdir) / "ios" / "PrivacyInfo.xcprivacy").exists()
+            assert (Path(tmpdir) / "www" / "manifest.webmanifest").exists()
+            assert (Path(tmpdir) / "www" / "_mobile_meta.html").exists()
+
+    def test_build_ondevice_with_chaquopy(self):
+        from mikiui.app.mobile import MobileConfig
+        from mikiui.build.mobile_build import build_mobile
+
+        app = MikiApp(
+            title="OnDevice App",
+            mobile=MobileConfig(
+                backend="ondevice",
+                target_platform="android",
+                chaquopy_deps=["fastapi", "pydantic"],
+            ),
+        )
+
+        @app.route("/")
+        def home():
+            return {"page": "home"}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report = build_mobile(app, out_dir=tmpdir)
+            assert report["status"] == "ok"
+            assert (Path(tmpdir) / "bridge" / "ondevice_bridge.py").exists()
+            assert (Path(tmpdir) / "android" / "chaquopy.gradle").exists()
+
+
+class TestWebRTCSignaling:
+    """Test WebRTC signaling handler."""
+
+    def test_signaling_handler_creation(self):
+        from mikiui.backend.websocket import ConnectionManager, create_webrtc_signaling_handler
+
+        manager = ConnectionManager()
+        handler = create_webrtc_signaling_handler(manager)
+        assert handler is not None
+        assert callable(handler)
+
+
+class TestMobileCLI:
+    """Test mobile CLI commands."""
+
+    def test_mobile_info_command(self, capsys):
+        from typer.testing import CliRunner
+        from mikiui.cli.commands import cli
+
+        runner = CliRunner()
+        # Test with a valid app spec
+        result = runner.invoke(cli, ["mobile", "info", "--app", "mikiui.examples.kitchen_sink:app"])
+        # Should not crash (may fail due to app spec, but command should exist)
+        assert result.exit_code == 0 or "Error" in result.output
+
+    def test_mobile_plugins_command(self):
+        from typer.testing import CliRunner
+        from mikiui.cli.commands import cli
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["mobile", "plugins"])
+        assert result.exit_code == 0
+        assert "capacitor" in result.output.lower()

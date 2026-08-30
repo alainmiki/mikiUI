@@ -5,7 +5,7 @@ from __future__ import annotations
 from .api_routes import add_api_routes
 from .server import create_app
 from .sse import SSEManager, sse_response
-from .websocket import ConnectionManager, mount_websocket
+from .websocket import ConnectionManager, create_webrtc_signaling_handler, mount_websocket
 
 __all__ = [
     "create_app",
@@ -14,4 +14,5 @@ __all__ = [
     "SSEManager",
     "sse_response",
     "add_api_routes",
+    "create_webrtc_signaling_handler",
 ]
