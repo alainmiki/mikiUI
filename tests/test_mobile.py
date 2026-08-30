@@ -486,3 +486,58 @@ class TestMobileCLI:
         result = runner.invoke(cli, ["mobile", "plugins"])
         assert result.exit_code == 0
         assert "capacitor" in result.output.lower()
+
+
+class TestPluginCapabilityCollection:
+    """Test auto-collection of capabilities from plugins."""
+
+    def test_collect_capabilities_from_plugins(self):
+        from mikiui.app.mobile import MobileConfig
+
+        config = MobileConfig()
+
+        class MockCameraPlugin:
+            name = "camera"
+            capabilities = ["camera", "filesystem"]
+
+        class MockGeoPlugin:
+            name = "geolocation"
+            capabilities = ["geolocation"]
+
+        plugins = [MockCameraPlugin(), MockGeoPlugin()]
+        config.collect_capabilities_from_plugins(plugins)
+
+        assert "camera" in config.capabilities
+        assert "filesystem" in config.capabilities
+        assert "geolocation" in config.capabilities
+
+
+class TestAndroidPermissions:
+    """Test Android permission generation."""
+
+    def test_filesystem_includes_write_permission(self):
+        from mikiui.app.mobile import MobileConfig
+
+        config = MobileConfig(plugins=["Filesystem"])
+        perms = config.get_android_permissions()
+        assert "android.permission.READ_EXTERNAL_STORAGE" in perms
+        assert "android.permission.WRITE_EXTERNAL_STORAGE" in perms
+
+
+class TestCapacitorConfigPlugins:
+    """Test capacitor.config.json plugins section generation."""
+
+    def test_plugins_section_in_config(self):
+        from mikiui.app.mobile import MobileConfig
+        from mikiui.build.mobile_build import _generate_capacitor_config
+
+        app = MikiApp(title="Test")
+        config = MobileConfig(plugins=["Camera", "Geolocation"])
+        cap_config = _generate_capacitor_config(app, config)
+
+        plugins = cap_config.get("plugins", {})
+        # Plugins are stored by their short name (without @capacitor/ prefix)
+        assert "camera" in plugins
+        assert "geolocation" in plugins
+        assert "SplashScreen" in plugins
+        assert "StatusBar" in plugins

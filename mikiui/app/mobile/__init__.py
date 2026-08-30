@@ -81,7 +81,10 @@ CAPABILITY_MAP: dict[str, dict[str, Any]] = {
     },
     "filesystem": {
         "capacitor_plugin": "@capacitor/filesystem",
-        "android_permission": "android.permission.READ_EXTERNAL_STORAGE",
+        "android_permission": [
+            "android.permission.READ_EXTERNAL_STORAGE",
+            "android.permission.WRITE_EXTERNAL_STORAGE",
+        ],
         "ios_privacy_key": None,
         "ios_privacy_description": None,
     },
@@ -203,7 +206,12 @@ class MobileConfig:
             entry = CAPABILITY_MAP.get(cap)
             if entry and entry.get("android_permission"):
                 perm = entry["android_permission"]
-                if perm not in permissions:
+                # Permission can be a string or list of strings
+                if isinstance(perm, list):
+                    for p in perm:
+                        if p not in permissions:
+                            permissions.append(p)
+                elif perm not in permissions:
                     permissions.append(perm)
         return permissions
 
@@ -262,6 +270,23 @@ class MobileConfig:
             app_id=os.environ.get("MIKIUI_MOBILE_APP_ID", "com.mikiui.app"),
             orientation=os.environ.get("MIKIUI_MOBILE_ORIENTATION", "default"),
         )
+
+    def collect_capabilities_from_plugins(self, plugins: list[Any]) -> None:
+        """Auto-collect capabilities from registered plugins.
+
+        Scans all registered plugins for their ``capabilities`` attribute
+        and adds them to this config's capabilities list.
+        """
+        for plugin in plugins:
+            plugin_caps = getattr(plugin, "capabilities", [])
+            for cap in plugin_caps:
+                cap_normalized = cap.lower().replace(":", "_").replace("-", "_").replace(" ", "_")
+                if cap_normalized not in self.capabilities:
+                    self.capabilities.append(cap_normalized)
+            # Also check plugin name as a capability
+            plugin_name = getattr(plugin, "name", "").lower().replace("-", "_")
+            if plugin_name and plugin_name in CAPABILITY_MAP and plugin_name not in self.capabilities:
+                self.capabilities.append(plugin_name)
 
 
 __all__ = [

@@ -20,7 +20,7 @@ import os
 import textwrap
 from typing import Any
 
-from ..app.mobile import MobileConfig
+from ..app.mobile import CAPABILITY_MAP, MobileConfig
 
 
 def build_mobile(
@@ -54,6 +54,11 @@ def build_mobile(
 
     # Validate
     _validate_config(config)
+
+    # Step 0: Auto-collect capabilities from registered plugins
+    registered_plugins = getattr(app, "plugins", [])
+    if registered_plugins:
+        config.collect_capabilities_from_plugins(registered_plugins)
 
     # Step 1: Generate static web frontend
     from .web_build import build_web
@@ -160,13 +165,46 @@ def _generate_capacitor_config(app: Any, config: MobileConfig) -> dict[str, Any]
     app_name = config.app_name or getattr(app, "title", "MikiUI App")
     app_id = config.app_id
 
+    # Build plugins section from capabilities and plugins list
+    plugins_section: dict[str, Any] = {}
+
+    # First add from explicit capabilities
+    for cap in config.capabilities:
+        cap_info = CAPABILITY_MAP.get(cap)
+        if cap_info:
+            plugin_name = cap_info.get("capacitor_plugin", "").replace("@capacitor/", "")
+            if plugin_name:
+                plugins_section[plugin_name] = {}
+
+    # Then add from plugins list (by name)
+    for plugin_name in config.plugins:
+        cap = plugin_name.lower().replace("-", "_").replace(" ", "_")
+        cap_info = CAPABILITY_MAP.get(cap)
+        if cap_info:
+            plugin = cap_info.get("capacitor_plugin", "").replace("@capacitor/", "")
+            if plugin and plugin not in plugins_section:
+                plugins_section[plugin] = {}
+
     capacitor_config: dict[str, Any] = {
         "appId": app_id,
         "appName": app_name,
         "webDir": "www",
         "server": {},
-        "plugins": {},
+        "plugins": {
+            "SplashScreen": {
+                "launchShowDuration": config.splash_duration,
+                "backgroundColor": config.background_color,
+                "showSpinner": True,
+            },
+            "StatusBar": {
+                "style": "DEFAULT",
+                "backgroundColor": config.background_color,
+            },
+        },
     }
+
+    # Add capability-derived plugins
+    capacitor_config["plugins"].update(plugins_section)
 
     # Server configuration for cloud mode
     if config.is_cloud():
@@ -185,19 +223,6 @@ def _generate_capacitor_config(app: Any, config: MobileConfig) -> dict[str, Any]
 
     # Background color
     capacitor_config["backgroundColor"] = config.background_color
-
-    # Splash screen
-    capacitor_config["plugins"]["SplashScreen"] = {
-        "launchShowDuration": config.splash_duration,
-        "backgroundColor": config.background_color,
-        "showSpinner": True,
-    }
-
-    # Status bar
-    capacitor_config["plugins"]["StatusBar"] = {
-        "style": "DEFAULT",
-        "backgroundColor": config.background_color,
-    }
 
     return capacitor_config
 
