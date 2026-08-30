@@ -98,6 +98,8 @@ exclude = [
     "package.json",
     "mikiui/examples/",
     "mikiui_app_plugins/",
+    "mikiui/runtime/",
+    "tests/e2e/",
 ]
 
 [tool.ruff.lint]

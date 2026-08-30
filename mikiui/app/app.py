@@ -70,6 +70,7 @@ class MikiApp:
         favicon: str | None = None,
         desktop_icon: str | None = None,
         splash_screen: str | None = None,
+        mobile: Any | None = None,
     ) -> None:
         self.title = title
         self.lang = lang
@@ -90,6 +91,7 @@ class MikiApp:
         self._not_found_handler: Callable | None = None
         self._error_pages: dict[int, Callable] = {}
         self._static_mounts: list[tuple[str, str]] = []
+        self.mobile = mobile
 
         # New registries
         self.registry: WidgetRegistry = WidgetRegistry()

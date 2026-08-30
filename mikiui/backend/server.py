@@ -203,6 +203,22 @@ def create_app(
     )
     ensure_auth_strategies(miki_app)
 
+    # Collect CORS origins from mobile config (if present)
+    mobile_cors_origins: list[str] = []
+    mobile_config = getattr(miki_app, "mobile", None)
+    if mobile_config is not None:
+        mobile_cors_origins = mobile_config.get_cors_origins()
+
+    # Merge user-provided CORS origins with mobile origins
+    all_cors_origins = list(cors_origins or []) + mobile_cors_origins
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    deduped_origins: list[str] = []
+    for origin in all_cors_origins:
+        if origin not in seen:
+            seen.add(origin)
+            deduped_origins.append(origin)
+
     # Collect WebSocket routes from plugins (before app construction for lifespan)
     ws_routes: list[dict[str, Any]] = getattr(miki_app, "get_websocket_routes", lambda: [])()
     _ws_managers: list[Any] = []
@@ -296,11 +312,11 @@ def create_app(
                 name=mount_name,
             )
 
-    if cors_origins:
+    if deduped_origins:
         from starlette.middleware.cors import CORSMiddleware
 
-        safe_origins = [o for o in cors_origins if o != "*"]
-        if not safe_origins and cors_origins == ["*"]:
+        safe_origins = [o for o in deduped_origins if o != "*"]
+        if not safe_origins and deduped_origins == ["*"]:
             safe_origins = ["*"]
 
         app.add_middleware(
@@ -316,8 +332,8 @@ def create_app(
                 "Authorization",
                 "X-CSRF-Token",
             ],
-             max_age=600,
-         )
+            max_age=600,
+        )
 
     for route in miki_app.routes.values():
         if has_api_plugin and route.path.startswith("/api/"):

@@ -525,5 +525,127 @@ def tailwind_build(
     typer.echo(f"[green]Tailwind CSS built:[/green] {css_path}")
 
 
+# --- Mobile sub-command group ------------------------------------------------
+
+mobile_cli = typer.Typer(
+    help="Mobile build commands (Capacitor-based native apps).",
+    no_args_is_help=True,
+)
+cli.add_typer(mobile_cli, name="mobile")
+
+
+@mobile_cli.command("build")
+def mobile_build(
+    target: str = typer.Option("both", "--target", "-t", help="Target platform: android | ios | both"),
+    backend: str = typer.Option("cloud", "--backend", "-b", help="Backend mode: cloud | ondevice"),
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Build a mobile project using Capacitor.
+
+    Generates a complete Capacitor project with native platform files,
+    ready to be opened in Android Studio or Xcode.
+
+    Examples:
+      mikiui mobile build
+      mikiui mobile build --target android --backend cloud
+      mikiui mobile build --target android --backend ondevice
+    """
+    from ..build.mobile_build import build_mobile
+
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        report = build_mobile(miki_app, out_dir=out_dir, backend=backend, target_platform=target)
+    except ValueError as exc:
+        typer.echo(f"[red]Build error:[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+    except Exception as exc:
+        typer.echo(f"[red]Build failed:[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"[green]Mobile build complete:[/green] {report.get('status', 'ok')}")
+    typer.echo(f"  Output: {report.get('out_dir', out_dir)}")
+    typer.echo(f"  Backend: {report.get('backend')}")
+    typer.echo(f"  Platforms: {report.get('platforms')}")
+    typer.echo("")
+    typer.echo("Next steps:")
+    typer.echo(f"  cd {os.path.basename(out_dir)}")
+    typer.echo("  npm install")
+    typer.echo("  npx cap sync")
+    if target in ("android", "both"):
+        typer.echo("  npx cap open android  # opens in Android Studio")
+    if target in ("ios", "both"):
+        typer.echo("  npx cap open ios      # opens in Xcode")
+
+
+@mobile_cli.command("info")
+def mobile_info(
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+) -> None:
+    """Show current mobile configuration.
+
+    Displays the mobile config from the app, including backend mode,
+    target platform, plugins, and permissions.
+    """
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    mobile_config = getattr(miki_app, "mobile", None)
+    if mobile_config is None:
+        typer.echo("[yellow]No mobile config found.[/yellow] Using defaults.")
+        from ..app.mobile import MobileConfig
+        mobile_config = MobileConfig()
+
+    typer.echo("[bold]Mobile Configuration[/bold]")
+    typer.echo(f"  Backend: {mobile_config.backend}")
+    typer.echo(f"  Platform: {mobile_config.target_platform}")
+    typer.echo(f"  App ID: {mobile_config.app_id}")
+    typer.echo(f"  App Name: {mobile_config.app_name or miki_app.title}")
+    typer.echo(f"  API Base: {mobile_config.api_base or '(not set)'}")
+    typer.echo(f"  WS Base: {mobile_config.ws_base or '(not set)'}")
+    typer.echo(f"  Orientation: {mobile_config.orientation}")
+    typer.echo(f"  Plugins: {', '.join(mobile_config.plugins) or '(none)'}")
+    typer.echo(f"  Capabilities: {', '.join(mobile_config.capabilities) or '(none)'}")
+
+    android_perms = mobile_config.get_android_permissions()
+    if android_perms:
+        typer.echo(f"  Android Permissions: {', '.join(android_perms)}")
+
+    ios_keys = mobile_config.get_ios_privacy_keys()
+    if ios_keys:
+        typer.echo(f"  iOS Privacy Keys: {', '.join(ios_keys.keys())}")
+
+
+@mobile_cli.command("plugins")
+def mobile_plugins() -> None:
+    """List available Capacitor plugins and their capability mappings."""
+    from ..app.mobile import CAPABILITY_MAP
+
+    typer.echo("[bold]Available Capacitor Plugins[/bold]")
+    typer.echo("")
+    for cap, info in sorted(CAPABILITY_MAP.items()):
+        typer.echo(f"  [cyan]{cap}[/cyan]")
+        typer.echo(f"    Plugin: {info.get('acitor_plugin', 'N/A')}")
+        if info.get("android_permission"):
+            typer.echo(f"    Android: {info['android_permission']}")
+        if info.get("ios_privacy_key"):
+            typer.echo(f"    iOS: {info['ios_privacy_key']}")
+        typer.echo("")
+
+
 if __name__ == "__main__":
     cli()

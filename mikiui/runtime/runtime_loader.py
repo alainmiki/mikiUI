@@ -52,6 +52,10 @@ def runtime_scripts(mode: str = "local") -> list[str]:
         "/_miki/runtime/js/mikilazygrid.js",
         "/_miki/runtime/js/mikivirtuallist.js",
         "/_miki/runtime/js/mikiscrollview.js",
+        "/_miki/runtime/js/backend_bridge.js",
+        "/_miki/runtime/js/websocket_bridge.js",
+        "/_miki/runtime/js/capacitor_bridge.js",
+        "/_miki/runtime/js/capacitor_features.js",
         "/_miki/runtime/js/init.js",
     ]
 
