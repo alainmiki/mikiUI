@@ -123,29 +123,10 @@ def build_mobile(
 
 def _validate_config(config: MobileConfig) -> None:
     """Validate mobile config and raise on errors."""
-    import re
-
+    # Basic validation is done in MobileConfig.__post_init__
+    # This function validates build-specific constraints
     if config.is_ondevice() and not config.targets_android():
         raise ValueError("On-device mode is only supported on Android.")
-
-    # Validate app ID format (must be valid Java/Kotlin package name)
-    if not re.match(r'^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$', config.app_id):
-        raise ValueError(
-            f"Invalid app ID: {config.app_id!r}. "
-            "Must be a valid package name like 'com.example.myapp' "
-            "(lowercase, dots separators, no special characters)."
-        )
-
-    # Validate app name
-    if config.app_name and len(config.app_name) > 50:
-        raise ValueError("App name must be 50 characters or fewer.")
-
-    # Validate orientation
-    if config.orientation not in ("portrait", "landscape", "default"):
-        raise ValueError(
-            f"Invalid orientation: {config.orientation!r}. "
-            "Use 'portrait', 'landscape', or 'default'."
-        )
 
 
 def _security_scan(out_dir: str) -> list[str]:

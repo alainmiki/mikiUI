@@ -147,6 +147,8 @@ class MobileConfig:
     target_sdk: int = 34
 
     def __post_init__(self) -> None:
+        import re
+
         self.backend = (
             self.backend if isinstance(self.backend, MobileBackend)
             else MobileBackend(str(self.backend).lower())
@@ -170,6 +172,25 @@ class MobileConfig:
             raise ValueError(
                 "iOS does not support on-device backend mode. "
                 "Use backend='cloud' for iOS, or target_platform='android' for on-device."
+            )
+
+        # Validate app ID format (must be valid Java/Kotlin package name)
+        if not re.match(r'^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$', self.app_id):
+            raise ValueError(
+                f"Invalid app ID: {self.app_id!r}. "
+                "Must be a valid package name like 'com.example.myapp' "
+                "(lowercase, dot separators, no special characters)."
+            )
+
+        # Validate app name
+        if self.app_name and len(self.app_name) > 50:
+            raise ValueError("App name must be 50 characters or fewer.")
+
+        # Validate orientation
+        if self.orientation not in ("portrait", "landscape", "default"):
+            raise ValueError(
+                f"Invalid orientation: {self.orientation!r}. "
+                "Use 'portrait', 'landscape', or 'default'."
             )
 
         # Auto-derive capabilities from plugins
