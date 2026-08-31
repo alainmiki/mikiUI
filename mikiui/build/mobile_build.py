@@ -104,6 +104,7 @@ def build_mobile(
     _generate_app_icons(config, out_dir)
     _generate_mobile_error_pages(config, out_dir)
     _generate_permission_helper(config, out_dir)
+    _generate_data_layer(config, out_dir)
 
     # Step 7: Security scan
     security_warnings = _security_scan(out_dir)
@@ -812,6 +813,27 @@ def _generate_permission_helper(config: MobileConfig, out_dir: str) -> None:
 
     with open(os.path.join(www_dir, "_miki", "runtime", "mobile_permissions.js"), "w", encoding="utf-8") as f:
         f.write(permission_js)
+
+
+def _generate_data_layer(config: MobileConfig, out_dir: str) -> None:
+    """Generate offline data persistence layer.
+
+    Copies the mobile_data.js file to the www directory for offline-first
+    data storage with automatic sync.
+    """
+    import shutil
+
+    www_dir = os.path.join(out_dir, "www")
+    os.makedirs(www_dir, exist_ok=True)
+
+    # Copy the mobile_data.js from runtime
+    src = os.path.join(os.path.dirname(__file__), "..", "runtime", "js", "mobile_data.js")
+    dst_dir = os.path.join(www_dir, "_miki", "runtime")
+    os.makedirs(dst_dir, exist_ok=True)
+    dst = os.path.join(dst_dir, "mobile_data.js")
+
+    if os.path.exists(src):
+        shutil.copy2(src, dst)
 
 
 def _generate_deployment_configs(config: MobileConfig, out_dir: str) -> None:
