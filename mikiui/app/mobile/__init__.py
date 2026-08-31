@@ -344,15 +344,11 @@ class MobileConfig:
                 "Use 'portrait', 'landscape', or 'default'."
             )
 
-        # Auto-derive capabilities from plugins
+        # Auto-derive capabilities from plugins list
         for plugin in self.plugins:
             cap = plugin.lower().replace("-", "_").replace(" ", "_")
-            if cap in CAPABILITY_MAP:
-                entry = CAPABILITY_MAP[cap]
-                for key in entry:
-                    if entry[key] and key not in self.capabilities:
-                        if key not in ("android_permission", "ios_privacy_key", "ios_privacy_description"):
-                            continue
+            if cap in CAPABILITY_MAP and cap not in self.capabilities:
+                self.capabilities.append(cap)
 
     def is_cloud(self) -> bool:
         return self.backend == "cloud"
