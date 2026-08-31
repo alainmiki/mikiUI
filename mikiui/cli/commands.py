@@ -1274,5 +1274,305 @@ def _generate_screenshot_templates(out_dir: str, platform: str) -> None:
         f.write(html)
 
 
+# ====================================================================
+# NEW AUTOMATION COMMANDS
+# ====================================================================
+
+
+@mobile_cli.command("sync")
+def mobile_sync(
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Install plugins and sync with Capacitor.
+
+    This automates:
+    1. npm install (base dependencies)
+    2. npm install for each required plugin
+    3. npx cap sync
+
+    Examples:
+      mikiui mobile sync
+      mikiui mobile sync --app myapp:app
+    """
+    from ..build.mobile_automation import MobileAutomation
+
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    automation = MobileAutomation(miki_app, out_dir)
+
+    typer.echo("[cyan]Installing plugins and syncing...[/cyan]")
+    results = automation.install_plugins()
+
+    # Report results
+    if results.get("npm_install", {}).get("status") == "ok":
+        typer.echo("  [green]npm install: OK[/green]")
+    else:
+        typer.echo("  [red]npm install: FAILED[/red]")
+        if results.get("npm_install", {}).get("error"):
+            typer.echo(f"    {results['npm_install']['error']}")
+
+    for plugin_result in results.get("plugin_installs", []):
+        if plugin_result.get("status") == "ok":
+            typer.echo(f"  [green]{plugin_result['plugin']}: OK[/green]")
+        else:
+            typer.echo(f"  [red]{plugin_result['plugin']}: FAILED[/red]")
+
+    if results.get("cap_sync", {}).get("status") == "ok":
+        typer.echo("  [green]cap sync: OK[/green]")
+    else:
+        typer.echo("  [red]cap sync: FAILED[/red]")
+        if results.get("cap_sync", {}).get("error"):
+            typer.echo(f"    {results['cap_sync']['error']}")
+
+
+@mobile_cli.command("devices")
+def mobile_devices(
+    platform: str = typer.Option(..., "--platform", "-p", help="Platform: android | ios"),
+) -> None:
+    """List available devices and emulators.
+
+    Examples:
+      mikiui mobile devices --platform android
+      mikiui mobile devices --platform ios
+    """
+    from ..build.mobile_automation import MobileAutomation
+
+    automation = MobileAutomation(None, "")
+    results = automation.list_devices(platform)
+
+    if results.get("status") != "ok":
+        typer.echo("[red]Error:[/red]", err=True)
+        return
+
+    devices = results.get("devices", {})
+
+    if platform == "android":
+        typer.echo("[bold]Android Emulators:[/bold]")
+        for emu in devices.get("emulators", []):
+            typer.echo(f"  - {emu}")
+        if not devices.get("emulators"):
+            typer.echo("  (none)")
+
+        typer.echo("")
+        typer.echo("[bold]Android Devices:[/bold]")
+        for device in devices.get("physical", []):
+            typer.echo(f"  - {device}")
+        if not devices.get("physical"):
+            typer.echo("  (none)")
+
+    elif platform == "ios":
+        typer.echo("[bold]iOS Simulators:[/bold]")
+        for sim in devices.get("simulators", []):
+            typer.echo(f"  - {sim}")
+        if not devices.get("simulators"):
+            typer.echo("  (none)")
+
+        typer.echo("")
+        typer.echo("[bold]iOS Devices:[/bold]")
+        for device in devices.get("physical", []):
+            typer.echo(f"  - {device}")
+        if not devices.get("physical"):
+            typer.echo("  (none)")
+
+
+@mobile_cli.command("sign")
+def mobile_sign(
+    platform: str = typer.Option(..., "--platform", "-p", help="Platform: android | ios"),
+    keystore: str = typer.Option(None, "--keystore", help="Path to Android keystore"),
+    keystore_pass: str = typer.Option(None, "--keystore-pass", help="Keystore password"),
+    key_alias: str = typer.Option(None, "--key-alias", help="Key alias"),
+    key_pass: str = typer.Option(None, "--key-pass", help="Key password"),
+    team_id: str = typer.Option(None, "--team-id", help="Apple Developer Team ID"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Set up code signing for Android or iOS.
+
+    Examples:
+      mikiui mobile sign --platform android
+      mikiui mobile sign --platform ios --team-id ABC123
+    """
+    from ..build.mobile_automation import MobileAutomation
+
+    automation = MobileAutomation(None, out_dir)
+    results = automation.setup_code_signing(
+        platform,
+        keystore_path=keystore,
+        keystore_password=keystore_pass,
+        key_alias=key_alias,
+        key_password=key_pass,
+        team_id=team_id,
+    )
+
+    if results.get("status") == "ok":
+        typer.echo(f"[green]{results['message']}[/green]")
+    else:
+        typer.echo("[red]Error:[/red]", err=True)
+
+
+@mobile_cli.command("test")
+def mobile_test(
+    platform: str = typer.Option(..., "--platform", "-p", help="Platform: android | ios"),
+    device_type: str = typer.Option("emulator", "--type", "-t", help="Device type: emulator/simulator/device"),
+    device: str = typer.Option(None, "--device", "-d", help="Specific device ID"),
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Run app on device or emulator with one command.
+
+    This automates:
+    1. Build the mobile project
+    2. Generate native project files
+    3. Install plugins and sync
+    4. Run on the specified device
+
+    Examples:
+      mikiui mobile test --platform android
+      mikiui mobile test --platform ios --type simulator
+      mikiui mobile test --platform android --device "emulator-5554"
+    """
+    from ..build.mobile_automation import MobileAutomation
+
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    automation = MobileAutomation(miki_app, out_dir)
+
+    # Build and generate native files
+    typer.echo("[cyan]Building mobile project...[/cyan]")
+    from ..build.mobile_build import build_mobile
+    build_mobile(miki_app, out_dir=out_dir)
+
+    typer.echo("[cyan]Generating native project files...[/cyan]")
+    automation.generate_native_projects()
+
+    # Install plugins
+    typer.echo("[cyan]Installing plugins...[/cyan]")
+    automation.install_plugins()
+
+    # Run on device
+    typer.echo(f"[cyan]Running on {platform} ({device_type})...[/cyan]")
+    results = automation.run_on_device(platform, device_type, device)
+
+    if results.get("status") == "ok":
+        typer.echo("[green]App started successfully![/green]")
+    else:
+        typer.echo("[red]Error:[/red]", err=True)
+
+
+@mobile_cli.command("submit")
+def mobile_submit(
+    platform: str = typer.Option(..., "--platform", "-p", help="Platform: android | ios"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Prepare app for store submission.
+
+    This automates:
+    1. Build release version
+    2. Generate metadata
+    3. Create screenshot templates
+    4. Provide submission instructions
+
+    Examples:
+      mikiui mobile submit --platform android
+      mikiui mobile submit --platform ios
+    """
+    from ..build.mobile_automation import MobileAutomation
+
+    automation = MobileAutomation(None, out_dir)
+    results = automation.prepare_for_submission(platform)
+
+    if results.get("status") == "ok":
+        typer.echo(f"[green]{results['message']}[/green]")
+        if results.get("next_steps"):
+            typer.echo("")
+            typer.echo("[bold]Next Steps:[/bold]")
+            for i, step in enumerate(results["next_steps"], 1):
+                typer.echo(f"  {i}. {step}")
+    else:
+        typer.echo("[red]Error:[/red]", err=True)
+
+
+@mobile_cli.command("all")
+def mobile_all(
+    platform: str = typer.Option("both", "--platform", "-p", help="Platform: android | ios | both"),
+    device_type: str = typer.Option("emulator", "--type", "-t", help="Device type: emulator/simulator/device"),
+    app: str = typer.Option(None, "--app", "-a", help="module:attr of the MikiApp"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Run the full automation pipeline with one command.
+
+    This automates:
+    1. Build the mobile project
+    2. Generate native project files
+    3. Install plugins and sync
+    4. Run on device/emulator
+
+    Examples:
+      mikiui mobile all --platform android
+      mikiui mobile all --platform ios --type simulator
+    """
+    from ..build.mobile_automation import run_full_automation
+
+    spec = _safe_resolve(app)
+    module_name, _, attr = spec.partition(":")
+    try:
+        mod = importlib.import_module(module_name)
+        miki_app = getattr(mod, attr or "app")
+    except Exception as exc:
+        typer.echo(f"[red]Could not import app '{spec}':[/red] {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo("[bold cyan]Running full mobile automation...[/bold cyan]")
+    typer.echo("")
+
+    results = run_full_automation(miki_app, out_dir, platform, device_type)
+
+    # Report results
+    typer.echo("[bold]Build:[/bold]")
+    if results.get("build", {}).get("status") == "ok":
+        typer.echo("  [green]OK[/green]")
+    else:
+        typer.echo("  [red]FAILED[/red]")
+
+    typer.echo("[bold]Native Files:[/bold]")
+    for p in ["android", "ios"]:
+        if results.get("native_files", {}).get(p):
+            native_result = results["native_files"][p]
+            if native_result.get("status") == "ok":
+                typer.echo(f"  [green]{p}: OK[/green]")
+            else:
+                typer.echo(f"  [red]{p}: FAILED[/red]")
+
+    typer.echo("[bold]Plugins:[/bold]")
+    plugins = results.get("plugins", {})
+    if plugins.get("npm_install", {}).get("status") == "ok":
+        typer.echo("  [green]npm install: OK[/green]")
+    if plugins.get("cap_sync", {}).get("status") == "ok":
+        typer.echo("  [green]cap sync: OK[/green]")
+
+    typer.echo("[bold]Run:[/bold]")
+    run_results = results.get("run", {})
+    if isinstance(run_results, dict):
+        for p in ["android", "ios"]:
+            if run_results.get(p, {}).get("status") == "ok":
+                typer.echo(f"  [green]{p}: OK[/green]")
+            elif run_results.get(p):
+                typer.echo(f"  [red]{p}: FAILED[/red]")
+
+
 if __name__ == "__main__":
     cli()
