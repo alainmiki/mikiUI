@@ -229,6 +229,7 @@ async def chat_handler(ws, manager):
 | [Getting Started](docs/getting-started.md) | Installation, first app, CLI reference |
 | [Mobile Guide](docs/mobile.md) | Build iOS and Android apps |
 | [Mobile Tutorial](docs/mobile-tutorial.md) | Step-by-step photo app tutorial |
+| [Mobile Automation](docs/mobile-automation.md) | One-click build, test, sign, publish |
 | [API Reference](docs/api-reference.md) | Full method signatures and examples |
 | [Widget Catalog](docs/widgets.md) | All 60+ widgets with examples |
 | [Router Guide](docs/router-guide.md) | Routing, groups, middleware |
