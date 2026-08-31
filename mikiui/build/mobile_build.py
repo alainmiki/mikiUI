@@ -102,6 +102,7 @@ def build_mobile(
     _generate_mobile_html_template(config, out_dir)
     _generate_deployment_configs(config, out_dir)
     _generate_app_icons(config, out_dir)
+    _generate_mobile_error_pages(config, out_dir)
 
     # Step 7: Security scan
     security_warnings = _security_scan(out_dir)
@@ -273,6 +274,13 @@ def _generate_android_project(config: MobileConfig, out_dir: str) -> None:
     for perm in permissions:
         permission_lines.append(f'    <uses-permission android:name="{perm}" />')
 
+    # Add maxSdkVersion for WRITE_EXTERNAL_STORAGE (deprecated on API 29+)
+    if "android.permission.WRITE_EXTERNAL_STORAGE" in permissions:
+        permission_lines.append(
+            '    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" '
+            f'android:maxSdkVersion="{max(config.min_sdk, 28)}" />'
+        )
+
     # On-device: add INTERNET and network permissions
     if config.is_ondevice():
         extra_perms = [
@@ -283,10 +291,23 @@ def _generate_android_project(config: MobileConfig, out_dir: str) -> None:
             if p not in permissions:
                 permission_lines.append(f'    <uses-permission android:name="{p}" />')
 
+    # Camera: add features
+    features_lines = []
+    if "camera" in config.capabilities:
+        features_lines.append(
+            '    <uses-feature android:name="android.hardware.camera" '
+            'android:required="false" />'
+        )
+        features_lines.append(
+            '    <uses-feature android:name="android.hardware.camera.autofocus" '
+            'android:required="false" />'
+        )
+
     manifest = textwrap.dedent(f"""\
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
         {chr(10).join(permission_lines)}
+        {chr(10).join(features_lines)}
 
             <application
                 android:allowBackup="true"
@@ -295,7 +316,8 @@ def _generate_android_project(config: MobileConfig, out_dir: str) -> None:
                 android:roundIcon="@mipmap/ic_launcher_round"
                 android:supportsRtl="true"
                 android:theme="@style/AppTheme"
-                android:usesCleartextTraffic="{'true' if config.allow_cleartext else 'false'}">
+                android:usesCleartextTraffic="{'true' if config.allow_cleartext else 'false'}"
+                android:networkSecurityConfig="@xml/network_security_config">
 
                 <activity
                     android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
@@ -519,6 +541,127 @@ def _generate_app_icons(config: MobileConfig, out_dir: str) -> None:
 
     with open(os.path.join(colors_dir, "colors.xml"), "w", encoding="utf-8") as f:
         f.write(colors_xml)
+
+
+def _generate_mobile_error_pages(config: MobileConfig, out_dir: str) -> None:
+    """Generate mobile-specific error pages for offline/network error states.
+
+    These pages are shown when the app encounters network issues or
+    when running in cloud mode without a connection.
+    """
+    www_dir = os.path.join(out_dir, "www")
+    os.makedirs(www_dir, exist_ok=True)
+
+    # Offline error page
+    offline_html = textwrap.dedent(f"""\
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+            <title>Offline - {config.app_name or 'App'}</title>
+            <style>
+                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: {config.background_color};
+                    color: #333;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    min-height: 100dvh;
+                    padding: 2rem;
+                    text-align: center;
+                }}
+                .icon {{ font-size: 4rem; margin-bottom: 1rem; }}
+                h1 {{ font-size: 1.5rem; margin-bottom: 0.5rem; }}
+                p {{ color: #666; margin-bottom: 1.5rem; max-width: 300px; }}
+                button {{
+                    background: #2563eb;
+                    color: white;
+                    border: none;
+                    padding: 0.75rem 2rem;
+                    border-radius: 0.5rem;
+                    font-size: 1rem;
+                    cursor: pointer;
+                    min-height: 44px;
+                }}
+                button:active {{ opacity: 0.8; }}
+                .status {{ margin-top: 2rem; font-size: 0.875rem; color: #999; }}
+            </style>
+        </head>
+        <body>
+            <div class="icon">📡</div>
+            <h1>You're Offline</h1>
+            <p>Please check your internet connection and try again.</p>
+            <button onclick="window.location.reload()">Try Again</button>
+            <div class="status" id="status">Waiting for connection...</div>
+            <script>
+                // Auto-retry when online
+                window.addEventListener('online', () => {{
+                    document.getElementById('status').textContent = 'Connection restored!';
+                    setTimeout(() => window.location.reload(), 1000);
+                }});
+
+                // Check connection status
+                if (navigator.onLine) {{
+                    document.getElementById('status').textContent = 'Connection available. Tap to retry.';
+                }}
+            </script>
+        </body>
+        </html>
+    """)
+
+    with open(os.path.join(www_dir, "_offline.html"), "w", encoding="utf-8") as f:
+        f.write(offline_html)
+
+    # Network error page (for HTMX failed requests)
+    network_error_js = textwrap.dedent("""\
+        // Mobile network error handler — auto-generated by MikiUI
+        // Shows offline page when network requests fail
+        (function() {
+            'use strict';
+
+            let offlinePageShown = false;
+
+            // Intercept HTMX errors
+            document.addEventListener('htmx:responseError', function(evt) {
+                if (!navigator.onLine && !offlinePageShown) {
+                    offlinePageShown = true;
+                    window.location.href = '/_offline.html';
+                }
+            });
+
+            // Intercept fetch errors
+            const originalFetch = window.fetch;
+            window.fetch = function(...args) {
+                return originalFetch.apply(this, args).catch(function(err) {
+                    if (!navigator.onLine && !offlinePageShown) {
+                        offlinePageShown = true;
+                        window.location.href = '/_offline.html';
+                    }
+                    throw err;
+                });
+            };
+
+            // Check connection on page load
+            if (!navigator.onLine) {
+                console.warn('[MikiUI] App loaded offline');
+            }
+
+            // Expose connection status API
+            window.MikiConnection = {
+                isOnline: function() { return navigator.onLine; },
+                onOnline: function(cb) { window.addEventListener('online', cb); },
+                onOffline: function(cb) { window.addEventListener('offline', cb); },
+            };
+        })();
+    """)
+
+    with open(os.path.join(www_dir, "_miki", "runtime", "mobile_connection.js"), "w", encoding="utf-8") as f:
+        f.write(network_error_js)
 
 
 def _generate_deployment_configs(config: MobileConfig, out_dir: str) -> None:

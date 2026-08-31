@@ -1,46 +1,45 @@
 # Getting Started with MikiUI
 
 MikiUI is a Python-first UI framework that lets you build user interfaces as
-standalone desktop apps or websites. It uses FastAPI for the backend, HTMX +
-Alpine.js for the frontend runtime, and a Python component API that maps
-directly to HTML elements.
+standalone desktop apps, websites, or **mobile apps**. It uses FastAPI for the
+backend, HTMX + Alpine.js for the frontend runtime, and a Python component API
+that maps directly to HTML elements.
 
 ## When to Use MikiUI
 
 - You want to build UIs **in Python** without touching JavaScript for logic.
-- You need **both web and desktop** deployment from the same codebase.
+- You need **web, desktop, and mobile** deployment from the same codebase.
 - You prefer **server-side rendering** with optimistic client-side updates.
 - You want a **beginner-friendly API** that is still powerful enough for
   advanced use cases (plugins, custom components, widgets).
 
-## Prerequisites
-
-- **Python 3.14 or later**
-- **pip** (included with Python)
-- **Node.js 18+** (only if you choose Tailwind CSS)
-
 ## Installation
 
-Install MikiUI from the project root in editable mode:
+Install MikiUI from PyPI:
 
 ```bash
-cd C:\Users\Coder Miki\Desktop\mikiUI
-pip install -e .
+pip install mikiui
 ```
 
-For development dependencies (testing, linting, type-checking):
+### Optional extras
 
 ```bash
-pip install -e .[dev]
+# Tailwind CSS support
+pip install mikiui[tailwind]
+npm install  # installs Tailwind + DaisyUI
+
+# Desktop app support (pywebview)
+pip install mikiui[desktop]
+
+# All extras
+pip install mikiui[dev,build,desktop,tailwind]
 ```
 
-Verify the installation:
+### Verify
 
 ```bash
 mikiui --help
 ```
-
-You should see the MikiUI banner with available commands.
 
 ## Your First App in 5 Minutes
 
