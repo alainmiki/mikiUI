@@ -817,11 +817,7 @@ def _generate_permission_helper(config: MobileConfig, out_dir: str) -> None:
 
 
 def _generate_data_layer(config: MobileConfig, out_dir: str) -> None:
-    """Generate offline data persistence layer.
-
-    Copies the mobile_data.js file to the www directory for offline-first
-    data storage with automatic sync.
-    """
+    """Generate offline data persistence layer and app lifecycle management."""
     import shutil
 
     www_dir = os.path.join(out_dir, "www")
@@ -831,10 +827,12 @@ def _generate_data_layer(config: MobileConfig, out_dir: str) -> None:
     src = os.path.join(os.path.dirname(__file__), "..", "runtime", "js", "mobile_data.js")
     dst_dir = os.path.join(www_dir, "_miki", "runtime")
     os.makedirs(dst_dir, exist_ok=True)
-    dst = os.path.join(dst_dir, "mobile_data.js")
 
-    if os.path.exists(src):
-        shutil.copy2(src, dst)
+    for js_file in ["mobile_data.js", "mobile_app.js"]:
+        src_path = os.path.join(os.path.dirname(__file__), "..", "runtime", "js", js_file)
+        dst_path = os.path.join(dst_dir, js_file)
+        if os.path.exists(src_path):
+            shutil.copy2(src_path, dst_path)
 
 
 def _generate_push_endpoint(config: MobileConfig, out_dir: str) -> None:
