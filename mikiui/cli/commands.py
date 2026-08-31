@@ -1032,5 +1032,229 @@ def mobile_doctor() -> None:
         typer.echo("Install them and run this check again.")
 
 
+@mobile_cli.command("publish")
+def mobile_publish(
+    platform: str = typer.Option(..., "--platform", "-p", help="Platform: android | ios"),
+    release: bool = typer.Option(False, "--release/--debug", help="Build release version"),
+    out_dir: str = typer.Option("dist_mobile", "--out", "-o", help="Output directory"),
+) -> None:
+    """Prepare app for publishing to app store.
+
+    This command:
+    1. Builds the mobile project
+    2. Generates store listing metadata
+    3. Creates screenshot templates
+    4. Provides step-by-step publishing instructions
+
+    Examples:
+      mikiui mobile publish --platform android --release
+      mikiui mobile publish --platform ios --release
+    """
+    import subprocess
+
+    typer.echo(f"[bold]Publishing for {platform}...[/bold]")
+    typer.echo("")
+
+    # Step 1: Build
+    typer.echo("[cyan]Step 1:[/cyan] Building mobile project...")
+    result = subprocess.run(
+        ["mikiui", "mobile", "build", "--target", platform, "--out", out_dir],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        typer.echo(f"[red]Build failed:[/red] {result.stderr}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("  [green]Build complete![/green]")
+
+    # Step 2: Generate store metadata
+    typer.echo("")
+    typer.echo("[cyan]Step 2:[/cyan] Generating store metadata...")
+    _generate_store_metadata(out_dir, platform)
+    typer.echo("  [green]Store metadata generated![/green]")
+
+    # Step 3: Generate screenshot templates
+    typer.echo("")
+    typer.echo("[cyan]Step 3:[/cyan] Generating screenshot templates...")
+    _generate_screenshot_templates(out_dir, platform)
+    typer.echo("  [green]Screenshot templates generated![/green]")
+
+    # Step 4: Print instructions
+    typer.echo("")
+    typer.echo("[bold]Next Steps:[/bold]")
+    typer.echo("")
+
+    if platform == "android":
+        typer.echo("1. Open the project in Android Studio:")
+        typer.echo(f"   cd {out_dir} && npx cap open android")
+        typer.echo("")
+        typer.echo("2. Generate a signing key:")
+        typer.echo("   keytool -genkey -v -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key")
+        typer.echo("")
+        typer.echo("3. Build a signed bundle:")
+        typer.echo("   Build → Generate Signed Bundle/APK → Android App Bundle")
+        typer.echo("")
+        typer.echo("4. Upload to Play Console:")
+        typer.echo("   https://play.google.com/console")
+        typer.echo("")
+        typer.echo("5. Fill in store listing:")
+        typer.echo(f"   See {out_dir}/store/android/ for templates")
+    elif platform == "ios":
+        typer.echo("1. Open the project in Xcode:")
+        typer.echo(f"   cd {out_dir} && npx cap open ios")
+        typer.echo("")
+        typer.echo("2. Select your signing team:")
+        typer.echo("   Project → Signing & Capabilities → Team")
+        typer.echo("")
+        typer.echo("3. Archive the app:")
+        typer.echo("   Product → Archive")
+        typer.echo("")
+        typer.echo("4. Upload to App Store Connect:")
+        typer.echo("   Window → Organizer → Distribute App")
+        typer.echo("")
+        typer.echo("5. Fill in store listing:")
+        typer.echo(f"   See {out_dir}/store/ios/ for templates")
+
+    typer.echo("")
+    typer.echo("[green]Done![/green] Follow the steps above to publish your app.")
+
+
+def _generate_store_metadata(out_dir: str, platform: str) -> None:
+    """Generate store listing metadata templates."""
+    import json
+
+    store_dir = os.path.join(out_dir, "store", platform)
+    os.makedirs(store_dir, exist_ok=True)
+
+    # Common metadata
+    metadata = {
+        "app_title": "My App",
+        "short_description": "A short description of your app (80 characters max)",
+        "full_description": "A full description of your app (4000 characters max)",
+        "category": "Productivity",
+        "tags": ["python", "mikiui", "productivity"],
+        "privacy_policy_url": "https://example.com/privacy",
+        "support_url": "https://example.com/support",
+        "marketing_url": "https://example.com",
+        "content_rating": "Everyone",
+    }
+
+    if platform == "android":
+        metadata.update({
+            "package_name": "com.example.app",
+            "content_rating_categories": ["Everyone"],
+            "target_audience": ["Everyone"],
+            "permissions": [
+                {"permission": "CAMERA", "reason": "Take photos"},
+                {"permission": "ACCESS_FINE_LOCATION", "reason": "Find nearby places"},
+            ],
+        })
+    elif platform == "ios":
+        metadata.update({
+            "bundle_id": "com.example.app",
+            "sku": "com.example.app",
+            "primary_language": "en-US",
+            "languages": ["en-US"],
+        })
+
+    with open(os.path.join(store_dir, "metadata.json"), "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+
+    # Store listing template
+    listing = f"""# Store Listing for {platform.title()}
+
+## App Title
+{metadata['app_title']}
+
+## Short Description (80 characters)
+{metadata['short_description']}
+
+## Full Description (4000 characters)
+{metadata['full_description']}
+
+## Keywords
+{', '.join(metadata['tags'])}
+
+## Category
+{metadata['category']}
+
+## Privacy Policy
+{metadata['privacy_policy_url']}
+
+## Support URL
+{metadata['support_url']}
+
+## Content Rating
+{metadata['content_rating']}
+"""
+
+    with open(os.path.join(store_dir, "listing.md"), "w", encoding="utf-8") as f:
+        f.write(listing)
+
+
+def _generate_screenshot_templates(out_dir: str, platform: str) -> None:
+    """Generate screenshot size requirements and templates."""
+    store_dir = os.path.join(out_dir, "store", platform)
+    os.makedirs(store_dir, exist_ok=True)
+
+    if platform == "android":
+        sizes = [
+            {"name": "phone", "width": 1080, "height": 1920, "required": True},
+            {"name": "7inch_tablet", "width": 1024, "height": 1600, "required": True},
+            {"name": "10inch_tablet", "width": 1200, "height": 1920, "required": True},
+            {"name": "feature_graphic", "width": 1024, "height": 500, "required": True},
+        ]
+    elif platform == "ios":
+        sizes = [
+            {"name": "6.7_inch", "width": 1290, "height": 2796, "required": True},
+            {"name": "6.5_inch", "width": 1284, "height": 2778, "required": True},
+            {"name": "5.5_inch", "width": 1242, "height": 2208, "required": True},
+            {"name": "ipad_pro_12.9", "width": 2048, "height": 2732, "required": True},
+            {"name": "ipad_pro_11", "width": 1668, "height": 2388, "required": True},
+        ]
+
+    # Generate requirements file
+    requirements = f"# Screenshot Requirements for {platform.title()}\n\n"
+    requirements += "Required screenshots:\n\n"
+
+    for size in sizes:
+        req = "REQUIRED" if size["required"] else "Optional"
+        requirements += f"- {size['name']}: {size['width']}x{size['height']} ({req})\n"
+
+    requirements += "\n## Tips\n"
+    requirements += "- Use real device screenshots when possible\n"
+    requirements += "- Show your app's main features\n"
+    requirements += "- Add text overlays to highlight key functionality\n"
+    requirements += "- Use bright, eye-catching colors\n"
+
+    with open(os.path.join(store_dir, "screenshot_requirements.md"), "w", encoding="utf-8") as f:
+        f.write(requirements)
+
+    # Generate placeholder HTML for screenshots
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Screenshot Template</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f0f0f0; }
+        .screenshot { margin: 20px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #999; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <h1>Screenshot Templates</h1>
+"""
+
+    for size in sizes:
+        html += f'    <div class="screenshot" style="width:{size["width"]}px;height:{size["height"]}px;">\n'
+        html += f'        {size["name"]} - {size["width"]}x{size["height"]}\n'
+        html += f'    </div>\n'
+
+    html += """</body>
+</html>"""
+
+    with open(os.path.join(store_dir, "screenshot_template.html"), "w", encoding="utf-8") as f:
+        f.write(html)
+
+
 if __name__ == "__main__":
     cli()
