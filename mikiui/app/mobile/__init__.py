@@ -47,13 +47,16 @@ CAPABILITY_MAP: dict[str, dict[str, Any]] = {
         "capacitor_plugin": "@capacitor/camera",
         "android_permission": "android.permission.CAMERA",
         "ios_privacy_key": "NSCameraUsageDescription",
-        "ios_privacy_description": "This app needs camera access to take photos.",
+        "ios_privacy_description": "This app needs camera access to take photos and scan codes.",
     },
     "geolocation": {
         "capacitor_plugin": "@capacitor/geolocation",
-        "android_permission": "android.permission.ACCESS_FINE_LOCATION",
+        "android_permission": [
+            "android.permission.ACCESS_FINE_LOCATION",
+            "android.permission.ACCESS_COARSE_LOCATION",
+        ],
         "ios_privacy_key": "NSLocationWhenInUseUsageDescription",
-        "ios_privacy_description": "This app needs location access to find nearby places.",
+        "ios_privacy_description": "This app needs location access to provide location-based features.",
     },
     "push": {
         "capacitor_plugin": "@capacitor/push-notifications",
@@ -63,7 +66,7 @@ CAPABILITY_MAP: dict[str, dict[str, Any]] = {
     },
     "local-notify": {
         "capacitor_plugin": "@capacitor/local-notifications",
-        "android_permission": None,
+        "android_permission": "android.permission.SCHEDULE_EXACT_ALARM",
         "ios_privacy_key": None,
         "ios_privacy_description": None,
     },
@@ -105,6 +108,154 @@ CAPABILITY_MAP: dict[str, dict[str, Any]] = {
         "android_permission": None,
         "ios_privacy_key": None,
         "ios_privacy_description": None,
+    },
+    "biometrics": {
+        "capacitor_plugin": "@capacitor/biometrics",
+        "android_permission": "android.permission.USE_BIOMETRIC",
+        "ios_privacy_key": "NSFaceIDUsageDescription",
+        "ios_privacy_description": "This app uses Face ID for secure authentication.",
+    },
+    "battery": {
+        "capacitor_plugin": None,  # Uses browser Battery Status API
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "device-info": {
+        "capacitor_plugin": "@capacitor/device",
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "keyboard": {
+        "capacitor_plugin": "@capacitor/keyboard",
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "app-lifecycle": {
+        "capacitor_plugin": None,  # Uses Capacitor App plugin (built-in)
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "deep-link": {
+        "capacitor_plugin": None,  # Configured in capacitor.config.json
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "media-player": {
+        "capacitor_plugin": "@capacitor-community/native-audio",
+        "android_permission": "android.permission.WAKE_LOCK",
+        "ios_privacy_key": "NSMicrophoneUsageDescription",
+        "ios_privacy_description": "This app needs microphone access for audio recording.",
+    },
+    "video-capture": {
+        "capacitor_plugin": "@capacitor/camera",
+        "android_permission": "android.permission.CAMERA",
+        "ios_privacy_key": "NSCameraUsageDescription",
+        "ios_privacy_description": "This app needs camera access to record video.",
+    },
+    "audio-capture": {
+        "capacitor_plugin": "@capacitor-community/native-audio",
+        "android_permission": "android.permission.RECORD_AUDIO",
+        "ios_privacy_key": "NSMicrophoneUsageDescription",
+        "ios_privacy_description": "This app needs microphone access for audio recording.",
+    },
+    "sensors": {
+        "capacitor_plugin": None,  # Uses Generic Sensor API
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "nfc": {
+        "capacitor_plugin": "@capacitor-community/nfc",
+        "android_permission": "android.permission.NFC",
+        "ios_privacy_key": "NFCReaderUsageDescription",
+        "ios_privacy_description": "This app uses NFC to read tags.",
+    },
+    "bluetooth": {
+        "capacitor_plugin": None,  # Uses Web Bluetooth API
+        "android_permission": [
+            "android.permission.BLUETOOTH",
+            "android.permission.BLUETOOTH_ADMIN",
+            "android.permission.BLUETOOTH_CONNECT",
+        ],
+        "ios_privacy_key": "NSBluetoothAlwaysUsageDescription",
+        "ios_privacy_description": "This app uses Bluetooth to connect to devices.",
+    },
+    "contacts": {
+        "capacitor_plugin": "@capacitor-community/contacts",
+        "android_permission": [
+            "android.permission.READ_CONTACTS",
+            "android.permission.WRITE_CONTACTS",
+        ],
+        "ios_privacy_key": "NSContactsUsageDescription",
+        "ios_privacy_description": "This app needs contact access to sync your address book.",
+    },
+    "calendar": {
+        "capacitor_plugin": "@capacitor-community/calendar",
+        "android_permission": [
+            "android.permission.READ_CALENDAR",
+            "android.permission.WRITE_CALENDAR",
+        ],
+        "ios_privacy_key": "NSCalendarsUsageDescription",
+        "ios_privacy_description": "This app needs calendar access to manage events.",
+    },
+    "sms": {
+        "capacitor_plugin": None,  # Uses sms: URL scheme
+        "android_permission": "android.permission.SEND_SMS",
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "call": {
+        "capacitor_plugin": None,  # Uses tel: URL scheme
+        "android_permission": "android.permission.CALL_PHONE",
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "vibration": {
+        "capacitor_plugin": None,  # Uses Vibration API
+        "android_permission": "android.permission.VIBRATE",
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "screen-orientation": {
+        "capacitor_plugin": "@capacitor/screen-orientation",
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "safe-area": {
+        "capacitor_plugin": "@capacitor/safe-area",
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "browser": {
+        "capacitor_plugin": "@capacitor/browser",
+        "android_permission": None,
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "in-app-purchase": {
+        "capacitor_plugin": "@capacitor-community/purchases",
+        "android_permission": "com.android.vending.BILLING",
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "file-picker": {
+        "capacitor_plugin": "@capacitor-community/file-picker",
+        "android_permission": "android.permission.READ_EXTERNAL_STORAGE",
+        "ios_privacy_key": None,
+        "ios_privacy_description": None,
+    },
+    "photo-gallery": {
+        "capacitor_plugin": "@capacitor/camera",
+        "android_permission": "android.permission.READ_MEDIA_IMAGES",
+        "ios_privacy_key": "NSPhotoLibraryUsageDescription",
+        "ios_privacy_description": "This app needs photo library access to save and select images.",
     },
 }
 

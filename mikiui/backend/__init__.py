@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .api_routes import add_api_routes
+from .notifications import send_bulk_push_notifications, send_push_notification
 from .server import create_app
 from .sse import SSEManager, sse_response
 from .websocket import ConnectionManager, create_webrtc_signaling_handler, mount_websocket
@@ -15,4 +16,6 @@ __all__ = [
     "sse_response",
     "add_api_routes",
     "create_webrtc_signaling_handler",
+    "send_push_notification",
+    "send_bulk_push_notifications",
 ]

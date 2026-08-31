@@ -789,6 +789,9 @@ def _generate_deployment_configs(config: MobileConfig, out_dir: str) -> None:
     with open(os.path.join(deploy_dir, "docker-compose.yml"), "w", encoding="utf-8") as f:
         f.write(docker_compose)
 
+    # Push notification setup guide
+    _generate_push_setup_guide(config, deploy_dir)
+
     # README for deployment
     deploy_readme = textwrap.dedent("""\
         # Deployment Guide
@@ -825,9 +828,150 @@ def _generate_deployment_configs(config: MobileConfig, out_dir: str) -> None:
         ---
 
         Remember to update `capacitor.config.json` with your backend URL!
+
+        See push-setup.md for push notification configuration.
     """)
     with open(os.path.join(deploy_dir, "README.md"), "w", encoding="utf-8") as f:
         f.write(deploy_readme)
+
+
+def _generate_push_setup_guide(config: MobileConfig, deploy_dir: str) -> None:
+    """Generate push notification setup guide.
+
+    This guide helps beginners configure FCM (Android) and APNs (iOS)
+    push notifications for their mobile app.
+    """
+    if "push" not in config.capabilities:
+        return
+
+    push_guide = textwrap.dedent(f"""\
+        # Push Notification Setup Guide
+
+        This guide walks you through setting up push notifications for your
+        MikiUI mobile app.
+
+        ## Overview
+
+        Push notifications require:
+        1. **FCM** (Firebase Cloud Messaging) for Android
+        2. **APNs** (Apple Push Notification service) for iOS
+        3. A server endpoint to send notifications
+
+        ---
+
+        ## Android Setup (FCM)
+
+        ### Step 1: Create Firebase Project
+
+        1. Go to https://console.firebase.google.com/
+        2. Click "Add project"
+        3. Enter your project name
+        4. Follow the setup wizard
+
+        ### Step 2: Register Android App
+
+        1. In Firebase Console, click the Android icon to add an app
+        2. Enter your package name: `{config.app_id}`
+        3. Download `google-services.json`
+        4. Place it in `android/app/google-services.json`
+
+        ### Step 3: Get Server Key
+
+        1. Go to Project Settings → Cloud Messaging
+        2. Copy the "Server key" (legacy token)
+        3. Save this for your backend
+
+        ### Step 4: Configure Backend
+
+        Add this to your FastAPI backend:
+
+        ```python
+        from mikiui.backend import send_push_notification
+
+        @app.post("/api/push/send")
+        def send_push(token: str, title: str, body: str):
+            return send_push_notification(
+                token=token,
+                title=title,
+                body=body,
+                fcm_server_key="YOUR_FCM_SERVER_KEY",
+            )
+        ```
+
+        ---
+
+        ## iOS Setup (APNs)
+
+        ### Step 1: Create Apple Developer Account
+
+        1. Go to https://developer.apple.com/
+        2. Enroll in the Apple Developer Program ($99/year)
+
+        ### Step 2: Create APNs Key
+
+        1. Go to Certificates, Identifiers & Profiles
+        2. Keys → Create New Key
+        3. Enable "Apple Push Notifications service (APNs)"
+        4. Download the .p8 file
+        5. Note the Key ID and Team ID
+
+        ### Step 3: Configure Backend
+
+        ```python
+        from mikiui.backend import send_push_notification
+
+        @app.post("/api/push/send")
+        def send_push(token: str, title: str, body: str):
+            return send_push_notification(
+                token=token,
+                title=title,
+                body=body,
+                apns_key_path="/path/to/AuthKey_XXXXX.p8",
+                apns_key_id="YOUR_KEY_ID",
+                apns_team_id="YOUR_TEAM_ID",
+                bundle_id="{config.app_id}",
+            )
+        ```
+
+        ---
+
+        ## Testing Push Notifications
+
+        ### Android (using Firebase Console)
+
+        1. Go to Firebase Console → Cloud Messaging
+        2. Click "Send your first message"
+        3. Enter the device token from your app
+        4. Send the message
+
+        ### iOS (using simulator or device)
+
+        iOS Simulator does not support push notifications. You need a real device.
+
+        ---
+
+        ## Troubleshooting
+
+        ### "Registration token not received"
+
+        - Check internet connection
+        - Verify FCM/APNs configuration
+        - Check app permissions
+
+        ### "Notification received but not displayed"
+
+        - Check notification channel (Android)
+        - Verify app is in foreground or background
+        - Check notification permissions
+
+        ### "Server key invalid"
+
+        - Regenerate the FCM server key
+        - Ensure you're using the legacy server key
+    """)
+
+    with open(os.path.join(deploy_dir, "push-setup.md"), "w", encoding="utf-8") as f:
+        f.write(push_guide)
 
 
 def _generate_ios_privacy_manifest(config: MobileConfig, ios_dir: str) -> None:
