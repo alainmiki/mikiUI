@@ -837,8 +837,7 @@ def _generate_data_layer(config: MobileConfig, out_dir: str) -> None:
     www_dir = os.path.join(out_dir, "www")
     os.makedirs(www_dir, exist_ok=True)
 
-    # Copy the mobile_data.js from runtime
-    src = os.path.join(os.path.dirname(__file__), "..", "runtime", "js", "mobile_data.js")
+    # Copy the mobile runtime JS files
     dst_dir = os.path.join(www_dir, "_miki", "runtime")
     os.makedirs(dst_dir, exist_ok=True)
 

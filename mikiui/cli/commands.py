@@ -1089,7 +1089,10 @@ def mobile_publish(
         typer.echo(f"   cd {out_dir} && npx cap open android")
         typer.echo("")
         typer.echo("2. Generate a signing key:")
-        typer.echo("   keytool -genkey -v -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key")
+        typer.echo(
+            "   keytool -genkey -v -keystore my-release-key.jks "
+            "-keyalg RSA -keysize 2048 -validity 10000"
+        )
         typer.echo("")
         typer.echo("3. Build a signed bundle:")
         typer.echo("   Build → Generate Signed Bundle/APK → Android App Bundle")
@@ -1145,8 +1148,8 @@ def _generate_store_metadata(out_dir: str, platform: str) -> None:
             "content_rating_categories": ["Everyone"],
             "target_audience": ["Everyone"],
             "permissions": [
-                {"permission": "CAMERA", "reason": "Take photos"},
-                {"permission": "ACCESS_FINE_LOCATION", "reason": "Find nearby places"},
+                "CAMERA - Take photos",
+                "ACCESS_FINE_LOCATION - Find nearby places",
             ],
         })
     elif platform == "ios":
@@ -1236,8 +1239,23 @@ def _generate_screenshot_templates(out_dir: str, platform: str) -> None:
 <head>
     <title>Screenshot Template</title>
     <style>
-        body { margin: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f0f0f0; }
-        .screenshot { margin: 20px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #999; font-family: sans-serif; }
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .screenshot {
+            margin: 20px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-family: sans-serif;
+        }
     </style>
 </head>
 <body>
@@ -1247,7 +1265,7 @@ def _generate_screenshot_templates(out_dir: str, platform: str) -> None:
     for size in sizes:
         html += f'    <div class="screenshot" style="width:{size["width"]}px;height:{size["height"]}px;">\n'
         html += f'        {size["name"]} - {size["width"]}x{size["height"]}\n'
-        html += f'    </div>\n'
+        html += '    </div>\n'
 
     html += """</body>
 </html>"""
