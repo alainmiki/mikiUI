@@ -184,19 +184,18 @@ class MobileAutomation:
                 "",
             ])
 
-        class_body.extend([
-            "        // Register plugins",
-            "        registerPlugins(arrayOf<Class<out Plugin>>(",
-        ])
-
         # Add plugin registrations
         plugin_classes = self._get_android_plugin_classes()
         if plugin_classes:
+            class_body.extend([
+                "        // Register plugins",
+                "        registerPlugins(arrayOf<Class<out Plugin>>(",
+            ])
             for plugin_class in plugin_classes:
                 class_body.append(f"            {plugin_class}::class.java,")
             class_body.append("        ))")
         else:
-            class_body[-1] = "        ))"
+            class_body.append("        // No additional plugins to register")
 
         class_body.extend([
             "    }",
@@ -751,13 +750,16 @@ class MobileAutomation:
     def _run_on_android(self, device_type: str, device_id: str | None) -> dict[str, Any]:
         """Run on Android device or emulator."""
         # First, ensure plugins are synced
-        sync_result = subprocess.run(
-            ["npx", "cap", "sync", "android"],
-            cwd=self._out_dir,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
+        try:
+            sync_result = subprocess.run(
+                ["npx", "cap", "sync", "android"],
+                cwd=self._out_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to sync: {str(e)}"}
 
         if sync_result.returncode != 0:
             return {
@@ -798,13 +800,16 @@ class MobileAutomation:
     def _run_on_ios(self, device_type: str, device_id: str | None) -> dict[str, Any]:
         """Run on iOS device or simulator."""
         # First, ensure plugins are synced
-        sync_result = subprocess.run(
-            ["npx", "cap", "sync", "ios"],
-            cwd=self._out_dir,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
+        try:
+            sync_result = subprocess.run(
+                ["npx", "cap", "sync", "ios"],
+                cwd=self._out_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to sync: {str(e)}"}
 
         if sync_result.returncode != 0:
             return {
@@ -1040,6 +1045,7 @@ class MobileAutomation:
     def _setup_ios_signing(self, team_id: str | None, bundle_id: str | None) -> dict[str, Any]:
         """Set up iOS code signing."""
         ios_dir = self.ios_dir
+        os.makedirs(ios_dir, exist_ok=True)
 
         # Create export options plist
         export_options = {
