@@ -999,7 +999,7 @@ def _generate_push_endpoint(config: MobileConfig, out_dir: str) -> None:
                 "apns_configured": bool(os.environ.get("APNS_KEY_PATH")),
                 "registered_devices": len(_device_tokens),
             }}
-    ''').format(app_id=config.app_id)
+    ''').replace('{app_id}', config.app_id)
 
     with open(os.path.join(deploy_dir, "push_endpoint.py"), "w", encoding="utf-8") as f:
         f.write(push_endpoint)
@@ -1055,7 +1055,7 @@ def _generate_deep_link_handler(config: MobileConfig, out_dir: str) -> None:
                 parseParams: function(search) {
                     var params = {};
                     if (!search) return params;
-                    search.replace(/^\?/, "").split("&").forEach(function(pair) {
+                    search.replace(/^\\?/, "").split("&").forEach(function(pair) {
                         var parts = pair.split("=");
                         if (parts[0]) {
                             params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || "");
