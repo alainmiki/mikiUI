@@ -231,3 +231,10 @@ plugin = market.install("chart-widget", app)
 
 See [Plugins Guide](plugins.md) and [Security Guide](security.md) for full
 details.
+
+## Next Steps
+
+- [Mobile Development](mobile.md) - Build iOS and Android apps
+- [Widget Catalog](widgets.md) - All available widgets
+- [Router Guide](router-guide.md) - Advanced routing
+- [API Reference](api-reference.md) - Complete API docs

@@ -164,6 +164,15 @@ Tailwind CSS (with optional DaisyUI) or plain CSS — switch without changing ap
 | `mikiui desktop` | Native desktop window |
 | `mikiui build --target web` | Static web build |
 | `mikiui build --target desktop` | Desktop package |
+| `mikiui build --target mobile` | Mobile project (Capacitor) |
+| `mikiui mobile build` | Build mobile project |
+| `mikiui mobile run` | Run on device/emulator |
+| `mikiui mobile open` | Open in IDE |
+| `mikiui mobile info` | Show mobile config |
+| `mikiui mobile doctor` | Check system readiness |
+| `mikiui mobile plugins` | List available plugins |
+| `mikiui mobile setup` | Interactive setup wizard |
+| `mikiui mobile publish` | Prepare for store publishing |
 | `mikiui tailwind dev` | Watch & rebuild Tailwind CSS |
 | `mikiui install tailwind` | Install Tailwind + npm deps |
 
@@ -218,6 +227,8 @@ async def chat_handler(ws, manager):
 | Guide | Description |
 |-------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first app, CLI reference |
+| [Mobile Guide](docs/mobile.md) | Build iOS and Android apps |
+| [Mobile Tutorial](docs/mobile-tutorial.md) | Step-by-step photo app tutorial |
 | [API Reference](docs/api-reference.md) | Full method signatures and examples |
 | [Widget Catalog](docs/widgets.md) | All 60+ widgets with examples |
 | [Router Guide](docs/router-guide.md) | Routing, groups, middleware |
