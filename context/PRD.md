@@ -26,7 +26,7 @@ MikiUI is a Python framework for building user interfaces that can run as standa
 - **Widgets**: DataGrid, MediaPlayer, Dashboard, KanbanBoard, ChatUI, IDE-like editor, Advanced Panels (dockable/floating panels, split views, property grids).
 - **Plugin System**: `app.use(plugin)`, manifest schema, AST vetting, import allow-list, marketplace integration.
 - **Media Module**: Streaming, recording, EQ.
-- **Build System**: Packaging for web/desktop, optimized bundles, fullstack/separate modes.
+- **Build System**: Packaging for web/desktop, optimized bundles, fullstack/separate modes. Desktop builds auto-install PyInstaller and produce native executables/bundles (`.app` on macOS, `.exe` on Windows, ELF on Linux).
 - **Developer Tooling**: CLI, hot reload, DevTools, testing utilities.
 - **Global Features**: i18n, accessibility, SSR, data fetching.
 - **Desktop APIs**: Tray, notifications, file system, clipboard.

@@ -91,6 +91,9 @@ MikiUI ships with a CLI for scaffolding, development, and building:
 | `mikiui desktop` | Open a native desktop window |
 | `mikiui build --target web` | Build for web production |
 | `mikiui build --target desktop` | Build for desktop distribution |
+| `mikiui build --target web --mode separate` | Static site only (no server) |
+| `mikiui build --target desktop --onefile` | Single-file desktop executable |
+| `mikiui build --target web --clean` | Clean build |
 | `mikiui tailwind dev` | Watch and rebuild Tailwind CSS |
 | `mikiui install tailwind` | Install Tailwind + config files |
 

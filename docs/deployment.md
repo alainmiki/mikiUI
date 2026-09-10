@@ -294,6 +294,123 @@ Recommended options:
 
 ---
 
+## Build System
+
+MikiUI includes a production-ready build system for web and desktop targets.
+Builds are deterministic, self-contained, and include all runtime assets,
+component static files, and themes.
+
+### Web Build
+
+```bash
+mikiui build --target web --mode fullstack --out dist/
+```
+
+The web build produces:
+
+- Pre-rendered HTML for every GET route
+- Copied runtime assets (`_miki/runtime/`)
+- A production HTML shell with CSP nonces
+- `manifest.json` with content hashes for cache busting
+- `sitemap.xml` for crawler discoverability
+- `robots.txt`
+- `404.html` fallback for SPA routes
+- `server.py` (fullstack mode only) for standalone serving
+
+#### Modes
+
+| Mode | Output | Use case |
+|------|--------|----------|
+| `fullstack` | Static HTML + `server.py` | Deploy as a standalone ASGI app |
+| `separate` | Static HTML only | Deploy behind any static file server or CDN |
+
+#### Framework Options
+
+```bash
+# Plain CSS (default, no Node.js required)
+mikiui build --target web --mode fullstack
+
+# Tailwind CSS (requires Node.js)
+mikiui build --target web --mode fullstack --theme tailwind --daisyui
+
+# Local Tailwind CSS bundle
+mikiui build --target web --mode fullstack --theme tailwind --style-mode local
+```
+
+### Desktop Build
+
+```bash
+mikiui build --target desktop --out dist_desktop/
+```
+
+The desktop build:
+
+1. Produces a web build inside `dist_desktop/web/`
+2. Generates a portable launcher script
+3. Auto-installs PyInstaller if needed
+4. Runs PyInstaller to produce a native executable
+5. Wraps the executable in a platform-native bundle (`.app` on macOS)
+
+PyInstaller is installed automatically if it is not already available. If
+PyInstaller fails, the build still returns a usable directory with the web
+build and launcher scripts.
+
+#### Options
+
+```bash
+# Standard desktop build
+mikiui build --target desktop
+
+# Single-file executable (slower startup, easier distribution)
+mikiui build --target desktop --onefile
+
+# Custom icon
+mikiui build --target desktop --icon path/to/icon.ico
+```
+
+#### Output
+
+| File | Description |
+|------|-------------|
+| `dist_desktop/web/` | Web build (static front-end + ASGI server) |
+| `dist_desktop/launch.exe` / `launch.app` / `launch` | Platform launcher |
+| `dist_desktop/mikiui_linux.spec` | PyInstaller spec |
+| `dist_desktop/dist/` | PyInstaller output directory |
+| `dist_desktop/<AppName>.app` | macOS app bundle (if on macOS) |
+
+### Static Assets
+
+The build system automatically copies:
+
+- Runtime JS/CSS files from `mikiui/runtime/`
+- Component static files from `mikiui/components/*/static/`
+- Widget static files from `mikiui/widgets/*/static/`
+- Theme CSS files from `mikiui/runtime/themes/`
+
+All assets are included in `manifest.json` with content hashes for cache
+busting.
+
+### Optimization
+
+```bash
+# Build with minification
+mikiui build --target web --optimize
+
+# Skip optimization
+mikiui build --target web --no-optimize
+```
+
+The optimizer strips comments and collapses whitespace in CSS and JS files.
+For larger apps, consider using a Vite/Webpack pipeline via `package.json`.
+
+### Clean Builds
+
+```bash
+mikiui build --target web --clean
+```
+
+Removes the output directory before building.
+
 ## Static Assets
 
 ### Runtime Assets

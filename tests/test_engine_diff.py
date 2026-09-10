@@ -5,8 +5,7 @@ from __future__ import annotations
 import pytest
 
 from mikiui.engine.diff import Swap, diff
-from mikiui.engine.dom import Element, Text, RawHtml
-from mikiui.engine.renderer import render_fragment
+from mikiui.engine.dom import Element
 from mikiui.engine.updater import OptimisticUpdater
 
 

@@ -96,14 +96,32 @@ def _tailwind_config_script(theme_name: str, daisyui: bool = False, csp_nonce: s
     
     daisyui_theme = ""
     if daisyui:
+        from ..build.tailwind import daisyui_config
+        try:
+            daisyui_bridge = daisyui_config(theme_name)
+            theme_entry = daisyui_bridge.get(f"mikiui-{theme_name}", {})
+            primary = theme_entry.get("--primary", "#3b82f6")
+            secondary = theme_entry.get("--secondary", "#60a5fa")
+            accent = theme_entry.get("--accent", "#3b82f6")
+            neutral = theme_entry.get("--neutral", "#1e293b")
+            background = theme_entry.get("--background", "#ffffff")
+            foreground = theme_entry.get("--foreground", "#1e293b")
+        except Exception:
+            primary = "#3b82f6"
+            secondary = "#60a5fa"
+            accent = "#3b82f6"
+            neutral = "#1e293b"
+            background = "#ffffff"
+            foreground = "#1e293b"
         daisyui_theme = (
-            "\n  --color-primary: #3b82f6;\n"
-            "  --color-secondary: #60a5fa;\n"
-            "  --color-accent: #3b82f6;\n"
-            "  --color-neutral: #1e293b;\n"
-            "  --color-base-100: #0f172a;\n"
-            "  --color-base-200: #1e293b;\n"
-            "  --color-base-300: #334155;\n"
+            f"\n  --color-primary: {primary};\n"
+            f"  --color-secondary: {secondary};\n"
+            f"  --color-accent: {accent};\n"
+            f"  --color-neutral: {neutral};\n"
+            f"  --color-base-100: {background};\n"
+            f"  --color-base-200: {neutral};\n"
+            f"  --color-base-300: {neutral};\n"
+            f"  --color-base-content: {foreground};\n"
         )
     
     nonce_attr = f' nonce="{_esc(csp_nonce)}"' if csp_nonce else ""

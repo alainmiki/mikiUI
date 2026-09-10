@@ -74,17 +74,36 @@ def _has_path_params(route: RouteDef) -> bool:
     return bool(route.path_params)
 
 
-def _render_sitemap(app: Any, out_dir: str, pages: list[str]) -> str | None:
-    """Write a ``sitemap.xml`` for all rendered pages."""
-    if not pages:
+def _render_sitemap(app: Any, out_dir: str, route_paths: list[str]) -> str | None:
+    """Write a ``sitemap.xml`` for all rendered pages.
+
+    Parameters
+    ----------
+    app:
+        The MikiApp instance (used to read ``host``, ``port``, and
+        ``url_scheme``).
+    out_dir:
+        Directory where ``sitemap.xml`` will be written.
+    route_paths:
+        Original route paths (e.g. ``"/about"``, ``"/"``) for every
+        rendered page.  Parameterized example pages are included as
+        their resolved paths.
+    """
+    if not route_paths:
         return None
-    base_url = f"http://{getattr(app, 'host', 'localhost')}:{getattr(app, 'port', 8000)}"
+    scheme = getattr(app, "url_scheme", None) or "https"
+    host = getattr(app, "host", "localhost")
+    port = getattr(app, "port", 8000)
+    if port in (80, 443):
+        base_url = f"{scheme}://{host}"
+    else:
+        base_url = f"{scheme}://{host}:{port}"
     url_entries = []
-    for page in pages:
-        if page == "index.html":
+    for route_path in route_paths:
+        if route_path in ("", "/"):
             loc = base_url + "/"
         else:
-            loc = base_url + "/" + page.replace("_", "/").replace(".html", "")
+            loc = base_url + route_path
         url_entries.append(f"  <url><loc>{_esc(loc)}</loc></url>")
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -132,13 +151,18 @@ def _render_parameterized_routes(
     style_mode: str = "cdn",
     daisyui: bool = False,
     nonce: str | None = None,
-) -> list[str]:
-    """Render parameterized routes using example paths from route-manifest.json."""
+) -> tuple[list[str], list[str]]:
+    """Render parameterized routes using example paths from route-manifest.json.
+
+    Returns ``(written, route_paths)`` so callers can include the resolved
+    parameterized paths in the sitemap.
+    """
     manifest = _load_route_manifest(out_dir)
     if not manifest:
-        return []
+        return [], []
 
     written: list[str] = []
+    route_paths: list[str] = []
     for route in miki_app.routes.values():
         if not _has_path_params(route) or "GET" not in route.methods:
             continue
@@ -176,18 +200,30 @@ def _render_parameterized_routes(
                     csp_nonce=nonce,
                 )
                 if nonce:
-                    html = html.replace("<script ", f'<script nonce="{_esc(nonce)}" ')
-                    html = html.replace("<style ", f'<style nonce="{_esc(nonce)}" ')
+                    # Apply nonces to inline scripts/styles using regex.
+                    # Skip tags that already have a nonce attribute to avoid duplicates.
+                    import re
+                    html = re.sub(
+                        r'(<script\b)(?![^>]*\bnonce\s*=)',
+                        rf'\1 nonce="{_esc(nonce)}"',
+                        html
+                    )
+                    html = re.sub(
+                        r'(<style\b)(?![^>]*\bnonce\s*=)',
+                        rf'\1 nonce="{_esc(nonce)}"',
+                        html
+                    )
                 html = html.replace('"/_miki/runtime/', '"_miki/runtime/')
                 dest = os.path.join(out_dir, _route_filename(resolved_path))
                 with open(dest, "w", encoding="utf-8") as fh:
                     fh.write(html)
                 written.append(os.path.relpath(dest, out_dir))
+                route_paths.append(resolved_path)
             except Exception as exc:
                 warnings.warn(
                     f"Skipping parameterized route {route.path} with example {example}: {exc}"
                 )
-    return written
+    return written, route_paths
 
 
 def _export_route(
@@ -200,22 +236,26 @@ def _export_route(
     style_mode: str = "cdn",
     daisyui: bool = False,
     nonce: str | None = None,
-) -> str | None:
-    """Render a single GET route to ``out_dir``. Returns the file path or None."""
+) -> tuple[str | None, str]:
+    """Render a single GET route to ``out_dir``.
+
+    Returns ``(file_path, route_path)`` or ``(None, route_path)`` on skip/error.
+    """
     if "GET" not in route.methods:
-        return None
+        return (None, route.path)
     if _has_path_params(route):
         warnings.warn(
             f"Skipping static export of parameterized route {route.path!r}. "
             "Static builds cannot render dynamic routes; use fullstack mode "
             "or provide example paths via route-manifest.json."
         )
-        return None
+        return (None, route.path)
     try:
         nodes, ctx = asyncio.run(miki_app.invoke(route, None))
     except Exception as exc:
         warnings.warn(f"Skipping static export of {route.path}: {exc}")
-        return None
+        return (None, route.path)
+
     from ..app.routes import resolve_title
 
     page_title = resolve_title(route, ctx, miki_app.title)
@@ -234,13 +274,24 @@ def _export_route(
         csp_nonce=nonce,
     )
     if nonce:
-        html = html.replace("<script ", f'<script nonce="{_esc(nonce)}" ')
-        html = html.replace("<style ", f'<style nonce="{_esc(nonce)}" ')
+        # Apply nonces to inline scripts/styles that weren't covered by render_page.
+        # Skip tags that already have a nonce attribute to avoid duplicates.
+        import re
+        html = re.sub(
+            r'(<script\b)(?![^>]*\bnonce\s*=)',
+            rf'\1 nonce="{_esc(nonce)}"',
+            html
+        )
+        html = re.sub(
+            r'(<style\b)(?![^>]*\bnonce\s*=)',
+            rf'\1 nonce="{_esc(nonce)}"',
+            html
+        )
     html = html.replace('"/_miki/runtime/', '"_miki/runtime/')
     dest = os.path.join(out_dir, _route_filename(route.path))
     with open(dest, "w", encoding="utf-8") as fh:
         fh.write(html)
-    return dest
+    return (dest, route.path)
 
 
 def _build_tailwind(
@@ -257,12 +308,14 @@ def _build_tailwind(
 
     from .tailwind import write_tailwind_config
 
-    css_path = os.path.join(out_dir, "_miki", "runtime", "mikiui.css")
-    os.makedirs(os.path.dirname(css_path), exist_ok=True)
+    themes_dir = os.path.join(out_dir, "_miki", "runtime", "themes")
+    os.makedirs(themes_dir, exist_ok=True)
+    css_path = os.path.join(themes_dir, "tailwind.css")
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = os.path.join(tmpdir, "tailwind.config.js")
         write_tailwind_config(
-            os.path.join(tmpdir, "tailwind.config.js"),
+            config_path,
             theme=getattr(app, "theme", "light"),
             daisyui=daisyui,
             content=content,
@@ -276,16 +329,24 @@ def _build_tailwind(
             "mikiui/runtime/miki.css",
             "-o",
             css_path,
+            "-c",
+            config_path,
             "--content",
         ]
         cmd.extend(_CONTENT_PATHS)
 
         proc = subprocess.run(cmd, cwd=os.getcwd(), capture_output=True, text=True)
         if proc.returncode != 0:
-            import warnings
-
-            warnings.warn(f"Tailwind build failed: {proc.stderr}")
-            return None
+            stderr = (proc.stderr or "").strip()
+            if not stderr:
+                stderr = proc.stdout.strip()
+            raise RuntimeError(
+                "Tailwind CSS build failed. "
+                "Ensure Node.js and Tailwind CSS v4 are installed: "
+                "https://tailwindcss.com/docs/installation\n"
+                f"Command: {' '.join(cmd)}\n"
+                f"Error: {stderr}"
+            )
         if os.path.isfile(css_path):
             return css_path
     return None
@@ -303,12 +364,16 @@ _CONTENT_PATHS = [
 def _write_server_script(out_dir: str, app: Any) -> str:
     """Emit a small ASGI server so a fullstack build is runnable standalone."""
     spec = f"{app.__module__}:{_attr_name(app)}"
+    host = getattr(app, "host", "127.0.0.1")
+    port = getattr(app, "port", 8000)
     script = (
         "import uvicorn\n"
         "from mikiui.backend import create_app\n"
         "from mikiui.app import MikiApp\n"
         "\n"
         f"_APP_SPEC = {spec!r}\n"
+        f"_APP_HOST = {host!r}\n"
+        f"_APP_PORT = {port!r}\n"
         "def _load():\n"
         "    import importlib\n"
         "    mod_name, _, attr = _APP_SPEC.partition(':')\n"
@@ -316,12 +381,77 @@ def _write_server_script(out_dir: str, app: Any) -> str:
         "\n"
         "if __name__ == '__main__':\n"
         "    miki_app = _load()\n"
-        "    uvicorn.run(create_app(miki_app), host='127.0.0.1', port=8000)\n"
+        "    uvicorn.run(create_app(miki_app), host=_APP_HOST, port=_APP_PORT)\n"
     )
     dest = os.path.join(out_dir, "server.py")
     with open(dest, "w", encoding="utf-8") as fh:
         fh.write(script)
     return "server.py"
+
+
+def _write_robots_txt(out_dir: str) -> str | None:
+    """Write a ``robots.txt`` file."""
+    if not out_dir:
+        return None
+    dest = os.path.join(out_dir, "robots.txt")
+    content = "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n"
+    with open(dest, "w", encoding="utf-8") as fh:
+        fh.write(content)
+    return "robots.txt"
+
+
+def _write_404_page(
+    out_dir: str,
+    *,
+    title: str = "Page Not Found",
+    framework: str = "plain",
+    style_mode: str = "cdn",
+    daisyui: bool = False,
+) -> str | None:
+    """Write a ``404.html`` fallback for SPA routes."""
+    if not out_dir:
+        return None
+    dest = os.path.join(out_dir, "404.html")
+
+    effective_fw = framework or "plain"
+    if effective_fw == "tailwind":
+        if style_mode == "local":
+            css_link = '<link rel="stylesheet" href="_miki/runtime/themes/tailwind.css" />'
+            if daisyui:
+                css_link += (
+                    '\n  <link rel="stylesheet" '
+                    'href="https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css" />'
+                )
+        else:
+            css_link = '<script src="https://cdn.tailwindcss.com"></script>'
+            if daisyui:
+                css_link += (
+                    '\n  <link rel="stylesheet" '
+                    'href="https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css" />'
+                )
+    else:
+        css_link = '<link rel="stylesheet" href="_miki/runtime/miki.css" />'
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{_esc(title)}</title>
+  {css_link}
+</head>
+<body>
+  <div id="miki-app"></div>
+  <script src="_miki/runtime/htmx.min.js" defer></script>
+  <script src="_miki/runtime/alpine.min.js" defer></script>
+  <script src="_miki/runtime/miki_ui.js" defer></script>
+  <script src="_miki/runtime/history_router.js" defer></script>
+</body>
+</html>
+"""
+    with open(dest, "w", encoding="utf-8") as fh:
+        fh.write(html)
+    return "404.html"
 
 
 def _write_html_shell(
@@ -483,6 +613,8 @@ def build_web(
     * ``manifest`` — path to ``manifest.json`` (if generated), or ``None``.
     * ``shell`` — path to the production HTML shell.
     * ``sitemap`` — path to ``sitemap.xml``, or ``None``.
+    * ``robots`` — path to ``robots.txt``, or ``None``.
+    * ``404`` — path to ``404.html``, or ``None``.
     * ``csp_nonce`` — the nonce embedded in the shell (or ``None``).
     * ``server_script`` — path to ``server.py`` in fullstack mode, or ``None``.
     * ``skipped_routes`` — list of parameterized routes skipped with warnings.
@@ -513,11 +645,12 @@ def build_web(
     written: list[str] = []
     skipped_routes: list[str] = []
 
-    async def _render_all() -> list[str]:
-        results: list[str] = []
+    async def _render_all() -> tuple[list[str], list[str]]:
+        written: list[str] = []
+        route_paths: list[str] = []
         semaphore = asyncio.Semaphore(concurrency)
 
-        async def _render(route: RouteDef) -> str | None:
+        async def _render(route: RouteDef) -> tuple[str | None, str] | None:
             async with semaphore:
                 loop = asyncio.get_event_loop()
                 return await loop.run_in_executor(
@@ -534,19 +667,25 @@ def build_web(
 
         tasks = [_render(route) for route in app.routes.values()]
         for coro in asyncio.as_completed(tasks):
-            path = await coro
-            if path:
-                results.append(os.path.relpath(path, out_dir))
-        return results
+            result = await coro
+            if result:
+                file_path, route_path = result
+                if file_path is not None:
+                    written.append(os.path.relpath(file_path, out_dir))
+                route_paths.append(route_path)
+        return written, route_paths
 
     actual_theme: str = theme if theme is not None else (getattr(app, "theme", None) or "light")
     nonce = _generate_csp_nonce()
+    rendered_route_paths: list[str] = []
 
     try:
-        written = asyncio.run(_render_all())
+        written, rendered_route_paths = asyncio.run(_render_all())
     except RuntimeError:
+        written = []
+        rendered_route_paths = []
         for route in app.routes.values():
-            path = _export_route(
+            result = _export_route(
                 app, route, out_dir,
                 theme=actual_theme,
                 framework=effective_framework,
@@ -554,15 +693,18 @@ def build_web(
                 daisyui=effective_daisyui,
                 nonce=nonce,
             )
-            if path:
-                written.append(os.path.relpath(path, out_dir))
+            if result:
+                file_path, route_path = result
+                if file_path is not None:
+                    written.append(os.path.relpath(file_path, out_dir))
+                rendered_route_paths.append(route_path)
 
     for route in app.routes.values():
         if _has_path_params(route) and "GET" in route.methods:
             skipped_routes.append(route.path)
 
     # Render parameterized routes if a route-manifest.json is present
-    param_written = _render_parameterized_routes(
+    param_written, param_route_paths = _render_parameterized_routes(
         app, out_dir,
         theme=actual_theme,
         framework=effective_framework,
@@ -571,12 +713,13 @@ def build_web(
         nonce=nonce,
     )
     written.extend(param_written)
+    rendered_route_paths.extend(param_route_paths)
 
     runtime_out = os.path.join(out_dir, "_miki", "runtime")
     os.makedirs(runtime_out, exist_ok=True)
     copied: list[str] = []
 
-    def _copy_runtime_assets(include_miki_css: bool = True) -> None:
+    def _copy_runtime_assets() -> None:
         """Copy runtime assets, including subdirectories like js/."""
         for entry in os.listdir(_RUNTIME_DIR):
             src = os.path.join(_RUNTIME_DIR, entry)
@@ -586,27 +729,41 @@ def build_web(
                 continue
             dst = os.path.join(runtime_out, entry)
             if os.path.isdir(src):
-                # Copy entire subdirectory (e.g., js/, themes/)
-                if os.path.exists(dst):
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst)
-                copied.append(entry + "/")
+                if entry == "themes" and tailwind_css_path:
+                    theme_dst = os.path.join(runtime_out, "themes")
+                    os.makedirs(theme_dst, exist_ok=True)
+                    for fname in os.listdir(src):
+                        if fname == "tailwind.css":
+                            continue
+                        src_file = os.path.join(src, fname)
+                        if os.path.isfile(src_file):
+                            dst_file = os.path.join(theme_dst, fname)
+                            shutil.copy2(src_file, dst_file)
+                            copied.append(f"themes/{fname}")
+                else:
+                    if os.path.exists(dst):
+                        shutil.rmtree(dst)
+                    shutil.copytree(src, dst)
+                    copied.append(entry + "/")
             elif os.path.isfile(src):
-                if entry == "miki.css" and not include_miki_css:
-                    continue
-                shutil.copy2(src, dst)
-                copied.append(entry)
+                if entry == "miki.css":
+                    # Always copy miki.css — it holds base widget/component styles
+                    # that must remain available even when Tailwind is used.
+                    shutil.copy2(src, dst)
+                    copied.append(entry)
+                elif entry == "themes" and tailwind_css_path:
+                    # Skip copying themes/ as a file when Tailwind built its own
+                    pass
+                else:
+                    shutil.copy2(src, dst)
+                    copied.append(entry)
 
-    if effective_framework == "tailwind":
-        _copy_runtime_assets(include_miki_css=False)
-    else:
-        _copy_runtime_assets(include_miki_css=True)
+    _copy_runtime_assets()
 
-    # If Tailwind was built, copy the CSS file
+    # If Tailwind was built, the compiled CSS is already at themes/tailwind.css.
+    # Ensure it is recorded in the manifest.
     if tailwind_css_path:
-        dest_css = os.path.join(runtime_out, "mikiui.css")
-        shutil.copy2(tailwind_css_path, dest_css)
-        copied.append("mikiui.css")
+        copied.append("themes/tailwind.css")
 
     # Copy component/widget/plugin/theme static assets so the exported site
     # is self-contained.
@@ -646,12 +803,13 @@ def build_web(
                     static_manifest_entries[key] = rel
 
     # Generate CSP nonce and HTML shell
-    # For Tailwind CDN mode, allow CDN styles
+    # For Tailwind CDN mode, the browser CDN injects utility styles dynamically,
+    # so allow 'unsafe-inline' for style-src in addition to the CDN origin.
     if effective_framework == "tailwind" and effective_style_mode == "cdn":
         csp = (
             "default-src 'self'; "
             "script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
             "connect-src 'self'; "
@@ -693,11 +851,20 @@ def build_web(
     manifest_path = _write_manifest(out_dir, asset_rel_paths)
 
     # Sitemap
-    sitemap_path = _render_sitemap(app, out_dir, written)
+    sitemap_path = _render_sitemap(app, out_dir, rendered_route_paths)
 
     server_script = None
     if mode == "fullstack":
         server_script = _write_server_script(out_dir, app)
+
+    robots_path = _write_robots_txt(out_dir)
+    page_404_path = _write_404_page(
+        out_dir,
+        title=app.title,
+        framework=effective_framework,
+        style_mode=effective_style_mode,
+        daisyui=effective_daisyui,
+    )
 
     return {
         "target": "web",
@@ -708,6 +875,8 @@ def build_web(
         "manifest": manifest_path,
         "shell": shell_path,
         "sitemap": sitemap_path,
+        "robots": robots_path,
+        "404": page_404_path,
         "csp_nonce": nonce,
         "server_script": server_script,
         "tailwind_built": tailwind_css_path is not None,

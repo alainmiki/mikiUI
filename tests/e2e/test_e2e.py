@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import pytest
-import asyncio
-from playwright.sync_api import sync_playwright, Page
+from playwright.sync_api import sync_playwright
 from starlette.testclient import TestClient
 
-from mikiui.examples.demo1 import app
 from mikiui.backend.server import create_app
+from mikiui.examples.demo1 import app
 
 # Skip if Playwright is not installed
 try:

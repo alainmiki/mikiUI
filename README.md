@@ -2,7 +2,7 @@
 
 # MikiUI
 
-**Build beautiful web, desktop, and mobile apps — entirely in Python.**
+**Build beautiful web and desktop apps — entirely in Python.**
 
 [![PyPI version](https://img.shields.io/pypi/v/mikiui)](https://pypi.org/project/mikiui/)
 [![Python](https://img.shields.io/pypi/pyversions/mikiui)](https://pypi.org/project/mikiui/)
@@ -14,11 +14,13 @@
 
 ---
 
-MikiUI is a Python-first UI framework that lets you build **web applications, native desktop windows, and mobile-friendly interfaces** from a single codebase. No JavaScript required for logic — just Python classes that map to HTML, with a modern component API, built-in security, and real-time capabilities.
+MikiUI is a Python-first UI framework that lets you build **web applications and native desktop windows** from a single codebase. No JavaScript required for logic — just Python classes that map to HTML, with a modern component API, built-in security, and real-time capabilities.
+
+> **Mobile (PWA)** support is planned for v0.3. The web output is already responsive and mobile-friendly; native mobile wrappers (Capacitor) are on the roadmap.
 
 ## Why MikiUI?
 
-- **One codebase, every target** — deploy as a website, a desktop app (pywebview), or a mobile-responsive PWA
+- **One codebase, multiple targets** — deploy as a website, a native desktop app (pywebview), or a static site
 - **Python-first** — write routes, components, and state in pure Python; the framework handles HTML, CSS, and JS interop
 - **60+ components and widgets** — from buttons and forms to data grids, IDE editors, chat UIs, and MDI workspaces
 - **Real-time built in** — WebSocket with rooms/channels, SSE, and auth integration
@@ -77,7 +79,7 @@ app = MikiApp(title="My App")
 def home():
     return Div(
         H1("Welcome to MikiUI!"),
-        P("Build web, desktop, and mobile apps in Python."),
+        P("Build web and desktop apps in Python."),
         Button("Get Started", class_="miki-btn-primary"),
         class="flex flex-col items-center justify-center h-screen gap-4",
     )
@@ -105,8 +107,9 @@ Open `http://127.0.0.1:8000` in your browser.
 |--------|---------|-------------|
 | **Website** | `mikiui dev` | FastAPI + HTMX dev server |
 | **Desktop App** | `mikiui desktop` | Native pywebview window |
-| **Mobile PWA** | `mikiui build --target web` | Installable progressive web app |
-| **Static Site** | `mikiui build --target web` | Pre-rendered HTML for any host |
+| **Static Site** | `mikiui build --target web --mode separate` | Pre-rendered HTML for any host |
+| **Fullstack App** | `mikiui build --target web --mode fullstack` | Static HTML + ASGI server script |
+| **Desktop Package** | `mikiui build --target desktop` | PyInstaller-based native executable |
 | **API Backend** | `create_app(app)` | FastAPI with OpenAPI docs |
 
 ---
@@ -117,7 +120,7 @@ Open `http://127.0.0.1:8000` in your browser.
 All HTML elements as Python classes (`Button`, `Input`, `Form`, `Table`, `Dialog`, `Tabs`) plus high-level widgets (`DataGrid`, `MediaPlayer`, `DockablePanel`, `IDEEditor`, `ChatUI`, `KanbanBoard`, `Calendar`, `Carousel`, and more).
 
 ### Routing
-Type-coerled path params, route groups, pattern-matched lookup, and per-route auth:
+Type-coerced path params, route groups, pattern-matched lookup, and per-route auth:
 
 ```python
 @app.route("/users/{user_id:int}", summary="Get user", tags=["users"])
@@ -159,27 +162,12 @@ Tailwind CSS (with optional DaisyUI) or plain CSS — switch without changing ap
 | `mikiui new <name>` | Scaffold a new project |
 | `mikiui dev` | Development server with hot-reload |
 | `mikiui desktop` | Native desktop window |
-| `mikiui build --target web` | Static web build |
-| `mikiui build --target desktop` | Desktop package |
+| `mikiui build --target web` | Static web build (fullstack by default) |
+| `mikiui build --target web --mode separate` | Static site only |
+| `mikiui build --target desktop` | Desktop package (auto-installs PyInstaller) |
+| `mikiui build --target desktop --onefile` | Single-file desktop executable |
 | `mikiui tailwind dev` | Watch & rebuild Tailwind CSS |
 | `mikiui install tailwind` | Install Tailwind + npm deps |
-
----
-
-## Documentation
-
-| Guide | Description |
-|-------|-------------|
-| [Getting Started](docs/getting-started.md) | Installation, first app, CLI reference |
-| [API Reference](docs/api-reference.md) | Full method signatures and examples |
-| [Widget Catalog](docs/widgets.md) | All 60+ widgets with examples |
-| [Router Guide](docs/router-guide.md) | Routing, groups, middleware |
-| [Security Guide](docs/security.md) | CSRF, auth, headers, plugin security |
-| [Styling Guide](docs/styling.md) | Tailwind, plain CSS, themes |
-| [Plugin System](docs/plugins.md) | Creating and publishing plugins |
-| [Deployment](docs/deployment.md) | Production setup, static export |
-| [Themes](docs/themes.md) | Built-in and custom themes |
-| [Changelog](docs/changelog.md) | Version history |
 
 ---
 
@@ -227,6 +215,23 @@ async def chat_handler(ws, manager):
 
 ---
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/getting-started.md) | Installation, first app, CLI reference |
+| [API Reference](docs/api-reference.md) | Full method signatures and examples |
+| [Widget Catalog](docs/widgets.md) | All 60+ widgets with examples |
+| [Router Guide](docs/router-guide.md) | Routing, groups, middleware |
+| [Security Guide](docs/security.md) | CSRF, auth, headers, plugin security |
+| [Styling Guide](docs/styling.md) | Tailwind, plain CSS, themes |
+| [Plugin System](docs/plugins.md) | Creating and publishing plugins |
+| [Deployment](docs/deployment.md) | Production setup, static export |
+| [Themes](docs/themes.md) | Built-in and custom themes |
+| [Changelog](docs/changelog.md) | Version history |
+
+---
+
 ## Development Setup (Contributors)
 
 To set up the project for development:
@@ -253,6 +258,16 @@ python -m build
 mikiui build --target web
 mikiui build --target desktop
 ```
+
+---
+
+## Roadmap
+
+| Version | Focus |
+|---------|-------|
+| v0.2 | Core framework hardening, security, API docs, CLI |
+| v0.3 | Mobile wrappers (Capacitor), PWA, native bridges |
+| v0.4 | Plugin marketplace, database/Redis integration |
 
 ---
 

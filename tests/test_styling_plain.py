@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from mikiui.styling.plain_css import register_plain_theme, runtime_html, validate_plain_css_paths
 from mikiui.styling.system import PlainCssConfig
 

@@ -57,10 +57,12 @@ mikiui/
 │   └── middleware.py
 │
 ├── build/              # Packaging system
-│   ├── init.py
-│   ├── web_build.py
-│   ├── desktop_build.py
-│   └── optimizer.py
+│   ├── __init__.py
+│   ├── web_build.py    # Static site generator (fullstack/separate), sitemap, robots.txt, 404
+│   ├── desktop_build.py # PyInstaller integration, auto-install, platform bundles
+│   ├── mobile_build.py # Capacitor-based mobile packaging (placeholder)
+│   ├── optimizer.py    # CSS/JS minification
+│   └── tailwind/       # Tailwind v4 + DaisyUI v5 integration
 │
 ├── media/              # Streaming, recording, EQ
 │   ├── init.py

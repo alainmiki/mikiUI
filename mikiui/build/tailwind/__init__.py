@@ -125,6 +125,24 @@ def daisyui_config(theme: str = "dark") -> dict[str, Any]:
     return {f"mikiui-{theme}": daisyui_theme}
 
 
+def _resolve_daisyui_plugin_path() -> str | None:
+    """Return the filesystem path to the DaisyUI v5 Tailwind plugin JS.
+
+    Checks the bundled runtime first, then the project's ``node_modules``.
+    Returns ``None`` if the plugin cannot be found.
+    """
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "runtime", "daisyui.min.js"),
+        os.path.join(os.getcwd(), "node_modules", "daisyui", "dist", "daisyui.min.js"),
+        os.path.join(os.getcwd(), "node_modules", "daisyui", "daisyui.min.js"),
+    ]
+    for candidate in candidates:
+        candidate = os.path.abspath(candidate)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
 def tailwind_config(
     theme: str = "light",
     daisyui: bool = False,
@@ -162,18 +180,24 @@ def tailwind_config(
     }
 
     if daisyui:
-        import os
+        daisyui_path = _resolve_daisyui_plugin_path()
+        if daisyui_path is None:
+            import warnings
 
-        daisyui_path = os.path.join(
-            os.path.dirname(__file__), "..", "runtime", "daisyui.min.js"
-        )
-        config["plugins"].append(f"'{daisyui_path}'")
-        config["daisyui"] = {
-            "themes": [daisyui_config(theme)],
-            "base": True,
-            "styled": True,
-            "prefix": "miki-",
-        }
+            warnings.warn(
+                "DaisyUI plugin not found. "
+                "Run 'mikiui install tailwind daisyui' to install npm dependencies, "
+                "or use Tailwind CDN mode (no local build required). "
+                "Falling back to Tailwind without DaisyUI."
+            )
+        else:
+            config["plugins"].append(f"'{daisyui_path}'")
+            config["daisyui"] = {
+                "themes": [daisyui_config(theme)],
+                "base": True,
+                "styled": True,
+                "prefix": "miki-",
+            }
 
     return config
 

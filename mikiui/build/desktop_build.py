@@ -11,9 +11,11 @@ distributable directory or PyInstaller spec for desktop deployment.
 
 from __future__ import annotations
 
+import html as _html
 import importlib
 import os
 import platform
+import shutil
 import sys
 import threading
 import time
@@ -21,20 +23,52 @@ import urllib.request
 import webbrowser
 from typing import Any
 
+
+def _esc(value: Any) -> str:
+    return _html.escape(str(value), quote=True)
+
+
 try:  # pragma: no cover - optional dependency
     import webview as _webview
 except Exception:  # pragma: no cover
     _webview = None  # type: ignore[assignment]
 
 
+def _ensure_pyinstaller() -> tuple[bool, str | None]:
+    """Ensure PyInstaller is importable, installing it if necessary.
+
+    Returns ``(available, error)``.
+    """
+    try:
+        import PyInstaller.__main__  # noqa: F401
+        return True, None
+    except Exception:
+        pass
+    try:
+        import subprocess
+        import sys
+
+        proc = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet", "pyinstaller"],
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode == 0:
+            import PyInstaller.__main__  # noqa: F401
+            return True, None
+        return False, f"pip install pyinstaller failed: {proc.stderr}"
+    except Exception as exc:
+        return False, str(exc)
+
+
 def _has_pywebview() -> bool:
     """Return True if the ``webview`` (pywebview) package is importable."""
-    return "webview" in sys.modules
+    return _webview is not None
 
 
 def _import_webview() -> Any | None:
     """Import the ``webview`` module, returning ``None`` if unavailable."""
-    return sys.modules.get("webview")
+    return _webview
 
 
 def _infer_app_spec(app: Any) -> str:
@@ -89,11 +123,19 @@ def _start_server(miki_app: Any, host: str, port: int, runtime: str = "local") -
         log_level="warning",
         timeout_graceful_shutdown=2,
     )
-    # Create a socket with SO_REUSEADDR to allow quick rebinding after restart
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((host, port))
-    sock.listen(128)
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((host, port))
+        sock.listen(128)
+    except Exception:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
+        raise
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
     thread.start()
@@ -398,7 +440,13 @@ def _watch_and_restart(
     except Exception:
         watch_filter = None
     try:
+        pending = False
         for _changes in watch(root, stop_event=stop_event, watch_filter=watch_filter):
+            if pending:
+                continue
+            pending = True
+            time.sleep(0.3)
+            pending = False
             _restart_server(app_spec, host, port, runtime, app, window)
     except Exception:
         pass
@@ -486,6 +534,86 @@ def _platform_executable_name(base: str) -> str:
     return base
 
 
+def _create_platform_bundle(
+    out_dir: str,
+    app_title: str,
+    icon: str | None,
+) -> str | None:
+    """Create a platform-native bundle from a PyInstaller ``dist`` directory.
+
+    On macOS this wraps the executable in a ``.app`` bundle.  On other
+    platforms it simply returns the executable path.
+    """
+    system = platform.system().lower()
+    executable_name = _platform_executable_name("mikiui_app")
+    dist_dir = os.path.join(out_dir, "dist")
+    executable = os.path.join(dist_dir, executable_name)
+    if not os.path.exists(executable):
+        return None
+
+    if system == "darwin":
+        bundle_name = f"{app_title}.app"
+        bundle_dir = os.path.join(out_dir, bundle_name)
+        contents_macos = os.path.join(bundle_dir, "Contents")
+        macos_dir = os.path.join(contents_macos, "MacOS")
+        resources_dir = os.path.join(contents_macos, "Resources")
+        os.makedirs(macos_dir, exist_ok=True)
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Copy executable
+        bundle_executable = os.path.join(macos_dir, "mikiui_app")
+        shutil.copy2(executable, bundle_executable)
+        os.chmod(bundle_executable, 0o755)
+
+        # Copy icon if available
+        if icon and os.path.isfile(icon):
+            icon_name = os.path.basename(icon)
+            if icon_name.endswith(".icns"):
+                shutil.copy2(icon, os.path.join(resources_dir, icon_name))
+
+        # Write Info.plist
+        bundle_id = f"com.mikiui.{app_title.lower().replace(' ', '')}"
+        plist = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>mikiui_app</string>
+    <key>CFBundleIdentifier</key>
+    <string>{bundle_id}</string>
+    <key>CFBundleName</key>
+    <string>{_esc(app_title)}</string>
+    <key>CFBundleDisplayName</key>
+    <string>{_esc(app_title)}</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+"""
+        with open(os.path.join(contents_macos, "Info.plist"), "w", encoding="utf-8") as fh:
+            fh.write(plist)
+
+        # Copy web build from PyInstaller output into the .app bundle.
+        # PyInstaller places the bundled data in the same directory as the executable
+        # for onedir builds. For onefile, the data is extracted at runtime.
+        web_src = os.path.join(out_dir, "dist")
+        if os.path.isdir(web_src):
+            web_dst = os.path.join(resources_dir, "_miki_web")
+            if os.path.exists(web_dst):
+                shutil.rmtree(web_dst)
+            shutil.copytree(web_src, web_dst)
+
+        return bundle_dir
+
+    return executable
+
+
 def build_desktop(
     miki_app: Any,
     out_dir: str = "dist_desktop",
@@ -496,10 +624,16 @@ def build_desktop(
 ) -> dict[str, Any]:
     """Build the app for desktop deployment.
 
-    Produces a distributable directory (or PyInstaller spec) containing:
+    Produces a distributable directory containing:
     - The web build (static front-end + ASGI server script).
     - A portable launcher script.
-    - A PyInstaller spec file for native packaging on each platform.
+    - A native desktop executable built with PyInstaller (auto-installed if missing).
+    - A platform-native bundle (``.app`` on macOS, ``.exe`` on Windows, ELF on Linux).
+
+    PyInstaller is installed automatically if it is not already available.
+    If PyInstaller fails, the build still returns a usable directory with the
+    web build and launcher scripts, plus a ``warning`` field describing the
+    failure.
 
     Parameters
     ----------
@@ -520,7 +654,8 @@ def build_desktop(
     -------
     dict
         A report with keys: ``status``, ``out_dir``, ``platform``,
-        ``web_build_dir``, ``launcher``, ``spec``, ``executable_name``.
+        ``web_build_dir``, ``launcher``, ``spec``, ``bundle``, ``warning``,
+        ``executable_name``, ``app_spec``.
     """
     out = os.path.abspath(out_dir)
     os.makedirs(out, exist_ok=True)
@@ -574,8 +709,8 @@ def build_desktop(
     if platform.system().lower() != "windows":
         os.chmod(launcher_path, 0o755)
 
-    # 3. Generate a PyInstaller spec file.
-    spec_path = _write_pyinstaller_spec(
+    # 3. Generate a PyInstaller spec file and run the build.
+    spec_path, pyinstaller_error = _write_pyinstaller_spec(
         out,
         spec=spec,
         web_build_dir=web_build_dir,
@@ -592,14 +727,18 @@ def build_desktop(
     system = platform.system().lower()
     executable_name = meta.get(system, meta["linux"])["executable"]
 
+    status = "ok" if pyinstaller_error is None else "partial"
+    bundle_path = _create_platform_bundle(out, miki_app.title, icon)
     return {
-        "status": "ok",
+        "status": status,
+        "warning": pyinstaller_error,
         "out_dir": out,
         "platform": system,
         "web_build_dir": web_build_dir,
         "launcher": launcher_path,
         "spec": spec_path,
         "executable_name": executable_name,
+        "bundle": bundle_path,
         "app_spec": spec,
     }
 
@@ -634,15 +773,14 @@ def _write_pyinstaller_spec(
     web_build_dir: str,
     icon: str | None,
     onefile: bool,
-) -> str | None:
-    """Write a ``.spec`` file for PyInstaller.
+) -> tuple[str | None, str | None]:
+    """Write a ``.spec`` file for PyInstaller and run the build.
 
-    Returns the spec path, or ``None`` if PyInstaller is unavailable.
+    Returns ``(spec_path, error)``.  On success ``error`` is ``None``.
     """
-    try:
-        import PyInstaller.__main__  # noqa: F401
-    except Exception:
-        return None
+    available, install_err = _ensure_pyinstaller()
+    if not available:
+        return None, f"PyInstaller is required for desktop packaging. {install_err}"
 
     mod_name, _, attr = spec.partition(":")
     entry_script = os.path.join(out_dir, "_pyinstaller_entry.py")
@@ -660,13 +798,16 @@ def _write_pyinstaller_spec(
     spec_name = f"mikiui_{platform.system().lower()}.spec"
     spec_path = os.path.join(out_dir, spec_name)
 
+    import PyInstaller.__main__
+
+    web_build_basename = os.path.basename(web_build_dir.rstrip(os.sep))
     args = [
         entry_script,
         f"--name={_platform_executable_name('mikiui_app')}",
         f"--specpath={out_dir}",
         f"--distpath={os.path.join(out_dir, 'dist')}",
         f"--workpath={os.path.join(out_dir, 'build')}",
-        f"--contents-directory={web_build_dir}",
+        f"--contents-directory={web_build_basename}",
     ]
     if onefile:
         args.append("--onefile")
@@ -682,9 +823,16 @@ def _write_pyinstaller_spec(
     ])
 
     try:
-        import PyInstaller.__main__
         PyInstaller.__main__.run(args)
-    except Exception:
-        return None
+    except SystemExit as exc:
+        if exc.code:
+            return None, f"PyInstaller exited with code {exc.code}"
+    except Exception as exc:
+        return None, str(exc)
 
-    return spec_path
+    expected = os.path.join(out_dir, "dist", _platform_executable_name("mikiui_app"))
+    if not os.path.exists(expected):
+        if onefile:
+            return spec_path, "PyInstaller completed but the expected executable was not found."
+        return spec_path, None
+    return spec_path, None

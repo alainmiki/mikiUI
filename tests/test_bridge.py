@@ -1,6 +1,5 @@
 """Unit tests for mikiui.engine.bridge."""
 
-import pytest
 
 from mikiui.engine.bridge import (
     BridgeEvent,

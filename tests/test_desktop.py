@@ -8,7 +8,14 @@ from unittest import mock
 import pytest
 
 from mikiui import Div, MikiApp
-from mikiui.build.desktop_build import _has_pywebview, _infer_app_spec, _wait_for_server, run_desktop
+from mikiui.build.desktop_build import (
+    _create_platform_bundle,
+    _has_pywebview,
+    _infer_app_spec,
+    _wait_for_server,
+    build_desktop,
+    run_desktop,
+)
 
 
 def make_app() -> MikiApp:
@@ -137,7 +144,7 @@ def test_run_desktop_reload_falls_back_to_app_desktop_icon():
 def test_run_desktop_passes_kwargs_to_browser():
     """run_desktop should forward all parameters to the browser path."""
     app = make_app()
-    with mock.patch("mikiui.build.desktop_build._start_server") as start, mock.patch(
+    with mock.patch("mikiui.build.desktop_build._start_server"), mock.patch(
         "mikiui.build.desktop_build._run_webview"
     ), mock.patch("mikiui.build.desktop_build._wait_for_server", return_value=True), mock.patch(
         "mikiui.build.desktop_build.threading.Thread"
@@ -222,7 +229,7 @@ def test_run_native_reload_calls_restart_server():
          mock.patch.object(db, "_run_webview") as webview_fn, \
          mock.patch.object(db, "_stop_server"), \
          mock.patch.object(db.threading, "Thread") as thread_mock, \
-         mock.patch.dict("sys.modules", {"webview": fake_webview}):
+         mock.patch.object(db, "_webview", fake_webview):
         window = mock.MagicMock()
         webview_fn.return_value = window
         start.return_value = mock.MagicMock()
@@ -248,3 +255,94 @@ def test_run_native_reload_calls_restart_server():
         _restart_server("mod:app", "127.0.0.1", 8000, "local", fake_app, fake_window)
         start_new.assert_called()
         fake_window.evaluate_js.assert_called_with("location.reload()")
+
+
+def test_ensure_pyinstaller_installs_missing_package(tmp_path):
+    """_ensure_pyinstaller should attempt pip install when PyInstaller is missing."""
+    import mikiui.build.desktop_build as db
+
+    fake_proc = mock.MagicMock()
+    fake_proc.returncode = 0
+    fake_proc.stderr = ""
+
+    import builtins
+    original_import = builtins.__import__
+    call_count = {"pyinstaller": 0}
+
+    def fake_import(name, *args, **kwargs):
+        if name == "PyInstaller.__main__":
+            call_count["pyinstaller"] += 1
+            if call_count["pyinstaller"] == 1:
+                raise ImportError("no PyInstaller")
+            # Second call: return a fake module
+            fake_mod = mock.MagicMock()
+            return fake_mod
+        return original_import(name, *args, **kwargs)
+
+    with mock.patch.object(builtins, "__import__", side_effect=fake_import), \
+         mock.patch("subprocess.run", return_value=fake_proc) as run_mock:
+        result = db._ensure_pyinstaller()
+        assert result == (True, None)
+        run_mock.assert_called_once()
+
+
+def test_build_desktop_report_includes_warning_and_bundle(tmp_path):
+    """build_desktop should include warning and bundle fields in the report."""
+    app = make_app()
+    with mock.patch("mikiui.build.desktop_build._build_web_for_desktop"), \
+         mock.patch("mikiui.build.desktop_build._infer_app_spec", return_value="mikiui.app.app:app"), \
+         mock.patch("mikiui.build.desktop_build._write_pyinstaller_spec", return_value=(None, "PyInstaller missing")), \
+         mock.patch("mikiui.build.desktop_build._create_platform_bundle", return_value=None), \
+         mock.patch("mikiui.build.desktop_build.platform.system", return_value="Linux"):
+        report = build_desktop(app, out_dir=str(tmp_path), app_spec="mikiui.app.app:app")
+        assert "warning" in report
+        assert "bundle" in report
+        assert report["status"] == "partial"
+
+
+def test_build_desktop_report_includes_bundle_on_success(tmp_path):
+    """build_desktop should include bundle path when PyInstaller succeeds."""
+    app = make_app()
+    fake_spec = str(tmp_path / "mikiui_linux.spec")
+    with mock.patch("mikiui.build.desktop_build._build_web_for_desktop"), \
+         mock.patch("mikiui.build.desktop_build._infer_app_spec", return_value="mikiui.app.app:app"), \
+         mock.patch("mikiui.build.desktop_build._write_pyinstaller_spec", return_value=(fake_spec, None)), \
+         mock.patch("mikiui.build.desktop_build._create_platform_bundle", return_value=str(tmp_path / "mikiui_app")), \
+         mock.patch("mikiui.build.desktop_build.platform.system", return_value="Linux"):
+        report = build_desktop(app, out_dir=str(tmp_path), app_spec="mikiui.app.app:app")
+        assert report["status"] == "ok"
+        assert report["bundle"] is not None
+
+
+def test_create_platform_bundle_returns_none_when_executable_missing(tmp_path):
+    """_create_platform_bundle should return None if PyInstaller output is missing."""
+    with mock.patch("mikiui.build.desktop_build.platform.system", return_value="Linux"):
+        result = _create_platform_bundle(str(tmp_path), "Test", None)
+        assert result is None
+
+
+def test_create_platform_bundle_creates_macos_app(tmp_path):
+    """_create_platform_bundle should create a .app bundle on macOS."""
+    dist_dir = tmp_path / "dist"
+    dist_dir.mkdir()
+    # Use a fixed executable name that _create_platform_bundle expects on macOS
+    executable_name = "mikiui_app.app"
+    executable = dist_dir / executable_name
+    executable.write_text("fake binary")
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    (web_dir / "index.html").write_text("<html></html>")
+    icon = tmp_path / "icon.icns"
+    icon.write_text("fake icns")
+
+    with mock.patch("mikiui.build.desktop_build.platform.system", return_value="Darwin"), \
+         mock.patch("mikiui.build.desktop_build._platform_executable_name", return_value=executable_name):
+        result = _create_platform_bundle(str(tmp_path), "MyApp", str(icon))
+
+    assert result is not None
+    assert result.endswith(".app")
+    assert os.path.isdir(result)
+    contents = os.path.join(result, "Contents")
+    assert os.path.isdir(os.path.join(contents, "MacOS"))
+    assert os.path.isdir(os.path.join(contents, "Resources"))
+    assert os.path.isfile(os.path.join(contents, "Info.plist"))
