@@ -1,0 +1,171 @@
+site_name: MikiUI
+site_url: https://alainmiki.github.io/mikiUI/
+site_description: Python-first UI framework that renders UIs as standalone desktops or websites.
+site_author: Alain Miki
+
+repo_name: mikiUI
+repo_url: https://github.com/alainmiki/mikiUI
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  custom_dir: overrides
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - navigation.prune
+    - navigation.indexes
+    - toc.integrate
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - content.tabs.link
+    - announce.dismiss
+  icon:
+    repo: fontawesome/brands/github
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book-open
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/lightbulb
+      success: fontawesome/solid/check-circle
+      question: fontawesome/solid/question-circle
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/circle-xmark
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/robot
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - What is MikiUI?: guide/what-is-mikiui.md
+      - Why MikiUI?: guide/why-mikiui.md
+      - Getting Started: guide/getting-started.md
+      - Installation: guide/installation.md
+      - Quick Start: guide/quick-start.md
+  - Tutorial:
+      - 16-Step Tutorial: guide/tutorial.md
+  - Core Features:
+      - Components: guide/components.md
+      - Widgets: guide/widgets.md
+      - Routing: guide/routing.md
+      - Styling: guide/styling.md
+      - Themes: guide/themes.md
+  - Advanced:
+      - Plugins: guide/plugins.md
+      - Security: guide/security.md
+      - API Reference: guide/api-reference.md
+      - Deployment: guide/deployment.md
+      - CLI Reference: guide/cli-reference.md
+  - Resources:
+      - Changelog: changelog.md
+      - Contributing: contributing.md
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alainmiki/mikiUI
+      name: mikiUI on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/mikiui/
+      name: mikiUI on PyPI
+    - icon: fontawesome/brands/youtube
+      link: https://youtube.com/@codewithmiki6849
+      name: Code with Miki on YouTube
+    - icon: fontawesome/brands/facebook
+      link: https://www.facebook.com/profile.php?id=100063798107667
+      name: Alain Miki on Facebook
+    - icon: fontawesome/brands/instagram
+      link: https://www.instagram.com/alain_miki
+      name: Alain Miki on Instagram
+    - icon: fontawesome/brands/facebook
+      link: https://www.facebook.com/codewithmiki
+      name: Code with Miki on Facebook
+  version:
+    provider: mike
+  homepage: https://alainmiki.github.io/mikiUI/
+  generator: true
+  annotate:
+    json: [.s2s]
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - tags
+  - meta
+  - offline:
+      enabled: !ENV [READTHEDOCS, false]
+  - social:
+      cards: true
+      cards_layout_options:
+        color: "#1a1a2e"
+        font_family: Roboto
+  - optimize:
+      enabled: !ENV [READTHEDOCS, false]
+      concurrency: 4

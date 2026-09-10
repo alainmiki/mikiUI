@@ -219,15 +219,15 @@ async def chat_handler(ws, manager):
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs/getting-started.md) | Installation, first app, CLI reference |
-| [API Reference](docs/api-reference.md) | Full method signatures and examples |
-| [Widget Catalog](docs/widgets.md) | All 60+ widgets with examples |
-| [Router Guide](docs/router-guide.md) | Routing, groups, middleware |
-| [Security Guide](docs/security.md) | CSRF, auth, headers, plugin security |
-| [Styling Guide](docs/styling.md) | Tailwind, plain CSS, themes |
-| [Plugin System](docs/plugins.md) | Creating and publishing plugins |
-| [Deployment](docs/deployment.md) | Production setup, static export |
-| [Themes](docs/themes.md) | Built-in and custom themes |
+| [Getting Started](docs/guide/getting-started.md) | Installation, first app, CLI reference |
+| [API Reference](docs/guide/api-reference.md) | Full method signatures and examples |
+| [Widget Catalog](docs/guide/widgets.md) | All 60+ widgets with examples |
+| [Router Guide](docs/guide/routing.md) | Routing, groups, middleware |
+| [Security Guide](docs/guide/security.md) | CSRF, auth, headers, plugin security |
+| [Styling Guide](docs/guide/styling.md) | Tailwind, plain CSS, themes |
+| [Plugin System](docs/guide/plugins.md) | Creating and publishing plugins |
+| [Deployment](docs/guide/deployment.md) | Production setup, static export |
+| [Themes](docs/guide/themes.md) | Built-in and custom themes |
 | [Changelog](docs/changelog.md) | Version history |
 
 ---

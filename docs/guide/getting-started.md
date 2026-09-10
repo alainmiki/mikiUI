@@ -1,17 +1,6 @@
-# Getting Started with MikiUI
+# Getting Started
 
-MikiUI is a Python-first UI framework that lets you build user interfaces as
-standalone desktop apps or websites. It uses FastAPI for the backend, HTMX +
-Alpine.js for the frontend runtime, and a Python component API that maps
-directly to HTML elements.
-
-## When to Use MikiUI
-
-- You want to build UIs **in Python** without touching JavaScript for logic.
-- You need **both web and desktop** deployment from the same codebase.
-- You prefer **server-side rendering** with optimistic client-side updates.
-- You want a **beginner-friendly API** that is still powerful enough for
-  advanced use cases (plugins, custom components, widgets).
+This guide will help you set up MikiUI and create your first app.
 
 ## Prerequisites
 
@@ -77,8 +66,7 @@ Run it:
 python app.py
 ```
 
-Open `http://127.0.0.1:8000` in your browser. You should see a centered heading,
-paragraph, and button.
+Open `http://127.0.0.1:8000` in your browser. You should see a centered heading, paragraph, and button.
 
 ## CLI Quick Reference
 
@@ -112,9 +100,7 @@ myapp/
   package.json         # Node.js dependencies (if using Tailwind)
 ```
 
-The `static/` directory is created automatically when you run `mikiui new` with
-the `plain` framework. Any file placed in `static/` is served at
-`/static/<path>` with no extra configuration.
+The `static/` directory is created automatically when you run `mikiui new` with the `plain` framework. Any file placed in `static/` is served at `/static/<path>` with no extra configuration.
 
 For **plain CSS** projects, the Tailwind files are omitted.
 
@@ -133,8 +119,7 @@ When you run `mikiui new`, you choose a CSS framework:
 mikiui dev
 ```
 
-This starts a FastAPI + uvicorn server with hot-reloading at
-`http://127.0.0.1:8000`. Any change to `app.py` triggers a reload.
+This starts a FastAPI + uvicorn server with hot-reloading at `http://127.0.0.1:8000`. Any change to `app.py` triggers a reload.
 
 ### Tailwind Projects
 
@@ -148,9 +133,7 @@ mikiui dev
 mikiui tailwind dev
 ```
 
-The watcher scans your Python files for Tailwind classes and rebuilds CSS
-automatically. In dev mode without the watcher, MikiUI falls back to the
-Tailwind CDN so styles load immediately.
+The watcher scans your Python files for Tailwind classes and rebuilds CSS automatically. In dev mode without the watcher, MikiUI falls back to the Tailwind CDN so styles load immediately.
 
 ## Running in Desktop Mode
 
@@ -158,8 +141,7 @@ Tailwind CDN so styles load immediately.
 mikiui desktop
 ```
 
-This launches a native window using **pywebview** (if installed). If pywebview
-is unavailable, it falls back to your system browser.
+This launches a native window using **pywebview** (if installed). If pywebview is unavailable, it falls back to your system browser.
 
 Useful flags:
 
@@ -168,43 +150,6 @@ mikiui desktop --reload      # Auto-refresh on file changes
 mikiui desktop --browser     # Force browser fallback
 mikiui desktop --width 1280 --height 800  # Window size
 ```
-
-## Mobile & PWA
-
-MikiUI apps are mobile-responsive by default. The framework generates semantic HTML with ARIA attributes, and the CSS is responsive out of the box.
-
-To build an installable Progressive Web App:
-
-```bash
-mikiui build --target web
-```
-
-This generates a `dist/` directory with:
-- Pre-rendered HTML pages
-- A `manifest.webmanifest` for installability
-- Service worker support via the PWA plugin
-- Responsive CSS that adapts to any screen size
-
-Deploy `dist/` to any static host (Netlify, Vercel, GitHub Pages, S3) and your app is accessible on phones, tablets, and desktops.
-
----
-
-## Next Steps
-
-- **Components**: Read [Component Reference](components.md) for all HTML
-  element mappings.
-- **Widgets**: Browse [Widget Catalog](widgets.md) for high-level composite
-  UI patterns.
-- **Styling**: See [Styling Guide](styling.md) for Tailwind and theme customization.
-- **Static Files**: See [Deployment Guide](deployment.md#static-assets) for
-  component static assets, custom mounts, and cache headers.
-- **Plugins**: Learn about the plugin system in [Plugins Guide](plugins.md),
-  including the security model (manifest validation, AST vetting, import
-  allow-list) and the marketplace client.
-- **Security**: Read [Security Guide](security.md) for plugin security
-  configuration and the [Plugin Security](#plugin-security) section below.
-- **API**: Consult [API Reference](api-reference.md) for full method signatures.
-- **Deployment**: Read [Deployment Guide](deployment.md) for production setups.
 
 ## Plugin Security
 
@@ -260,5 +205,74 @@ app.set_plugin_security_config(PluginSecurityConfig(allow_untrusted=True))
 plugin = market.install("chart-widget", app)
 ```
 
-See [Plugins Guide](plugins.md) and [Security Guide](security.md) for full
+See [Plugins Guide](plugins.md) and [Security Guide](../guide/security.md) for full
 details.
+
+## Mobile & PWA
+
+MikiUI apps are mobile-responsive by default. The framework generates semantic HTML with ARIA attributes, and the CSS is responsive out of the box.
+
+To build an installable Progressive Web App:
+
+```bash
+mikiui build --target web
+```
+
+This generates a `dist/` directory with:
+- Pre-rendered HTML pages
+- A `manifest.webmanifest` for installability
+- Service worker support via the PWA plugin
+- Responsive CSS that adapts to any screen size
+
+Deploy `dist/` to any static host (Netlify, Vercel, GitHub Pages, S3) and your app is accessible on phones, tablets, and desktops.
+
+## App Discovery
+
+When you run `mikiui dev` or `mikiui desktop` **without** `--app`, MikiUI
+automatically finds your app by searching the current directory for a file
+named `app.py`, `main.py`, or `server.py` that contains a `MikiApp` instance.
+
+The search order is:
+1. `app.py` — the recommended convention.
+2. `main.py` — a common alternative.
+3. `server.py` — another common name.
+4. Any `*.py` file in the current directory root.
+
+If no `MikiApp` is found, MikiUI falls back to the demo app.
+
+### Explicit App Specification
+
+You can always specify the app explicitly:
+
+```bash
+mikiui dev --app myapp:app
+mikiui desktop --app myapp:app
+```
+
+The format is `module.path:attribute_name`. If the attribute is omitted,
+MikiUI defaults to `app`.
+
+### `app.run()` — The Simple Way
+
+For the most beginner-friendly experience, add this to the bottom of your
+`app.py`:
+
+```python
+if __name__ == "__main__":
+    app.run()
+```
+
+Then just run:
+
+```bash
+python app.py
+```
+
+For desktop mode:
+
+```python
+if __name__ == "__main__":
+    app.run(desktop=True)      # Native pywebview window
+    # or
+    app.run(desktop=True, reload=True)  # With auto-reload
+```

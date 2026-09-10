@@ -1,0 +1,33 @@
+exclude .gitignore
+exclude .python-version
+exclude Makefile
+exclude package.json
+exclude postcss.config.js
+exclude tailwind.config.js
+exclude agent.md
+
+prune docs
+prune examples
+prune context
+prune tests
+prune static
+recursive-exclude .kilo *
+recursive-exclude .mikiui *
+recursive-exclude .github *
+recursive-exclude overrides *
+
+recursive-exclude mikiui/examples *
+
+recursive-exclude mikiui_app_plugins demo.py
+recursive-exclude mikiui_app_plugins __pycache__
+recursive-exclude mikiui_app_plugins *.pyc
+
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude .mypy_cache
+global-exclude .pytest_cache
+global-exclude .ruff_cache
+global-exclude htmlcov

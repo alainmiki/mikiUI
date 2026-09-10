@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block announce %}
+<div class="md-announce" role="banner">
+  <div class="md-announce__inner">
+    <span>🚀 <strong>MikiUI v0.3.0</strong> is now available with hardened build system, Tailwind/DaisyUI fixes, and production-ready desktop packaging!</span>
+    <a href="https://github.com/alainmiki/mikiUI/releases" target="_blank" rel="noopener">View Release Notes</a>
+    <button class="md-announce__button" onclick="this.closest('.md-announce').remove()" aria-label="Dismiss announcement">
+      <span class="md-icon">&#10005;</span>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extrahead %}
+<meta name="theme-color" content="#1a1a2e">
+<meta name="description" content="MikiUI — Python-first UI framework that renders UIs as standalone desktops or websites.">
+<meta property="og:title" content="MikiUI - Python-first UI framework">
+<meta property="og:description" content="Build web, desktop, and mobile-friendly apps entirely in Python. FastAPI + HTMX + Alpine.js with Tailwind CSS support.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://alainmiki.github.io/mikiUI/">
+<meta property="og:image" content="https://alainmiki.github.io/mikiUI/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MikiUI - Python-first UI framework">
+<meta name="twitter:description" content="Build web, desktop, and mobile-friendly apps entirely in Python.">
+{% endblock %}
+
+{% block footer %}
+{{ super() }}
+<div class="md-footer__credits">
+  <span class="md-footer__credits-text">
+    Made by <a href="https://github.com/alainmiki">Alain Miki</a> — also check out <a href="https://github.com/alainmiki/miki-template">miki-template</a> and <a href="https://github.com/alainmiki/mikiORM">mikiORM</a>
+  </span>
+</div>
+{% endblock %}

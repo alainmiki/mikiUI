@@ -44,9 +44,11 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["mikiui*", "mikiui_app_plugins*"]
+exclude = ["mikiui.examples*"]
 
 [tool.setuptools.package-data]
-mikiui = ["runtime/**/*.js", "runtime/**/*.css", "runtime/themes/**/*.css", "runtime/**/*.css"]
+mikiui = ["runtime/**/*.js", "runtime/**/*.css", "components/splitview/static/**"]
+mikiui_app_plugins = ["notifications.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,68 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [ main, docs ]
+  pull_request:
+    branches: [ main, docs ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+          cache-dependency-path: 'requirements-docs.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-docs.txt
+
+      - name: Ensure docs assets exist
+        run: |
+          if [ ! -f docs/assets/logo.png ]; then
+            python -c "
+            from PIL import Image
+            import os
+            os.makedirs('docs/assets', exist_ok=True)
+            img = Image.new('RGBA', (512, 512), (26, 26, 46, 255))
+            img.save('docs/assets/logo.png')
+            print('Created placeholder docs/assets/logo.png')
+            "
+          fi
+
+      - name: Configure Git for gh-deploy
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify docs build
+        run: mkdocs build --strict
+        env:
+          NO_MKDOCS_2_WARNING: 1
+
+      - name: Deploy docs to GitHub Pages
+        if: github.event_name != 'pull_request'
+        run: 'mkdocs gh-deploy --force --message "chore: deploy docs to GitHub Pages [skip ci]"'
+
+      - name: Output Pages URL
+        run: echo "Docs deployed to https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"

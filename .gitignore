@@ -1,6 +1,10 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+.ruff_cache
+.pytest_cache
+.mypy_cache
+.kilo
 
 dist/
 wheels/
@@ -14,3 +18,4 @@ node_modules/
 # Coverage and build artifacts
 .coverage
 .mikiui/
+htmlcov
