@@ -47,7 +47,7 @@ from mikiui.widgets import (
 from mikiui.widgets.layout_widgets import Sidebar
 
 app = MikiApp(title="MikiUI Demo")
-app.set_theme("dracula")
+app.set_theme("dark")
 app.set_style_framework("plain")
 
 # Shared inline style helpers

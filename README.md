@@ -107,7 +107,9 @@ Open `http://127.0.0.1:8000` in your browser.
 |--------|---------|-------------|
 | **Website** | `mikiui dev` | FastAPI + HTMX dev server |
 | **Desktop App** | `mikiui desktop` | Native pywebview window |
-| **Static Site** | `mikiui build --target web` | Pre-rendered HTML for any host |
+| **Static Site** | `mikiui build --target web --mode separate` | Pre-rendered HTML for any host |
+| **Fullstack App** | `mikiui build --target web --mode fullstack` | Static HTML + ASGI server script |
+| **Desktop Package** | `mikiui build --target desktop` | PyInstaller-based native executable |
 | **API Backend** | `create_app(app)` | FastAPI with OpenAPI docs |
 
 ---
@@ -160,8 +162,10 @@ Tailwind CSS (with optional DaisyUI) or plain CSS — switch without changing ap
 | `mikiui new <name>` | Scaffold a new project |
 | `mikiui dev` | Development server with hot-reload |
 | `mikiui desktop` | Native desktop window |
-| `mikiui build --target web` | Static web build |
-| `mikiui build --target desktop` | Desktop package |
+| `mikiui build --target web` | Static web build (fullstack by default) |
+| `mikiui build --target web --mode separate` | Static site only |
+| `mikiui build --target desktop` | Desktop package (auto-installs PyInstaller) |
+| `mikiui build --target desktop --onefile` | Single-file desktop executable |
 | `mikiui tailwind dev` | Watch & rebuild Tailwind CSS |
 | `mikiui install tailwind` | Install Tailwind + npm deps |
 

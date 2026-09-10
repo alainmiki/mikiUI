@@ -993,16 +993,20 @@ report = build_web(
     mode="fullstack",       # "fullstack" or "separate"
     out_dir="dist",
     theme=None,             # "tailwind", "light", etc.
+    framework=None,          # "plain" or "tailwind"
+    style_mode="cdn",        # "cdn" or "local" (Tailwind only)
     daisyui=False,
     tailwind_ext=None,
     tailwind_content=None,
     skip_tailwind=False,
+    concurrency=4,
 )
 ```
 
 **Report keys:** `target`, `mode`, `out_dir`, `pages`, `runtime_assets`,
-`manifest`, `shell`, `csp_nonce`, `server_script`, `tailwind_built`,
-`status`.
+`manifest`, `shell`, `sitemap`, `robots`, `404`, `csp_nonce`, `server_script`,
+`tailwind_built`, `skipped_routes`, `parameterized_pages`,
+`route_manifest_used`, `status`.
 
 ### `build_desktop`
 
@@ -1013,13 +1017,17 @@ report = build_desktop(
     app,
     out_dir="dist_desktop",
     app_spec=None,          # "module:attr" spec
-    icon=None,
-    onefile=False,
+    icon=None,               # .ico / .icns / .png
+    onefile=False,           # single-file executable
 )
 ```
 
 **Report keys:** `status`, `out_dir`, `platform`, `web_build_dir`,
-`launcher`, `spec`, `executable_name`, `app_spec`.
+`launcher`, `spec`, `bundle`, `warning`, `executable_name`, `app_spec`.
+
+PyInstaller is auto-installed if missing. If the native build fails, `status`
+is `"partial"` and `warning` contains the error; the web build and launcher
+are still usable.
 
 ### `run_desktop`
 

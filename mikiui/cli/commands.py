@@ -362,6 +362,9 @@ def build(
             except KeyboardInterrupt:
                 typer.echo("[dim]Stopped.[/dim]")
             return
+        skip_tailwind = True
+    else:
+        skip_tailwind = False
 
     typer.echo(f"[cyan]Building[/cyan] {target} ({mode}) from '{spec}'...")
 
@@ -374,6 +377,12 @@ def build(
     if target == "desktop":
         desktop_out = f"{out_dir}_desktop"
         report = build_desktop(miki_app, out_dir=desktop_out, app_spec=spec)
+        warning = report.get("warning")
+        if warning:
+            typer.echo(f"[yellow]Warning:[/yellow] {warning}")
+        bundle = report.get("bundle")
+        if bundle:
+            typer.echo(f"  Bundle: {bundle}")
     else:
         report = build_web(
             miki_app,
@@ -383,6 +392,7 @@ def build(
             framework=app_framework,
             style_mode=app_style_mode,
             daisyui=effective_daisyui,
+            skip_tailwind=skip_tailwind,
         )
         asset_paths = [
             os.path.join(out_dir, "_miki", "runtime", a)

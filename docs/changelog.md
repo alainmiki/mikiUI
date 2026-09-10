@@ -2,6 +2,64 @@
 
 All notable changes to MikiUI are documented in this file.
 
+## [Unreleased] — 2026-09-09
+
+### Build System Hardening & Desktop Packaging Improvements
+
+#### Web Build
+
+- **`build_web()` report now includes `robots` and `404`**: `robots.txt` and
+  `404.html` are generated automatically for every web build.
+- **Sitemap accuracy**: `_render_sitemap()` now receives original route paths
+  instead of rendered filenames, so paths with underscores (e.g.
+  `/user_profile`) are preserved correctly instead of being corrupted to
+  `/user/profile`.
+- **Configurable URL scheme**: sitemap uses `app.url_scheme` instead of
+  hardcoded `http://`, defaulting to `https`.
+- **Server script respects app host/port**: `server.py` now reads `host` and
+  `port` from the app instance instead of hardcoding `127.0.0.1:8000`.
+- **Tailwind build error handling**: `_build_tailwind()` raises
+  `RuntimeError` with actionable guidance when the Tailwind CLI fails,
+  instead of silently falling back.
+- **Parameterized route sitemap support**: `_render_parameterized_routes()`
+  now returns resolved route paths so parameterized examples appear in the
+  sitemap.
+
+#### Desktop Build
+
+- **Auto-install PyInstaller**: `_ensure_pyinstaller()` attempts
+  `pip install pyinstaller` when PyInstaller is missing, so users do not
+  need to manually install it.
+- **Executable output**: `_write_pyinstaller_spec()` now returns
+  `(spec_path, error)` and runs the build. The desktop report includes
+  `bundle` (path to the final executable/app bundle) and `warning` on
+  partial failure.
+- **macOS `.app` bundle**: `_create_platform_bundle()` wraps the PyInstaller
+  executable in a proper macOS `.app` bundle with `Info.plist`, icon
+  embedding, and bundled web assets.
+- **Socket leak fix**: `_start_server()` closes the pre-bound socket on
+  bind failure instead of leaking it.
+- **pywebview detection fix**: `_has_pywebview()` and `_import_webview()`
+  now check the module-level `_webview` variable instead of `sys.modules`,
+  fixing false negatives when pywebview is imported under a different name.
+- **File watcher debounce**: `_watch_and_restart()` adds a 0.3 s debounce
+  to prevent excessive rebuilds on rapid file changes.
+
+#### Tests
+
+- **`tests/test_web_build.py`**: New test module covering `build_web()`,
+  `_render_sitemap()`, `_write_robots_txt()`, `_write_404_page()`, and
+  report fields for fullstack/separate modes.
+- **`tests/test_desktop.py`**: Added tests for `_ensure_pyinstaller()`,
+  `build_desktop()` report fields, `_create_platform_bundle()` on macOS,
+  and updated `test_run_native_reload_calls_restart_server` to patch
+  `db._webview` directly.
+
+#### CLI
+
+- **`mikiui build --target desktop`** now prints the bundle path and any
+  PyInstaller warnings after the build completes.
+
 ## [Unreleased] — 2026-08-29
 
 ### Hardening: Routing, Security, Build, Accessibility

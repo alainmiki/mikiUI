@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from unittest import mock
 
 import pytest
 
@@ -330,9 +331,14 @@ def test_plugin_on_render_modifies_tree():
 # --- Tailwind integration ------------------------------------------------------
 
 def test_tailwind_config_generation():
+    from mikiui.build import tailwind as tailwind_mod
     from mikiui.build.tailwind import tailwind_config
 
-    cfg = tailwind_config(theme="dark", daisyui=True)
+    with mock.patch.object(
+        tailwind_mod, "_resolve_daisyui_plugin_path",
+        return_value=os.path.join(os.path.dirname(__file__), "fake_daisyui.js"),
+    ):
+        cfg = tailwind_config(theme="dark", daisyui=True)
     assert "content" in cfg
     assert "theme" in cfg
     assert "plugins" in cfg
