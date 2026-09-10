@@ -2,7 +2,88 @@
 
 All notable changes to MikiUI are documented in this file.
 
-## [Unreleased] — 2026-09-09
+## [Unreleased]
+
+### Build System Hardening & Desktop Packaging Improvements
+
+#### Web Build
+
+- **`build_web()` report now includes `robots` and `404`**: `robots.txt` and
+  `404.html` are generated automatically for every web build.
+- **Sitemap accuracy**: `_render_sitemap()` now receives original route paths
+  instead of rendered filenames, so paths with underscores (e.g.
+  `/user_profile`) are preserved correctly instead of being corrupted to
+  `/user/profile`.
+- **Configurable URL scheme**: sitemap uses `app.url_scheme` instead of
+  hardcoded `http://`, defaulting to `https`.
+- **Server script respects app host/port**: `server.py` now reads `host` and
+  `port` from the app instance instead of hardcoding `127.0.0.1:8000`.
+- **Tailwind build error handling**: `_build_tailwind()` raises
+  `RuntimeError` with actionable guidance when the Tailwind CLI fails,
+  instead of silently falling back.
+- **Parameterized route sitemap support**: `_render_parameterized_routes()`
+  now returns resolved route paths so parameterized examples appear in the
+  sitemap.
+
+#### Desktop Build
+
+- **Auto-install PyInstaller**: `_ensure_pyinstaller()` attempts
+  `pip install pyinstaller` when PyInstaller is missing, so users do not
+  need to manually install it.
+- **Executable output**: `_write_pyinstaller_spec()` now returns
+  `(spec_path, error)` and runs the build. The desktop report includes
+  `bundle` (path to the final executable/app bundle) and `warning` on
+  partial failure.
+- **macOS `.app` bundle**: `_create_platform_bundle()` wraps the PyInstaller
+  executable in a proper macOS `.app` bundle with `Info.plist`, icon
+  embedding, and bundled web assets.
+- **Socket leak fix**: `_start_server()` closes the pre-bound socket on
+  bind failure instead of leaking it.
+- **pywebview detection fix**: `_has_pywebview()` and `_import_webview()`
+  now check the module-level `_webview` variable instead of `sys.modules`,
+  fixing false negatives when pywebview is imported under a different name.
+- **File watcher debounce**: `_watch_and_restart()` adds a 0.3 s debounce
+  to prevent excessive rebuilds on rapid file changes.
+
+#### Tailwind + DaisyUI Production Fixes
+
+- **Local JIT config is now passed to Tailwind**: `_build_tailwind()` writes
+  the generated config to a temp file and passes `-c <config>` to
+  `npx tailwindcss`, ensuring DaisyUI plugin and theme bridges are applied.
+- **Tailwind output path corrected**: Compiled CSS is written to
+  `themes/tailwind.css`, matching what the HTML shell and renderer expect.
+- **`miki.css` is never overridden**: Base widget/component CSS is always
+  copied and preserved, even when Tailwind is active.
+- **DaisyUI plugin resolution**: `_resolve_daisyui_plugin_path()` finds
+  `daisyui.min.js` from the bundled runtime or `node_modules`; missing plugin
+  now falls back with a clear warning instead of crashing.
+- **CDN mode DaisyUI uses theme colors**: `_tailwind_config_script()` reads
+  actual theme colors via `daisyui_config()` instead of hardcoded blue values.
+- **CSP allows Tailwind CDN dynamic styles**: `'unsafe-inline'` is added to
+  `style-src` in CDN mode so `@tailwindcss/browser@4` can inject utility CSS.
+- **404 page respects framework**: 404 fallback now loads Tailwind/DaisyUI or
+  plain `miki.css` based on the app's framework selection.
+
+#### Tests
+
+- **`tests/test_web_build.py`**: New test module covering `build_web()`,
+  `_render_sitemap()`, `_write_robots_txt()`, `_write_404_page()`, and
+  report fields for fullstack/separate modes.
+- **`tests/test_desktop.py`**: Added tests for `_ensure_pyinstaller()`,
+  `build_desktop()` report fields, `_create_platform_bundle()` on macOS,
+  and updated `test_run_native_reload_calls_restart_server` to patch
+  `db._webview` directly.
+- **`tests/test_themes.py`**: Updated `test_tailwind_config_generation` to
+  mock DaisyUI plugin resolution.
+
+#### CLI
+
+- **`mikiui build --target desktop`** now prints the bundle path and any
+  PyInstaller warnings after the build completes.
+- **Avoided double Tailwind build**: CLI now passes `skip_tailwind=True` to
+  `build_web()` after pre-building CSS.
+
+## [0.3.0] — 2026-09-09
 
 ### Build System Hardening & Desktop Packaging Improvements
 
