@@ -41,7 +41,7 @@ def _esc(value: Any) -> str:
 
 
 BASE_TEMPLATE = """<!doctype html>
-<html lang="{html_lang}">
+<html lang="{html_lang}"{html_attrs}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -174,6 +174,7 @@ def _theme_styles(
         "variables": "",
         "js_tags": [],
         "theme_obj": theme,
+        "html_attrs": "",
     }
 
     if theme is None:
@@ -224,14 +225,19 @@ def _theme_styles(
 
     # Body classes/data attributes
     extra = list(theme.extra_classes) or []
-    data_attrs = ""
+    body_attrs = ""
+    html_attrs = ""
     if effective_fw == "tailwind":
         color_name = getattr(theme, "color_theme", None) or theme_name
-        data_attrs = f' data-theme="{_esc(f"mikiui-{color_name}")}"'
+        if daisyui:
+            html_attrs = f' data-theme="{_esc(color_name)}"'
+        else:
+            body_attrs = f' data-theme="{_esc(f"mikiui-{color_name}")}"'
     if extra:
-        result["body_attrs"] = f' class="{_esc(" ".join(extra))}"{data_attrs}'
-    elif data_attrs:
-        result["body_attrs"] = data_attrs
+        result["body_attrs"] = f' class="{_esc(" ".join(extra))}"{body_attrs}'
+    elif body_attrs:
+        result["body_attrs"] = body_attrs
+    result["html_attrs"] = html_attrs
 
     # CSS variables layer (overrides theme settings)
     if theme.variables:
@@ -360,6 +366,7 @@ def render_page(
 
     return BASE_TEMPLATE.format(
         html_lang=_esc(lang),
+        html_attrs=theme_data.get("html_attrs", ""),
         page_title=_esc(title),
         favicon=favicon_tag,
         tailwind_script=tailwind_script,

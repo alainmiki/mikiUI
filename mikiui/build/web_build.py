@@ -494,13 +494,19 @@ def _write_html_shell(
                     f'href="https://cdn.jsdelivr.net/npm/daisyui@5/dist/daisyui.css"'
                     f'{nonce_attr} />'
                 )
-        body_attr = f'data-theme="mikiui-{_esc(theme)}"'
+        if daisyui:
+            html_attr = f' data-theme="{_esc(theme)}"'
+            body_attr = f'data-miki-theme="{_esc(theme)}"'
+        else:
+            html_attr = ""
+            body_attr = f'data-theme="mikiui-{_esc(theme)}"'
     else:
         css_link = f'<link rel="stylesheet" href="_miki/runtime/miki.css"{nonce_attr} />'
+        html_attr = ""
         body_attr = f'data-miki-theme="{_esc(theme)}"'
 
     shell = f"""<!doctype html>
-<html lang="{_esc(lang)}">
+<html lang="{_esc(lang)}"{html_attr}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
