@@ -220,7 +220,6 @@ class TestDrawerInteractive:
             pytest.skip("No drawer found")
         page.evaluate("mikiDrawer.open('.demo-drawer')")
         page.wait_for_timeout(200)
-        overlay = drawer.locator(".miki-drawer-overlay")
         # Click on the overlay element directly via JS to avoid pointer interception
         page.evaluate("document.querySelector('.demo-drawer .miki-drawer-overlay').click()")
         page.wait_for_timeout(200)
@@ -441,7 +440,7 @@ class TestCollapsible:
         assert initial_open != after_open, "Space should toggle collapsible state"
 
 
-class TestSplitterResize:
+class TestSplitterResizeAdvanced:
     """Splitter: horizontal/vertical drag, maximize, keyboard."""
     def _get_splitter(self, page, url="/data", orientation="horizontal"):
         page.load(url)
@@ -731,7 +730,10 @@ class TestMessageBox:
         if msgs.count() == 0:
             pytest.skip("No message boxes found")
         msg = msgs.first
-        msg.evaluate("el => { const evt = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }); el.dispatchEvent(evt); }")
+        msg.evaluate(
+            "el => { const evt = new KeyboardEvent('keydown', "
+            "{ key: 'Escape', bubbles: true }); el.dispatchEvent(evt); }"
+        )
         page.wait_for_timeout(200)
         is_hidden = msg.evaluate("el => el.style.display === 'none'")
         assert is_hidden, "MessageBox should close on ESC"

@@ -92,8 +92,6 @@ class TestBrowserE2EWithPlaywright:
         """Test homepage loads in a real browser with JS execution."""
         fastapi_app = create_app(app)
         client = TestClient(fastapi_app)
-        base_url = "http://localhost:8000"
-
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()

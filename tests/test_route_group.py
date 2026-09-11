@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from mikiui.router.auth import AuthRequirement
 from mikiui.router.group import RouteGroup, RouteGroupBuilder
 

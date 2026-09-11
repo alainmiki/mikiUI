@@ -257,7 +257,6 @@ class TestKitchenSinkMouse:
         if sliders.count() == 0:
             pytest.skip("No sliders found")
         slider = sliders.first
-        initial = slider.evaluate("el => el.value")
         slider.evaluate("el => { el.value = '75'; el.dispatchEvent(new Event('input', {bubbles: true})); }")
         page.wait_for_timeout(300)
         new_val = slider.evaluate("el => el.value")
@@ -488,8 +487,14 @@ class TestKitchenSinkTouch:
         start_y = tab_box["y"] + tab_box["height"] / 2
         # Simulate swipe via pointer events (touch context compatible)
         tab.evaluate("""(el, data) => {
-            el.dispatchEvent(new PointerEvent('pointerdown', { clientX: data.x, clientY: data.y, pointerType: 'touch' }));
-            el.dispatchEvent(new PointerEvent('pointermove', { clientX: data.x + 50, clientY: data.y, pointerType: 'touch' }));
-            el.dispatchEvent(new PointerEvent('pointerup', { clientX: data.x + 50, clientY: data.y, pointerType: 'touch' }));
+            el.dispatchEvent(new PointerEvent('pointerdown', {
+                clientX: data.x, clientY: data.y, pointerType: 'touch'
+            }));
+            el.dispatchEvent(new PointerEvent('pointermove', {
+                clientX: data.x + 50, clientY: data.y, pointerType: 'touch'
+            }));
+            el.dispatchEvent(new PointerEvent('pointerup', {
+                clientX: data.x + 50, clientY: data.y, pointerType: 'touch'
+            }));
         }""", {"x": start_x, "y": start_y})
         touch_page.wait_for_timeout(300)

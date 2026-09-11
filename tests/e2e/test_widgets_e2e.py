@@ -40,7 +40,19 @@ def page(browser, server):
         js_resp_tabs = server.get("/_miki/runtime/js/mikitabs.js")
         js_resp_drawer = server.get("/_miki/runtime/js/mikidrawer.js")
         js_resp_split = server.get("/_miki/runtime/js/mikisplitview.js")
-        inject = f"<style>{css_resp.text}</style><script>{js_resp_core.text}</script><script>{js_resp_bridge.text}</script><script>{js_resp_editor.text}</script><script>{js_resp_ide.text}</script><script>{js_resp_mdi.text}</script><script>{js_resp_stack.text}</script><script>{js_resp_tabs.text}</script><script>{js_resp_drawer.text}</script><script>{js_resp_split.text}</script><script>{js_resp_init.text}</script>"
+        inject = (
+            f"<style>{css_resp.text}</style>"
+            f"<script>{js_resp_core.text}</script>"
+            f"<script>{js_resp_bridge.text}</script>"
+            f"<script>{js_resp_editor.text}</script>"
+            f"<script>{js_resp_ide.text}</script>"
+            f"<script>{js_resp_mdi.text}</script>"
+            f"<script>{js_resp_stack.text}</script>"
+            f"<script>{js_resp_tabs.text}</script>"
+            f"<script>{js_resp_drawer.text}</script>"
+            f"<script>{js_resp_split.text}</script>"
+            f"<script>{js_resp_init.text}</script>"
+        )
         html = resp.text
         if "</head>" in html:
             html = html.replace("</head>", f"{inject}</head>")
@@ -89,7 +101,9 @@ class TestSplitView:
         splitter = h_splitview.locator("> .miki-splitter")
         if splitter.count() > 0:
             cursor = splitter.first.evaluate("el => getComputedStyle(el).cursor")
-            assert cursor in ("ew-resize", "col-resize", "nwse-resize"), f"Expected ew-resize or nwse-resize cursor, got {cursor}"
+            assert cursor in ("ew-resize", "col-resize", "nwse-resize"), (
+                f"Expected ew-resize or nwse-resize cursor, got {cursor}"
+            )
         else:
             pytest.skip("No horizontal splitter found")
 

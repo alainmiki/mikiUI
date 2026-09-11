@@ -167,7 +167,6 @@ def test_mount_rejects_non_router():
 
 
 def test_router_without_app_or_mount_raises():
-    app = MikiApp()
     router = Router(prefix="/admin")
 
     with pytest.raises(RuntimeError, match="not bound"):

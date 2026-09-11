@@ -7,8 +7,8 @@ from starlette.testclient import TestClient
 
 from mikiui import Div, MikiApp
 from mikiui.app.plugins import ComponentPlugin, Plugin, WidgetPlugin
-from mikiui.app.theme_registry import ThemeRegistry
-from mikiui.app.widget_registry import WidgetRegistry
+from mikiui.app.theme_registry import ThemeRegistry as ThemeRegistry
+from mikiui.app.widget_registry import WidgetRegistry as WidgetRegistry
 from mikiui.backend.server import create_app
 from mikiui.build.desktop_build import build_desktop
 from mikiui.build.web_build import build_web
@@ -248,7 +248,7 @@ class TestNotificationIntegration:
         notif = NotificationPlugin()
         app.use(notif)
 
-        token = app.create_session("user1")
+        app.create_session("user1")
         notif.notify("user1", "Hello World", type_="success")
 
         notifications = notif.get_notifications("user1")

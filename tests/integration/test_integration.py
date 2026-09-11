@@ -210,7 +210,9 @@ class TestBuildIntegration:
         report = build_desktop(app, out_dir=str(tmp_path / "desktop"))
         assert report["status"] == "ok"
         assert (tmp_path / "desktop" / "web").is_dir()
-        launcher = tmp_path / "desktop" / ("launch.exe" if __import__("platform").system().lower() == "windows" else "launch")
+        import sys
+        _exe_name = "launch.exe" if sys.platform == "win32" else "launch"
+        launcher = tmp_path / "desktop" / _exe_name
         assert launcher.exists()
 
 
@@ -224,7 +226,7 @@ class TestNotificationIntegration:
         notif = NotificationPlugin()
         app.use(notif)
 
-        token = app.create_session("user1")
+        app.create_session("user1")
         notif.notify("user1", "Hello World", type="success")
 
         notifications = notif.get_notifications("user1")
