@@ -548,6 +548,8 @@ def _create_platform_bundle(
     executable_name = _platform_executable_name("mikiui_app")
     dist_dir = os.path.join(out_dir, "dist")
     executable = os.path.join(dist_dir, executable_name)
+    if system == "darwin":
+        executable = os.path.join(executable, "Contents", "MacOS", "mikiui_app")
     if not os.path.exists(executable):
         return None
 

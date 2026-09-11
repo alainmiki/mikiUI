@@ -15,6 +15,17 @@ from mikiui.backend.websocket import ConnectionManager
 from mikiui_app_plugins import SessionPlugin
 from mikiui_app_plugins.notifications import NotificationPlugin
 
+
+def _flatten_routes(app):
+    """Return all leaf routes, flattening any _IncludedRouter wrappers."""
+    routes = []
+    for route in app.routes:
+        routes.append(route)
+        nested = getattr(route, "routes", None)
+        if nested:
+            routes.extend(nested)
+    return routes
+
 # ---------------------------------------------------------------------------
 # SSE helper tests
 # ---------------------------------------------------------------------------
@@ -137,7 +148,8 @@ def test_plugin_websocket_routes_mounted():
     fastapi_app = create_app(app)
 
     found = [
-        r for r in fastapi_app.routes
+        r
+        for r in _flatten_routes(fastapi_app)
         if type(r).__name__ == "APIWebSocketRoute" and getattr(r, "path", None) == "/ws/echo"
     ]
     assert len(found) == 1
@@ -151,7 +163,8 @@ def test_notification_plugin_websocket_route_mounted():
     fastapi_app = create_app(app)
 
     found = [
-        r for r in fastapi_app.routes
+        r
+        for r in _flatten_routes(fastapi_app)
         if type(r).__name__ == "APIWebSocketRoute" and getattr(r, "path", None) == "/ws/notifications"
     ]
     assert len(found) == 1
@@ -241,7 +254,8 @@ async def test_lifespan_closes_websocket_connections():
 
     # Verify the WebSocket route is mounted
     found = [
-        r for r in fastapi_app.routes
+        r
+        for r in _flatten_routes(fastapi_app)
         if type(r).__name__ == "APIWebSocketRoute" and getattr(r, "path", None) == "/ws/test"
     ]
     assert len(found) == 1

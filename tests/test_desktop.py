@@ -325,10 +325,13 @@ def test_create_platform_bundle_creates_macos_app(tmp_path):
     """_create_platform_bundle should create a .app bundle on macOS."""
     dist_dir = tmp_path / "dist"
     dist_dir.mkdir()
-    # Use a fixed executable name that _create_platform_bundle expects on macOS
+    # PyInstaller on macOS produces a .app bundle directory with the binary
+    # inside Contents/MacOS/, so replicate that structure here.
     executable_name = "mikiui_app.app"
     executable = dist_dir / executable_name
-    executable.write_text("fake binary")
+    macos_dir = executable / "Contents" / "MacOS"
+    macos_dir.mkdir(parents=True)
+    (macos_dir / "mikiui_app").write_text("fake binary")
     web_dir = tmp_path / "web"
     web_dir.mkdir()
     (web_dir / "index.html").write_text("<html></html>")

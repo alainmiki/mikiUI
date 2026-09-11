@@ -564,9 +564,18 @@ def test_backend_routes_mounted_once():
                 }
             ]
 
+    def _flatten_routes(app):
+        routes = []
+        for route in app.routes:
+            routes.append(route)
+            nested = getattr(route, "routes", None)
+            if nested:
+                routes.extend(nested)
+        return routes
+
     app = MikiApp()
     app.use(SingleRoutePlugin())
     fa = create_app(app)
-    paths = [r.path for r in fa.routes if r.path == "/api/single"]
+    paths = [r.path for r in _flatten_routes(fa) if r.path == "/api/single"]
     assert len(paths) == 1
 
