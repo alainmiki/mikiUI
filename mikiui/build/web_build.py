@@ -495,7 +495,7 @@ def _write_html_shell(
                     f'{nonce_attr} />'
                 )
         if daisyui:
-            html_attr = f' data-theme="{_esc(theme)}"'
+            html_attr = f' data-theme="mikiui-{_esc(theme)}"'
             body_attr = f'data-miki-theme="{_esc(theme)}"'
         else:
             html_attr = ""

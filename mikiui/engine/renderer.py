@@ -230,7 +230,8 @@ def _theme_styles(
     if effective_fw == "tailwind":
         color_name = getattr(theme, "color_theme", None) or theme_name
         if daisyui:
-            html_attrs = f' data-theme="{_esc(color_name)}"'
+            html_attrs = f' data-theme="{_esc(f"mikiui-{color_name}")}"'
+            body_attrs = f' data-miki-theme="{_esc(color_name)}"'
         else:
             body_attrs = f' data-theme="{_esc(f"mikiui-{color_name}")}"'
     if extra:

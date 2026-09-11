@@ -151,12 +151,11 @@ def test_render_page_theme_css_in_tailwind_mode():
     assert "/themes/dark.css" in page
 
 
-def test_render_page_daisyui_uses_short_theme_name():
-    """When DaisyUI is enabled, data-theme should use the short theme name on <html>."""
+def test_render_page_daisyui_uses_mikiui_theme_name():
+    """When DaisyUI is enabled, data-theme should use the mikiui-prefixed name on <html>."""
     page = render_page(Div("test"), title="Test", theme="dark", framework="tailwind", daisyui=True)
-    assert 'data-theme="dark"' in page
+    assert 'data-theme="mikiui-dark"' in page
     assert 'data-miki-theme="dark"' in page
-    assert 'data-theme="mikiui-dark"' not in page
 
 
 def test_render_page_css_variables_injected():
