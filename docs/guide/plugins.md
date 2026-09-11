@@ -103,4 +103,4 @@ plugin = market.install("chart-widget", app)
 
 - [Security Guide](../guide/security.md#plugin-security) — plugin security model
 - [API Reference](../guide/api-reference.md) — plugin API
-- [Contributing](../guide/contributing.md) — publishing plugins
+- [Contributing](../contributing.md) — publishing plugins
