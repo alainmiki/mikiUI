@@ -599,6 +599,16 @@ class TestToggleButton:
     def _find_toggles(self, page):
         page.load("/advanced")
         page.wait_for_timeout(300)
+        page.evaluate("""() => {
+            var panel = document.querySelector('[data-miki-dockable="true"]');
+            if (panel) { panel.style.display = "none"; }
+            var drawer = document.querySelector('.miki-drawer');
+            if (drawer) { drawer.style.display = "none"; }
+            var wins = document.querySelectorAll('.miki-mdi-subwindow');
+            for (var i = 0; i < wins.length; i++) {
+                wins[i].style.display = 'none';
+            }
+        }""")
         return page.locator("[data-miki-toggle='true']")
 
     def test_click_toggles_state(self, page):

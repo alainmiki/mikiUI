@@ -495,6 +495,13 @@ def advanced_demo():
                 ),
                 style=CARD,
             ),
+            H2("Toggle Buttons"),
+            Div(
+                Button.toggle("🔔", "🔕", "Mute", "Unmute", pressed=True),
+                Button.toggle("🌙", "☀️", "Dark mode", "Light mode", pressed=False),
+                Button.toggle("❤️", "🤍", "Favourite", "Unfavourite", pressed=True),
+                style="display: flex; gap: 1rem; align-items: center;",
+            ),
         H2("Drawer (Slide-in Panel)"),
         Div(
             Drawer(

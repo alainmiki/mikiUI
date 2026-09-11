@@ -219,16 +219,16 @@ async def chat_handler(ws, manager):
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs/guide/getting-started.md) | Installation, first app, CLI reference |
-| [API Reference](docs/guide/api-reference.md) | Full method signatures and examples |
-| [Widget Catalog](docs/guide/widgets.md) | All 60+ widgets with examples |
-| [Router Guide](docs/guide/routing.md) | Routing, groups, middleware |
-| [Security Guide](docs/guide/security.md) | CSRF, auth, headers, plugin security |
-| [Styling Guide](docs/guide/styling.md) | Tailwind, plain CSS, themes |
-| [Plugin System](docs/guide/plugins.md) | Creating and publishing plugins |
-| [Deployment](docs/guide/deployment.md) | Production setup, static export |
-| [Themes](docs/guide/themes.md) | Built-in and custom themes |
-| [Changelog](docs/changelog.md) | Version history |
+| [Getting Started](https://alainmiki.github.io/mikiUI/guide/getting-started) | Installation, first app, CLI reference |
+| [API Reference](https://alainmiki.github.io/mikiUI/guide/api-reference) | Full method signatures and examples |
+| [Widget Catalog](https://alainmiki.github.io/mikiUI/guide/widgets) | All 60+ widgets with examples |
+| [Router Guide](https://alainmiki.github.io/mikiUI/guide/routing) | Routing, groups, middleware |
+| [Security Guide](https://alainmiki.github.io/mikiUI/guide/security) | CSRF, auth, headers, plugin security |
+| [Styling Guide](https://alainmiki.github.io/mikiUI/guide/styling) | Tailwind, plain CSS, themes |
+| [Plugin System](https://alainmiki.github.io/mikiUI/guide/plugins) | Creating and publishing plugins |
+| [Deployment](https://alainmiki.github.io/mikiUI/guide/deployment) | Production setup, static export |
+| [Themes](https://alainmiki.github.io/mikiUI/guide/themes) | Built-in and custom themes |
+| [Changelog](https://alainmiki.github.io/mikiUI/changelog) | Version history |
 
 ---
 

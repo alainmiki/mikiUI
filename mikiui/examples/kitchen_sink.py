@@ -1376,6 +1376,35 @@ def components_page():
     )
 
 
+@app.route("/advanced")
+def advanced_page():
+    return Div(
+        Navbar(brand="Advanced", links=[("Home", "/")]),
+        Div(
+            H1("Advanced Widgets"),
+            P("Toggle, inspector, profiler, and other advanced widgets."),
+            H2("Toggle Buttons"),
+            Div(
+                Button.toggle("🔔", "🔕", "Mute", "Unmute", pressed=True),
+                Button.toggle("🌙", "☀️", "Dark mode", "Light mode", pressed=False),
+                Button.toggle("❤️", "🤍", "Favourite", "Unfavourite", pressed=True),
+                style="display: flex; gap: 1rem; align-items: center;",
+            ),
+            H2("Inspector Panel"),
+            InspectorPanel(
+                {"name": "MikiUI", "version": "1.0.0", "active": True},
+                title="App Info",
+            ),
+            H2("Profiler Panel"),
+            ProfilerPanel(
+                [("render", "12.5"), ("diff", "3.2"), ("network", "45.1"), ("total", "60.8")],
+                title="Performance",
+            ),
+            style=PADDING,
+        ),
+    )
+
+
 if __name__ == "__main__":
     # app.run(desktop=False,browser=True, reload=True)
     app.run(desktop=False,browser=True,reload=True)

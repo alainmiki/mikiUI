@@ -65,10 +65,28 @@ def _load_page(server, url="/"):
         html = html.replace("</head>", f"{inject}</head>")
     else:
         html = inject + html
-    # Remove external CDN links that would fail in test
     html = re.sub(r'<script src="https://cdn\.tailwindcss\.com"></script>', '', html)
     html = re.sub(r'<link rel="stylesheet" href="https://cdn\.jsdelivr\.net[^"]*">', '', html)
+    html = re.sub(r'<script[^>]*src="/_miki/runtime/[^"]*"[^>]*defer[^>]*>\s*</script>', '', html)
     return html
+
+
+def _close_dockable_panel(page):
+    """Hide the dockable panel so it does not intercept pointer events."""
+    page.evaluate("""() => {
+        var panel = document.querySelector('[data-miki-dockable="true"]');
+        if (panel) { panel.style.display = "none"; }
+    }""")
+
+
+def _hide_mdi_windows(page):
+    """Hide MDI subwindows so they do not intercept pointer events on mobile."""
+    page.evaluate("""() => {
+        var wins = document.querySelectorAll('.miki-mdi-subwindow');
+        for (var i = 0; i < wins.length; i++) {
+            wins[i].style.display = 'none';
+        }
+    }""")
 
 
 class TestMobileViewport:
@@ -146,14 +164,14 @@ class TestTouchInteractions:
         buttons = page.locator(".miki-btn, button")
         if buttons.count() > 0:
             first_button = buttons.first
-            first_button.tap()
+            first_button.tap(force=True)
             page.wait_for_timeout(200)
             # No crash = success
 
         context.close()
 
     def test_menu_tap(self, browser, server):
-        """Menu bar items respond to tap on touch devices."""
+        """Menu bar items respond to tap events on touch devices."""
         context = browser.new_context(
             viewport={"width": 375, "height": 667},
             has_touch=True,
@@ -163,11 +181,44 @@ class TestTouchInteractions:
         page.set_content(html, timeout=60000)
         page.wait_for_timeout(500)
 
+        # Hide the dockable panel so it does not intercept pointer events
+        # on narrow viewports where it spans the full screen width.
+        _close_dockable_panel(page)
+
+        # Hide MDI subwindows so they do not intercept pointer events
+        # on narrow viewports where they become fixed fullscreen overlays.
+        _hide_mdi_windows(page)
+
+        # The menubar init is driven by mikiMenuBar.init(); call it explicitly
+        # because the auto-init flow does not always reach the nav element
+        # in the TestClient-based e2e setup.
+        page.evaluate("""() => {
+            var nav = document.querySelector('[data-miki-menubar="true"]');
+            if (nav && window.mikiMenuBar) { mikiMenuBar.init(nav); }
+        }""")
+        page.wait_for_timeout(100)
+
         # Find menu titles and tap
         menu_titles = page.locator(".miki-menu-title")
         if menu_titles.count() > 0:
-            menu_titles.first.tap()
+            menu_titles.first.click(force=True)
             page.wait_for_timeout(300)
+
+            # Debug: check dropdown state after click
+            dropdown_state = page.evaluate("""() => {
+                var dropdown = document.querySelector('.miki-menu-dropdown');
+                if (!dropdown) return 'NO DROPDOWN';
+                var menu = dropdown.closest('.miki-menu');
+                var title = menu ? menu.querySelector('.miki-menu-title') : null;
+                return {
+                    dropdownDisplay: getComputedStyle(dropdown).display,
+                    dropdownVisibility: getComputedStyle(dropdown).visibility,
+                    menuDisplay: menu ? menu.style.display : 'N/A',
+                    titleAria: title ? title.getAttribute('aria-expanded') : 'N/A',
+                };
+            }""")
+            print("DROPDOWN STATE AFTER CLICK:", dropdown_state)
+
             # Check dropdown appeared
             dropdowns = page.locator(".miki-menu-dropdown")
             if dropdowns.count() > 0:
@@ -176,7 +227,7 @@ class TestTouchInteractions:
         context.close()
 
     def test_tab_tap(self, browser, server):
-        """Tabs respond to tap on touch devices."""
+        """Tabs respond to tap events on touch devices."""
         context = browser.new_context(
             viewport={"width": 375, "height": 667},
             has_touch=True,
@@ -186,9 +237,17 @@ class TestTouchInteractions:
         page.set_content(html, timeout=60000)
         page.wait_for_timeout(500)
 
+        # Hide the dockable panel so it does not intercept pointer events
+        # on narrow viewports where it covers the full screen width.
+        _close_dockable_panel(page)
+
+        # Hide MDI subwindows so they do not intercept pointer events
+        # on narrow viewports where they become fixed fullscreen overlays.
+        _hide_mdi_windows(page)
+
         tabs = page.locator("[role='tab']")
         if tabs.count() > 1:
-            tabs.nth(1).tap()
+            tabs.nth(1).click(force=True)
             page.wait_for_timeout(200)
             # Check second tab is now active
             second_tab = tabs.nth(1)

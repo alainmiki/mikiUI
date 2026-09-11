@@ -37,8 +37,12 @@
     function closeAllMenus() {
       for (var i = 0; i < menus.length; i++) {
         var m = menus[i];
-        if (m.style.display === "none") continue;
-        m.style.display = "none";
+        var dropdown = m.querySelector(".miki-menu-dropdown");
+        if (dropdown) {
+          dropdown.style.display = "none";
+        } else if (m.style.display !== "none") {
+          m.style.display = "none";
+        }
         var btn = m.parentNode ? m.parentNode.querySelector(".miki-menu-title") : null;
         if (btn) {
           btn.setAttribute("aria-expanded", "false");
@@ -50,7 +54,12 @@
 
     function openMenu(menu) {
       closeAllMenus();
-      menu.style.display = "block";
+      var dropdown = menu.querySelector(".miki-menu-dropdown");
+      if (dropdown) {
+        dropdown.style.display = "block";
+      } else {
+        menu.style.display = "block";
+      }
       var btn = menu.parentNode ? menu.parentNode.querySelector(".miki-menu-title") : null;
       if (btn) {
         btn.setAttribute("aria-expanded", "true");
@@ -60,7 +69,9 @@
     }
 
     function toggleMenu(menu) {
-      if (menu.style.display === "block") {
+      var dropdown = menu.querySelector(".miki-menu-dropdown");
+      var isOpen = dropdown ? dropdown.style.display === "block" : menu.style.display === "block";
+      if (isOpen) {
         closeAllMenus();
       } else {
         openMenu(menu);
@@ -79,8 +90,7 @@
 
     for (var i = 0; i < menus.length; i++) {
       (function (menu) {
-        var wrapper = menu.parentNode;
-        var title = wrapper ? wrapper.querySelector(".miki-menu-title") : null;
+        var title = menu.querySelector(".miki-menu-title");
         if (!title) return;
 
         /* --- Toggle on click / tap --- */
