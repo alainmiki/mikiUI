@@ -21,12 +21,11 @@ def _flatten_routes(app):
 
     def _collect(routes, out):
         for route in routes:
-            if not hasattr(route, "path"):
-                nested = getattr(route, "routes", None)
-                if nested:
-                    _collect(nested, out)
-                continue
-            out.append(route)
+            nested = getattr(route, "routes", None)
+            if nested:
+                _collect(nested, out)
+            else:
+                out.append(route)
 
     result = []
     _collect(app.routes, result)
