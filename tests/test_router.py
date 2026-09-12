@@ -565,13 +565,18 @@ def test_backend_routes_mounted_once():
             ]
 
     def _flatten_routes(app):
-        routes = []
-        for route in app.routes:
-            routes.append(route)
-            nested = getattr(route, "routes", None)
-            if nested:
-                routes.extend(nested)
-        return routes
+        def _collect(routes, out):
+            for route in routes:
+                if not hasattr(route, "path"):
+                    nested = getattr(route, "routes", None)
+                    if nested:
+                        _collect(nested, out)
+                    continue
+                out.append(route)
+
+        result = []
+        _collect(app.routes, result)
+        return result
 
     app = MikiApp()
     app.use(SingleRoutePlugin())

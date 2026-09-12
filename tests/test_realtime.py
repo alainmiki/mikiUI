@@ -17,14 +17,20 @@ from mikiui_app_plugins.notifications import NotificationPlugin
 
 
 def _flatten_routes(app):
-    """Return all leaf routes, flattening any _IncludedRouter wrappers."""
-    routes = []
-    for route in app.routes:
-        routes.append(route)
-        nested = getattr(route, "routes", None)
-        if nested:
-            routes.extend(nested)
-    return routes
+    """Return all leaf routes, flattening any nested router wrappers."""
+
+    def _collect(routes, out):
+        for route in routes:
+            if not hasattr(route, "path"):
+                nested = getattr(route, "routes", None)
+                if nested:
+                    _collect(nested, out)
+                continue
+            out.append(route)
+
+    result = []
+    _collect(app.routes, result)
+    return result
 
 # ---------------------------------------------------------------------------
 # SSE helper tests
