@@ -174,7 +174,7 @@ from mikiui.widgets import (
 
 app = MikiApp(title="MikiUI Kitchen Sink")
 app.set_theme("dark")
-app.set_style_framework("tailwind",daisyui=True)
+# app.set_style_framework("tailwind",daisyui=True)
 
 FLEX_ROW = "display: flex; flex-direction: row; align-items: center; gap: 1rem"
 FLEX_COL = "display: flex; flex-direction: column; gap: 1rem"
