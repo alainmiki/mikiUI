@@ -25,6 +25,7 @@
 
 @layer base {
   * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
   body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--miki-bg); color: var(--miki-fg); line-height: 1.5; transition: background var(--miki-transition, 0.15s ease), color var(--miki-transition, 0.15s ease); }
   main, .miki-container { max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem; }
   h1 { font-size: 1.9rem; margin: 0 0 1rem; }
@@ -230,7 +231,7 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 
 /* ---- Chart ---- */
 .miki-chart { margin: 1rem 0; }
-.miki-chart svg { color: var(--miki-accent); }
+.miki-chart svg { color: var(--miki-accent); max-width: 100%; height: auto; }
 .miki-chart-bar { fill: var(--miki-accent); }
 .miki-chart-line { stroke: var(--miki-accent); stroke-width: 2; fill: none; }
 .miki-chart-slice { fill: var(--miki-accent); stroke: var(--miki-bg); stroke-width: 1; }
