@@ -22,10 +22,17 @@ import time
 import urllib.request
 import webbrowser
 from typing import Any
+from urllib.parse import urlparse
 
 
 def _esc(value: Any) -> str:
     return _html.escape(str(value), quote=True)
+
+
+def _require_http_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"Refusing to open non-HTTP URL: {parsed.scheme}://")
 
 
 try:  # pragma: no cover - optional dependency
@@ -172,7 +179,8 @@ def _wait_for_server(url: str, timeout: float = 10.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            urllib.request.urlopen(url, timeout=1.0)
+            _require_http_url(url)
+            urllib.request.urlopen(url, timeout=1.0)  # nosec B310
             return True
         except Exception:
             time.sleep(0.2)
@@ -565,7 +573,7 @@ def _create_platform_bundle(
         # Copy executable
         bundle_executable = os.path.join(macos_dir, "mikiui_app")
         shutil.copy2(executable, bundle_executable)
-        os.chmod(bundle_executable, 0o755)
+        os.chmod(bundle_executable, 0o755)  # nosec B103
 
         # Copy icon if available
         if icon and os.path.isfile(icon):
@@ -709,7 +717,7 @@ def build_desktop(
     with open(launcher_path, "w", encoding="utf-8") as fh:
         fh.write(launcher_script)
     if platform.system().lower() != "windows":
-        os.chmod(launcher_path, 0o755)
+        os.chmod(launcher_path, 0o755)  # nosec B103
 
     # 3. Generate a PyInstaller spec file and run the build.
     spec_path, pyinstaller_error = _write_pyinstaller_spec(

@@ -375,9 +375,12 @@ def build_css(
     import subprocess
     import tempfile
 
-    config_path = tempfile.mktemp(suffix=".js")
-    with open(config_path, "w") as f:
-        f.write("export default " + json.dumps(config) + ";\n")
+    config_fh = tempfile.NamedTemporaryFile(delete=False, suffix=".js", mode="w", encoding="utf-8")
+    config_path = config_fh.name
+    try:
+        config_fh.write("export default " + json.dumps(config) + ";\n")
+    finally:
+        config_fh.close()
 
     css_path = os.path.join(os.path.dirname(__file__), "..", "..", "runtime", "miki.css")
     css_path = os.path.abspath(css_path)

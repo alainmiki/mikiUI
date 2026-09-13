@@ -44,6 +44,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlparse
 
 from ..app.plugin_discovery import discover_plugins
 from ..app.plugin_security import (
@@ -55,6 +56,12 @@ from ..app.plugin_security import (
 from ..app.plugins import Plugin
 
 logger = logging.getLogger(__name__)
+
+
+def _require_http_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"Refusing to open non-HTTP URL: {parsed.scheme}://")
 
 
 # ---------------------------------------------------------------------------
@@ -192,8 +199,9 @@ class PyPIIndexSource(MarketplaceSource):
         import urllib.request
 
         url = f"{self.base_url}?q={query}"
+        _require_http_url(url)
         try:
-            with urllib.request.urlopen(url, timeout=10) as resp:
+            with urllib.request.urlopen(url, timeout=10) as resp:  # nosec B310
                 data = json.loads(resp.read())
         except (OSError, ValueError):
             return []
@@ -221,13 +229,14 @@ class PyPIIndexSource(MarketplaceSource):
         import zipfile
 
         url = f"{self.base_url}/{name}/download"
+        _require_http_url(url)
         dest.mkdir(parents=True, exist_ok=True)
         target = dest / name
         if target.exists():
             shutil.rmtree(target)
         target.mkdir(parents=True)
         try:
-            with urllib.request.urlopen(url, timeout=30) as resp:
+            with urllib.request.urlopen(url, timeout=30) as resp:  # nosec B310
                 data = resp.read()
             if url.endswith(".zip") or name.endswith(".zip"):
                 with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -243,8 +252,9 @@ class PyPIIndexSource(MarketplaceSource):
         import urllib.request
 
         url = f"{self.base_url}"
+        _require_http_url(url)
         try:
-            with urllib.request.urlopen(url, timeout=10) as resp:
+            with urllib.request.urlopen(url, timeout=10) as resp:  # nosec B310
                 data = json.loads(resp.read())
         except (OSError, ValueError):
             return []
