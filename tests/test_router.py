@@ -567,10 +567,21 @@ def test_backend_routes_mounted_once():
     def _flatten_routes(app):
         def _collect(routes, out):
             for route in routes:
+                # FastAPI 0.137+ _IncludedRouter wrapper
+                if hasattr(route, "original_router"):
+                    router = getattr(route, "original_router", None)
+                    if router is not None:
+                        nested = getattr(router, "routes", None)
+                        if nested is not None:
+                            _collect(nested, out)
+                            continue
+                # Normal nested routes (Starlette Router, Mount, etc.)
                 nested = getattr(route, "routes", None)
-                if nested:
+                if nested is not None:
                     _collect(nested, out)
-                else:
+                    continue
+                # Leaf routes with a path
+                if hasattr(route, "path"):
                     out.append(route)
 
         result = []

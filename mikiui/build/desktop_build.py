@@ -669,7 +669,7 @@ def build_desktop(
     # 2. Write the portable launcher script.
     spec = app_spec or _infer_app_spec(miki_app)
     mod_name, _, attr = spec.partition(":")
-    launcher_name = _platform_executable_name("launch")
+    launcher_name = "launch.exe" if platform.system().lower() == "windows" else "launch"
     launcher_path = os.path.join(out, launcher_name)
 
     if platform.system().lower() == "windows":
