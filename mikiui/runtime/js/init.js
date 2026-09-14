@@ -31,6 +31,7 @@
     { selector: '[data-miki-messagebox="true"]', init: function(el){return window.mikiMessageBox && mikiMessageBox.init(el);}, name: "messageBox" },
     { selector: '[data-miki-context-window="true"]', init: function(el){return window.mikiContextWindow && mikiContextWindow.init(el);}, name: "contextWindow" },
     { selector: '[data-miki-menubar="true"]', init: function(el){return window.mikiMenuBar && mikiMenuBar.init(el);}, name: "menuBar" },
+    { selector: '[data-miki-navbar="true"]', init: function(el){return window.mikiNavbar && mikiNavbar.init && mikiNavbar.init(el);}, name: "navbar" },
     { selector: '[data-miki-dockable="true"]', init: function(el){return window.mikiDockablePanel && mikiDockablePanel.init(el);}, name: "dockable" },
     { selector: '[data-miki-splitview="true"]', init: function(el){return window.mikiSplitView && mikiSplitView.init(el);}, name: "splitView" },
     { selector: '[data-miki-drawer="true"]', init: function(el){return window.mikiDrawer && mikiDrawer.init(el);}, name: "drawer" },

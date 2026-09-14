@@ -263,7 +263,7 @@ class EditorArea(Component):
     def __init__(
         self,
         *groups: Any,
-        orientation: str = "horizontal",
+        orientation: str = "vertical",
         min_size: int = 150,
         separator_width: int = 4,
         **attrs: Any,
@@ -271,26 +271,8 @@ class EditorArea(Component):
         if orientation not in ("horizontal", "vertical"):
             raise ValueError("orientation must be 'horizontal' or 'vertical'")
 
-        if len(groups) not in (1, 2, 4):
-            raise ValueError("SplitView requires 1, 2, or 4 children")
-
-        if len(groups) == 4:
-            top_row = EditorArea(
-                groups[0],
-                groups[1],
-                orientation="horizontal",
-                min_size=min_size,
-                separator_width=separator_width,
-            )
-            bottom_row = EditorArea(
-                groups[2],
-                groups[3],
-                orientation="horizontal",
-                min_size=min_size,
-                separator_width=separator_width,
-            )
-            groups = (top_row, bottom_row)
-            orientation = "vertical"
+        if len(groups) < 1:
+            raise ValueError("EditorArea requires at least one group")
 
         user_class = attrs.pop("class_", "")
         base_class = "miki-splitview miki-editor-area"

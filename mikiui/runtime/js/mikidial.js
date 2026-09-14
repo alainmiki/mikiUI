@@ -57,10 +57,11 @@
         }
 
         if (progress) {
+          var fillPct = (pct / 100) * 75;
           progress.style.background =
-            "conic-gradient(" +
-            "var(--miki-accent, #6366f1) 0% " + pct + "%," +
-            "var(--miki-border, #e2e8f0) " + pct + "% 100%)";
+            "conic-gradient(from 225deg, " +
+            "var(--miki-accent, #6366f1) 0% " + fillPct + "%," +
+            "var(--miki-border, #e2e8f0) " + fillPct + "% 100%)";
         }
 
         if (dispatchEvent) {

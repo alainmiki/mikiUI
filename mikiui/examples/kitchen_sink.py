@@ -182,6 +182,15 @@ CARD = "border: 1px solid var(--miki-border); border-radius: 0.5rem; padding: 1r
 CARD_NO_PAD = "border: 1px solid var(--miki-border); border-radius: 0.5rem; overflow: hidden"
 PADDING = "padding: 2rem"
 
+_PROJECT_ROOT = "C:\\Users\\Coder Miki\\Desktop\\mikiUI"
+
+def _read_file(relative_path: str, fallback: str = "") -> str:
+    try:
+        with open(_PROJECT_ROOT + "\\" + relative_path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return fallback
+
 
 @app.route("/")
 def kitchen():
@@ -1321,19 +1330,19 @@ def kitchen():
                     EditorArea(
                         EditorGroup(
                             tabs=[
-                                EditorTab("main.py", "from mikiui import *\n\napp = MikiApp()"),
-                                EditorTab("styles.css", "body { margin: 0; }"),
-                                EditorTab("README.md", "# My App"),
+                                EditorTab("README.md", IDEEditor(content=_read_file("README.md", "# My App"), language="markdown"), icon="📝"),
+                                EditorTab("pyproject.toml", IDEEditor(content=_read_file("pyproject.toml", "[project]\nname = 'mikiui'"), language="toml"), icon="⚙️"),
+                                EditorTab("panels.py", IDEEditor(content=_read_file("mikiui/widgets/panels.py", "# panels.py\n"), language="python"), icon="🐍"),
                             ],
                         ),
                         EditorGroup(
                             tabs=[
-                                EditorTab("console", "$ Starting server...\n$ Ready."),
+                                EditorTab("splitview.js", IDEEditor(content=_read_file("mikiui/components/splitview/static/splitview.js", "// splitview.js\n"), language="javascript"), icon="📜"),
                             ],
                         ),
                         orientation="vertical",
                     ),
-                    style=CARD_NO_PAD + "; height: 16rem",
+                    style=CARD_NO_PAD + "; height: 30rem",
                 ),
                 H3("Drawer Toggle"),
                 Div(

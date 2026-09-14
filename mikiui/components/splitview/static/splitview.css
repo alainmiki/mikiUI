@@ -157,9 +157,11 @@
 /* ---------- Splitter ---------- */
 
 .miki-splitter-editor {
-  background: var(--miki-border, #252526);
+  background: var(--miki-accent, #007acc);
+  opacity: 0.35;
   z-index: 10;
-  transition: background 0.15s ease;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  order: 0;
 }
 
 .miki-splitter-editor:hover,
@@ -177,17 +179,19 @@
 
 /* Splitter size for editor area */
 .miki-splitview[data-miki-editor-area="true"] .miki-splitter {
-  flex: 0 0 4px;
-  width: 4px;
-  min-width: 4px;
+  flex: 0 0 6px;
+  width: 6px;
+  min-width: 6px;
   height: 100%;
+  order: 0;
 }
 
 .miki-splitview[data-miki-editor-area="true"][data-orientation="vertical"] .miki-splitter {
   width: 100%;
-  height: 4px;
-  min-height: 4px;
-  flex: 0 0 4px;
+  height: 6px;
+  min-height: 6px;
+  flex: 0 0 6px;
+  order: 0;
 }
 
 /* Cursor for editor splitters */

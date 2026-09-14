@@ -27,7 +27,6 @@ from typing import Any
 from ..components.base import Component
 from ..components.button import Button
 from ..components.html import A, Div, Li, Ul
-from ..engine.bridge import bridge_attr
 
 
 class Navbar(Component):
@@ -95,10 +94,6 @@ class Navbar(Component):
             class_="miki-navbar-toggle",
             aria_label="Toggle navigation menu",
             aria_expanded="false",
-            **bridge_attr(
-                "click",
-                "this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.toggle('open'); this.setAttribute('aria-expanded', this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.contains('open') ? 'true' : 'false')",
-            ),
         )
 
         # Container with flex layout

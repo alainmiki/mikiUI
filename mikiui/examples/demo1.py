@@ -25,6 +25,7 @@ from mikiui.components import (
     Tabs,
 )
 from mikiui.components import BottomSheet
+from mikiui.components.splitview import EditorArea, EditorGroup, EditorTab
 from mikiui.widgets import (
     CollapsiblePanel,
     ColorPicker,
@@ -45,6 +46,7 @@ from mikiui.widgets import (
     TabbedPanel,
 )
 from mikiui.widgets.layout_widgets import Sidebar
+from mikiui.widgets.ide_editor import IDEEditor
 
 app = MikiApp(title="MikiUI Demo")
 app.set_theme("dark")
@@ -57,6 +59,15 @@ FLEX_CENTER = "display: flex; align-items: center; justify-content: space-betwee
 CARD = "border: 1px solid var(--miki-border); border-radius: 0.5rem; padding: 1rem"
 PADDING = "padding: 2rem"
 GAP = "gap: 1rem"
+
+_PROJECT_ROOT = "C:\\Users\\Coder Miki\\Desktop\\mikiUI"
+
+def _read_file(relative_path: str, fallback: str = "") -> str:
+    try:
+        with open(_PROJECT_ROOT + "\\" + relative_path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return fallback
 
 
 @app.route("/")
@@ -170,7 +181,7 @@ def data_demo():
                     sortable=True,
                     filterable=True,
                     pagination=True,
-                    page_size=3,
+                    page_size=12,
                 ),
                 style="margin-top: 1rem",
             ),
@@ -236,6 +247,33 @@ def data_demo():
                     resize_mode="horizontal",
                 ),
                 style=CARD + "; height: 8rem",
+            ),
+            H2("VS Code-like Editor"),
+            Div(
+                EditorArea(
+                    EditorGroup(
+                        [
+                            EditorTab("README.md", IDEEditor(content=_read_file("README.md", "# MikiUI\n\nPython-first UI framework."), language="markdown"), icon="📝"),
+                            EditorTab("pyproject.toml", IDEEditor(content=_read_file("pyproject.toml", "[project]\nname = 'mikiui'"), language="toml"), icon="⚙️"),
+                        ],
+                        active=0,
+                    ),
+                    EditorGroup(
+                        [
+                            EditorTab("panels.py", IDEEditor(content=_read_file("mikiui/widgets/panels.py", "# panels.py\n"), language="python"), icon="🐍"),
+                        ],
+                        active=0,
+                    ),
+                    EditorGroup(
+                        [
+                            EditorTab("splitview.js", IDEEditor(content=_read_file("mikiui/components/splitview/static/splitview.js", "// splitview.js\n"), language="javascript"), icon="📜"),
+                        ],
+                        active=0,
+                    ),
+                    orientation="vertical",
+                    min_size=120,
+                ),
+                style=CARD + "; height: 24rem",
             ),
             H2("Kanban Board"),
             Div(

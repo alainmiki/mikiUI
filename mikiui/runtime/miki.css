@@ -558,8 +558,8 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 .miki-dockable-panel.miki-dock-left {
   position: fixed;
   left: 0;
-  top: 0;
-  height: 100vh;
+  top: var(--miki-navbar-height, 0px);
+  height: calc(100vh - var(--miki-navbar-height, 0px));
   width: var(--miki-dock-width, 300px);
   z-index: 1000;
   box-shadow: var(--miki-shadow-lg, 0 0 15px rgba(0, 0, 0, 0.15));
@@ -567,8 +567,8 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 .miki-dockable-panel.miki-dock-right {
   position: fixed;
   right: 0;
-  top: 0;
-  height: 100vh;
+  top: var(--miki-navbar-height, 0px);
+  height: calc(100vh - var(--miki-navbar-height, 0px));
   width: var(--miki-dock-width, 300px);
   z-index: 1000;
   box-shadow: var(--miki-shadow-lg, 0 0 15px rgba(0, 0, 0, 0.15));
@@ -585,7 +585,7 @@ button[type="submit"]:hover, .miki-btn-primary:hover {
 .miki-dockable-panel.miki-dock-top {
   position: fixed;
   left: 0;
-  top: 0;
+  top: var(--miki-navbar-height, 0px);
   width: 100vw;
   height: var(--miki-dock-height, 300px);
   z-index: 1000;
@@ -1361,6 +1361,8 @@ nav {
 
 /* ---- Navbar ---- */
 .miki-navbar {
+  position: relative;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3218,16 +3220,18 @@ textarea {
     var(--miki-accent, #6366f1) 0% 0%,
     transparent 0% 100%
   );
-  transition: background 0.05s linear;
 }
 .miki-dial-knob {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -56px;
   width: 16px;
   height: 56px;
   background: var(--miki-accent);
   border-radius: 8px;
   transform-origin: center bottom;
-  transition: transform 0.05s linear;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -4299,24 +4303,31 @@ input[type="range"].miki-slider {
 
 /* Splitter */
 .miki-splitter-editor {
-  background: var(--miki-border, #252526);
+  background: var(--miki-accent, #007acc);
+  opacity: 0.35;
   z-index: 10;
-  transition: background 0.15s ease;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  order: 0;
 }
 .miki-splitter-editor:hover,
-.miki-splitter-editor.miki-splitter-dragging { background: var(--miki-accent, #007acc); }
+.miki-splitter-editor.miki-splitter-dragging {
+  opacity: 1;
+  background: var(--miki-accent, #007acc);
+}
 .miki-split-dragging, .miki-split-dragging * { transition: none !important; }
 .miki-splitview[data-miki-editor-area="true"] .miki-splitter {
-  flex: 0 0 4px;
-  width: 4px;
-  min-width: 4px;
+  flex: 0 0 6px;
+  width: 6px;
+  min-width: 6px;
   height: 100%;
+  order: 0;
 }
 .miki-splitview[data-miki-editor-area="true"][data-orientation="vertical"] .miki-splitter {
   width: 100%;
-  height: 4px;
-  min-height: 4px;
-  flex: 0 0 4px;
+  height: 6px;
+  min-height: 6px;
+  flex: 0 0 6px;
+  order: 0;
 }
 .miki-splitview[data-miki-editor-area="true"][data-orientation="horizontal"] .miki-splitter { cursor: col-resize; }
 .miki-splitview[data-miki-editor-area="true"][data-orientation="vertical"] .miki-splitter { cursor: row-resize; }

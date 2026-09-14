@@ -45,6 +45,7 @@ def runtime_scripts(mode: str = "local") -> list[str]:
         "/_miki/runtime/js/mikisearchableselect.js",
         "/_miki/runtime/js/mikicontextwindow.js",
         "/_miki/runtime/js/mikimenubar.js",
+        "/_miki/runtime/js/mikinavbar.js",
         "/_miki/runtime/js/mikibottomsheet.js",
         "/_miki/runtime/js/mikibottomnav.js",
         "/_miki/runtime/js/mikichip.js",

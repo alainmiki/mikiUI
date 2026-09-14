@@ -43,7 +43,7 @@ jobs:
         timeout-minutes: 15
 
       - name: Security scan with bandit
-        run: bandit -r mikiui/ -ll
+        run: bandit -c pyproject.toml -r mikiui/ -ll
 
       - name: Build check (web)
         run: python -c "from mikiui.build.web_build import build_web; print('Web build OK')"

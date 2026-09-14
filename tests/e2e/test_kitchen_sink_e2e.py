@@ -40,6 +40,7 @@ def _load_js(server):
         "mikidatagrid.js", "mikikanban.js", "mikichat.js", "mikidropzone.js",
         "mikicarousel.js", "mikimessagebox.js", "mikitoggle.js",
         "mikisearchableselect.js", "mikicontextwindow.js", "mikimenubar.js",
+        "mikinavbar.js",
         "mikibottomsheet.js", "mikibottomnav.js", "mikichip.js",
         "mikipressable.js", "mikilazygrid.js", "mikivirtuallist.js",
         "mikiscrollview.js", "init.js",

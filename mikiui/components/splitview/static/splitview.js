@@ -268,10 +268,12 @@
       var tabs = group.querySelectorAll("[data-miki-tab=\"true\"]");
       for (var i = 0; i < tabs.length; i++) {
         tabs[i].setAttribute("data-miki-tab-index", String(i));
+        tabs[i].setAttribute("data-miki-tab-group", gid);
         tabs[i].id = gid + "-tab-" + i;
         var closeBtn = tabs[i].querySelector("[data-miki-tab-close=\"true\"]");
         if (closeBtn) {
           closeBtn.setAttribute("data-miki-tab-index", String(i));
+          closeBtn.setAttribute("data-miki-tab-group", gid);
         }
       }
       var panels = group.querySelectorAll(".miki-editor-content");
@@ -283,12 +285,11 @@
     /* ---- Drag & Drop Tabs ---- */
 
     initDragDrop: function (editorArea) {
-      var DRAG_THRESHOLD = 4;
+      var DRAG_THRESHOLD = 5;
       var HOLD_DELAY = 180;
       var pointerId = null;
       var startX = 0;
       var startY = 0;
-      var startTime = 0;
       var dragTab = null;
       var dragGroupId = null;
       var dragIndex = null;
@@ -296,7 +297,6 @@
       var ghost = null;
       var dropIndicator = null;
       var holdTimer = null;
-      var rafId = null;
 
       function getAllEditorAreas() {
         return Array.from(document.querySelectorAll('[data-miki-editor-area="true"]'));
@@ -339,13 +339,8 @@
       function showDropIndicator(targetTab, before) {
         if (!dropIndicator) dropIndicator = createDropIndicator();
         var rect = targetTab.getBoundingClientRect();
-        if (before) {
-          dropIndicator.style.left = rect.left + "px";
-          dropIndicator.style.width = "2px";
-        } else {
-          dropIndicator.style.left = (rect.left + rect.width) + "px";
-          dropIndicator.style.width = "2px";
-        }
+        dropIndicator.style.left = (before ? rect.left : rect.right) + "px";
+        dropIndicator.style.width = "2px";
         dropIndicator.style.top = rect.top + "px";
         dropIndicator.style.height = rect.height + "px";
         dropIndicator.classList.add("miki-visible");
@@ -357,7 +352,6 @@
 
       function getDropTarget(x, y) {
         var areas = getAllEditorAreas();
-        var prevDisplay = ghost ? ghost.style.display : "";
         if (ghost) ghost.style.display = "none";
         var result = null;
         for (var a = 0; a < areas.length; a++) {
@@ -367,14 +361,14 @@
             var tab = document.elementFromPoint(x, y);
             if (tab) {
               var editorTab = tab.closest("[data-miki-tab=\"true\"]");
-              if (editorTab) {
+              if (editorTab && editorTab !== dragTab) {
                 result = editorTab;
                 break;
               }
             }
           }
         }
-        if (ghost) ghost.style.display = prevDisplay;
+        if (ghost) ghost.style.display = "";
         return result;
       }
 
@@ -442,7 +436,6 @@
         pointerId = e.pointerId;
         startX = e.clientX;
         startY = e.clientY;
-        startTime = Date.now();
         dragTab = tab;
         dragGroupId = getGroupId(getTabGroup(tab));
         dragIndex = getTabIndex(tab);
@@ -456,7 +449,7 @@
           ghost = createGhost(dragTab);
           positionGhost(e);
           document.body.style.cursor = "grabbing";
-          dragTab.setPointerCapture(e.pointerId);
+          try { dragTab.setPointerCapture(e.pointerId); } catch (err) {}
         }, HOLD_DELAY);
       }
 
@@ -478,7 +471,7 @@
               ghost = createGhost(dragTab);
               positionGhost(e);
               document.body.style.cursor = "grabbing";
-              dragTab.setPointerCapture(e.pointerId);
+              try { dragTab.setPointerCapture(e.pointerId); } catch (err) {}
             }
           }
           return;
@@ -550,8 +543,20 @@
     /* ---- Splitter ---- */
 
     initSplitter: function (editorArea, splitter) {
-      var firstPane = splitter.previousElementSibling;
-      var secondPane = splitter.nextElementSibling;
+      function findAdjacentPane(start, direction) {
+        var el = start;
+        while (el) {
+          el = direction === "previous" ? el.previousElementSibling : el.nextElementSibling;
+          if (!el) break;
+          if (el.classList.contains("miki-editor-group") || el.classList.contains("miki-split-pane")) {
+            return el;
+          }
+        }
+        return null;
+      }
+
+      var firstPane = findAdjacentPane(splitter, "previous");
+      var secondPane = findAdjacentPane(splitter, "next");
       if (!firstPane || !secondPane) return;
 
       var orientation = editorArea.getAttribute("data-orientation") || "horizontal";
@@ -561,6 +566,7 @@
       var dragging = false;
       var rafId = null;
       var pendingSize = null;
+      var activePointerId = null;
 
       // Cached at drag start to avoid repeated layout reads
       var startPos = 0;
@@ -610,8 +616,9 @@
         return Math.max(minSize, containerSize - splitterSize - minSize);
       }
 
-      function onDragStart(pos) {
+      function onDragStart(pointerId, pos) {
         dragging = true;
+        activePointerId = pointerId;
         startPos = pos;
         firstStartSize = getPx(firstPane, isHorizontal ? "x" : "y");
         secondStartSize = getPx(secondPane, isHorizontal ? "x" : "y");
@@ -622,11 +629,10 @@
         document.body.style.cursor = isHorizontal ? "col-resize" : "row-resize";
         document.body.style.userSelect = "none";
 
-        on(document, "mousemove", onMouseMove);
-        on(document, "mouseup", onMouseUp);
-        on(document, "mouseleave", onMouseUp);
-        on(document, "touchmove", onTouchMove, { passive: false });
-        on(document, "touchend", onTouchEnd);
+        try { splitter.setPointerCapture(pointerId); } catch (err) {}
+        on(splitter, "pointermove", onPointerMove);
+        on(splitter, "pointerup", onPointerUp);
+        on(splitter, "pointercancel", onPointerUp);
       }
 
       function onDragMove(pos) {
@@ -654,7 +660,10 @@
       }
 
       function onDragEnd() {
+        if (!dragging) return;
+        var capturedPointerId = activePointerId;
         dragging = false;
+        activePointerId = null;
         splitter.classList.remove("miki-splitter-dragging");
         editorArea.classList.remove("miki-split-dragging");
         document.body.style.cursor = "";
@@ -667,49 +676,55 @@
           pendingSize = null;
         }
 
-        off(document, "mousemove", onMouseMove);
-        off(document, "mouseup", onMouseUp);
-        off(document, "mouseleave", onMouseUp);
-        off(document, "touchmove", onTouchMove);
-        off(document, "touchend", onTouchEnd);
+        try { splitter.releasePointerCapture(capturedPointerId); } catch (err) {}
+        off(splitter, "pointermove", onPointerMove);
+        off(splitter, "pointerup", onPointerUp);
+        off(splitter, "pointercancel", onPointerUp);
       }
 
-      function onMouseMove(e) {
+      function onPointerMove(e) {
         if (!dragging) return;
-        e.preventDefault();
+        if (activePointerId !== null && e.pointerId !== activePointerId) return;
         var pos = isHorizontal ? e.clientX : e.clientY;
         onDragMove(pos);
       }
 
-      function onMouseUp() {
-        onDragEnd();
-      }
-
-      function onTouchMove(e) {
+      function onPointerUp(e) {
         if (!dragging) return;
-        e.preventDefault();
-        var touch = e.touches[0];
-        var pos = isHorizontal ? touch.clientX : touch.clientY;
-        onDragMove(pos);
-      }
-
-      function onTouchEnd() {
+        if (activePointerId !== null && e.pointerId !== activePointerId) return;
         onDragEnd();
       }
 
-      on(splitter, "mousedown", function (e) {
+      on(splitter, "pointerdown", function (e) {
         if (e.button !== 0) return;
         e.preventDefault();
         var pos = isHorizontal ? e.clientX : e.clientY;
-        onDragStart(pos);
+        onDragStart(e.pointerId, pos);
       });
 
       on(splitter, "touchstart", function (e) {
         if (e.touches.length !== 1) return;
         e.preventDefault();
         var touch = e.touches[0];
+        var fakePointerId = "touch-" + Date.now();
         var pos = isHorizontal ? touch.clientX : touch.clientY;
-        onDragStart(pos);
+        onDragStart(fakePointerId, pos);
+
+        function onTouchMove(ev) {
+          if (!dragging) return;
+          ev.preventDefault();
+          var t = ev.touches[0];
+          onDragMove(isHorizontal ? t.clientX : t.clientY);
+        }
+
+        function onTouchEnd() {
+          onDragEnd();
+          off(document, "touchmove", onTouchMove);
+          off(document, "touchend", onTouchEnd);
+        }
+
+        on(document, "touchmove", onTouchMove, { passive: false });
+        on(document, "touchend", onTouchEnd);
       }, { passive: false });
 
       // Double-click to maximize/restore
@@ -722,40 +737,33 @@
           var maxSize = computeMaxFirst();
           applySizes(maxSize, containerSize - splitterSize - maxSize);
         }
+      });
 
-        dispatch(editorArea, "miki:editor:maximized", {
-          maximized: editorArea.classList.contains("miki-split-maximized"),
+      // Keyboard: arrow keys for fine adjustment
+      on(splitter, "keydown", function (e) {
+        var step = e.shiftKey ? 1 : 5;
+        var d = 0;
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") d = -step;
+        else if (e.key === "ArrowRight" || e.key === "ArrowDown") d = step;
+        else return;
+
+        e.preventDefault();
+        var firstSize = getPx(firstPane, isHorizontal ? "x" : "y");
+        var newFirst = Math.max(minSize, Math.min(computeMaxFirst(), firstSize + d));
+        applySizes(newFirst, containerSize - splitterSize - newFirst);
+        dispatch(editorArea, "miki:editor:resize", {
+          orientation: orientation,
+          firstSize: newFirst,
         });
       });
 
-      // Keyboard support
-      on(splitter, "keydown", function (e) {
-        var step = e.shiftKey ? 1 : 5;
-        var currentSize = getPx(firstPane, isHorizontal ? "x" : "y");
-        var maxFirst = computeMaxFirst();
-
-        if (isHorizontal) {
-          if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            var newFirst = Math.max(minSize, currentSize - step);
-            applySizes(newFirst, containerSize - splitterSize - newFirst);
-          } else if (e.key === "ArrowRight") {
-            e.preventDefault();
-            var newFirst = Math.min(maxFirst, currentSize + step);
-            applySizes(newFirst, containerSize - splitterSize - newFirst);
-          }
-        } else {
-          if (e.key === "ArrowUp") {
-            e.preventDefault();
-            var newFirst = Math.max(minSize, currentSize - step);
-            applySizes(newFirst, containerSize - splitterSize - newFirst);
-          } else if (e.key === "ArrowDown") {
-            e.preventDefault();
-            var newFirst = Math.min(maxFirst, currentSize + step);
-            applySizes(newFirst, containerSize - splitterSize - newFirst);
-          }
-        }
-      });
+      // Make splitter focusable for keyboard + screen readers
+      splitter.setAttribute("tabindex", "0");
+      splitter.setAttribute("role", "separator");
+      if (!splitter.getAttribute("aria-label")) {
+        splitter.setAttribute("aria-label", "Resize panes");
+      }
+      splitter.setAttribute("aria-orientation", isHorizontal ? "horizontal" : "vertical");
     },
   };
 

@@ -40,6 +40,8 @@ def page(browser, server):
         js_resp_tabs = server.get("/_miki/runtime/js/mikitabs.js")
         js_resp_drawer = server.get("/_miki/runtime/js/mikidrawer.js")
         js_resp_split = server.get("/_miki/runtime/js/mikisplitview.js")
+        js_resp_menubar = server.get("/_miki/runtime/js/mikimenubar.js")
+        js_resp_navbar = server.get("/_miki/runtime/js/mikinavbar.js")
         inject = (
             f"<style>{css_resp.text}</style>"
             f"<script>{js_resp_core.text}</script>"
@@ -51,6 +53,8 @@ def page(browser, server):
             f"<script>{js_resp_tabs.text}</script>"
             f"<script>{js_resp_drawer.text}</script>"
             f"<script>{js_resp_split.text}</script>"
+            f"<script>{js_resp_menubar.text}</script>"
+            f"<script>{js_resp_navbar.text}</script>"
             f"<script>{js_resp_init.text}</script>"
         )
         html = resp.text
