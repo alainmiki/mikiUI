@@ -108,12 +108,46 @@
     fullInitAll();
   }
 
-  /* Re-init after HTMX swaps so dynamically injected content works */
-  document.addEventListener("miki:swapped", function () {
-    fullInitAll();
-  });
+  function debounce(fn, delay) {
+    var timer;
+    return function () {
+      var args = arguments;
+      var context = this;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        fn.apply(context, args);
+      }, delay);
+    };
+  }
 
-  document.addEventListener("htmx:afterSwap", function () {
-    fullInitAll();
-  });
+  function reinitLayoutWidgets() {
+    var dockables = document.querySelectorAll('[data-miki-dockable="true"]');
+    for (var i = 0; i < dockables.length; i++) {
+      var el = dockables[i];
+      el.dataset.mikiInit = "";
+      if (window.mikiDockablePanel) mikiDockablePanel.init(el);
+    }
+
+    var mdiareas = document.querySelectorAll('[data-miki-mdiarea="true"]');
+    for (var j = 0; j < mdiareas.length; j++) {
+      var area = mdiareas[j];
+      area.dataset.mikiMdiInit = "";
+      var wins = area.querySelectorAll(".miki-mdi-subwindow");
+      for (var w = 0; w < wins.length; w++) {
+        wins[w].dataset.mikiMdiWinInit = "";
+      }
+      if (window.mikiMDI) mikiMDI.initArea(area);
+    }
+
+    var splitviews = document.querySelectorAll('[data-miki-splitview="true"]');
+    for (var k = 0; k < splitviews.length; k++) {
+      var sv = splitviews[k];
+      sv.dataset.mikiInit = "";
+      if (window.mikiSplitView) mikiSplitView.init(sv);
+    }
+  }
+
+  var debouncedReinit = debounce(reinitLayoutWidgets, 150);
+  window.addEventListener("resize", debouncedReinit);
+  window.addEventListener("orientationchange", debouncedReinit);
 })();

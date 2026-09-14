@@ -17,7 +17,6 @@ from ..components import (
 )
 from ..components.base import Component
 from ..engine import _
-from ..engine.bridge import bridge_attr
 
 
 class FormWizard(Component):
@@ -64,21 +63,28 @@ class FormWizard(Component):
             class_="miki-wizard-indicator",
         )
 
-        def js_show(idx: int) -> str:
+        def js_show(delta: int) -> str:
             return (
-                "var ps=document.getElementById('" + group + "-steps').children;"
-                "for(var i=0;i<ps.length;i++){ps[i].style.display=(i===" + str(idx)
-                + ")?'block':'none';}"
-                "var ind=document.getElementById('" + group
-                + "-indicator').children;"
-                "for(var i=0;i<ind.length;i++){"
-                "ind[i].classList.toggle('active',i===" + str(idx) + ");}"
+                "var gid='" + group + "';"
+                "var steps=document.getElementById(gid+'-steps').children;"
+                "var ind=document.getElementById(gid+'-indicator').children;"
+                "var cur=0;"
+                "for(var i=0;i<steps.length;i++){"
+                "if(steps[i].style.display!=='none'){cur=i;break;}"
+                "}"
+                "var next=Math.max(0,Math.min(steps.length-1,cur+" + str(delta) + "));"
+                "for(var i=0;i<steps.length;i++){steps[i].style.display=(i===next)?'block':'none';}"
+                "for(var i=0;i<ind.length;i++){ind[i].classList.toggle('active',i===next);}"
+                "var back=document.getElementById(gid+'-back');"
+                "var nextBtn=document.getElementById(gid+'-next');"
+                "if(back){back.disabled=(next===0);}"
+                "if(nextBtn){nextBtn.disabled=(next===steps.length-1);}"
             )
 
-        back_attrs = {"type": "button", "class_": "miki-wizard-back", "disabled": (current == 0)}
-        back_attrs.update(bridge_attr("click", js_show(max(0, current - 1))))
-        next_attrs = {"type": "button", "class_": "miki-wizard-next", "disabled": (current >= len(steps) - 1)}
-        next_attrs.update(bridge_attr("click", js_show(min(len(steps) - 1, current + 1))))
+        back_attrs = {"type": "button", "class_": "miki-wizard-back", "id": group + "-back", "disabled": (current == 0)}
+        back_attrs["onclick"] = js_show(-1)
+        next_attrs = {"type": "button", "class_": "miki-wizard-next", "id": group + "-next", "disabled": (current >= len(steps) - 1)}
+        next_attrs["onclick"] = js_show(1)
 
         nav = Div(
             Button(

@@ -8,22 +8,19 @@
       if (dlg.dataset.mikiInit === "true") return;
       dlg.dataset.mikiInit = "true";
 
-      // ESC to close
-      on(dlg, "keydown", function (e) {
+      var escHandler = function (e) {
         if (e.key === "Escape" && dlg.open) {
           var closeOnEsc = dlg.getAttribute("data-miki-dialog-close-on-escape");
           if (closeOnEsc === null || closeOnEsc === "true") {
             mikiDialog.close(dlg);
           }
         }
-      });
+      };
+      on(dlg, "keydown", escHandler);
 
-      // Click/Tap on backdrop — activates on both mouse click and touch tap.
-      // Treat either the dialog element itself or an explicit overlay child as
-      // the backdrop so native <dialog> elements and custom overlay containers
-      // behave consistently.
+      var overlayCleanup = null;
       if (dlg.getAttribute("data-miki-dialog-close-on-overlay") === "true") {
-        onPointer(dlg, "activate", function (e) {
+        overlayCleanup = onPointer(dlg, "activate", function (e) {
           var target = e && e.target ? e.target : null;
           var targetNode = target && target.closest ? target : null;
           var isBackdrop =
@@ -36,16 +33,29 @@
         });
       }
 
-      // Close buttons inside the dialog
+      var closeBtnCleanups = [];
       var closeBtns = dlg.querySelectorAll("[data-miki-dialog-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          onPointer(btn, "activate", function (e) {
+          var cleanup = onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiDialog.close(dlg);
           });
+          closeBtnCleanups.push(cleanup);
         })(closeBtns[i]);
       }
+
+      registerDestroyHandler(dlg, function () {
+        off(dlg, "keydown", escHandler);
+        if (overlayCleanup) overlayCleanup();
+        for (var j = 0; j < closeBtnCleanups.length; j++) {
+          closeBtnCleanups[j]();
+        }
+        if (dlg._mikiFocusTrapCleanup) {
+          dlg._mikiFocusTrapCleanup();
+          dlg._mikiFocusTrapCleanup = null;
+        }
+      });
     },
 
      show: function (dlg) {
@@ -54,7 +64,6 @@
        var dialog = findClosest(resolved, "[data-miki-dialog=\"true\"]") || findClosest(resolved, "dialog");
        if (!dialog) dialog = resolved;
        dlg = dialog;
-      // Save the currently-focused element so we can restore focus later
       var active = document.activeElement;
       if (active && active !== document.body && active.id) {
         dlg.setAttribute("data-miki-dialog-trigger", active.id);
@@ -70,12 +79,10 @@
         dlg.style.display = "block";
       }
 
-      // Focus trap (skip if already trapped)
       if (dlg.dataset.mikiFocusTrapped !== "true") {
-        miki.focusTrap(dlg);
+        dlg._mikiFocusTrapCleanup = miki.focusTrap(dlg);
       }
 
-      // Focus first focusable element inside the dialog
       var focusable = dlg.querySelectorAll(
         'a[href], area[href], input:not([disabled]):not([type="hidden"]), ' +
         'select:not([disabled]), textarea:not([disabled]), ' +
@@ -101,7 +108,11 @@
         dlg.style.display = "none";
       }
 
-      // Restore focus to trigger element
+      if (dlg._mikiFocusTrapCleanup) {
+        dlg._mikiFocusTrapCleanup();
+        dlg._mikiFocusTrapCleanup = null;
+      }
+
       var triggerId = dlg.getAttribute("data-miki-dialog-trigger");
       if (triggerId) {
         var trigger = document.getElementById(triggerId);
@@ -109,8 +120,6 @@
           trigger.focus();
         }
       }
-      // Clean up focus trap
-      dlg.dataset.mikiFocusTrapped = "false";
 
       dlg.dispatchEvent(new CustomEvent("miki:dialog:closed"));
     },
@@ -125,6 +134,10 @@
        } else {
          mikiDialog.show(dialog);
        }
+     },
+
+     destroy: function (dlg) {
+       mikiDestroy(dlg);
      }
   };
 

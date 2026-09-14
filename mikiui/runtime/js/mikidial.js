@@ -77,7 +77,6 @@
         setValue(parseFloat(input.value), true);
       }
 
-      /* Click-to-value: clicking on the track sets the value proportionally */
       function onTrackClick(e) {
         if (!track) return;
         var rect = track.getBoundingClientRect();
@@ -103,9 +102,8 @@
           y = cy + Math.sin(angle) * radius;
         }
 
-        /* Compute angle: -135deg at top-left -> +135deg at top-right */
         var angle = Math.atan2(y - cy, x - cx);
-        var angleDeg = (angle * 180 / Math.PI + 180); /* 0 to 360 */
+        var angleDeg = (angle * 180 / Math.PI + 180);
         var arcStart = 135;
         var arcRange = 270;
         var pct = ((angleDeg - arcStart + 360) % 360) / arcRange;
@@ -118,7 +116,6 @@
         e.preventDefault();
       }
 
-      /* Keyboard support */
       function onKeyDown(e) {
         var current = parseFloat(input.value) || min;
         var v = current;
@@ -146,34 +143,36 @@
       on(input, "change", onInput);
       on(input, "keydown", onKeyDown);
 
-      if (track) {
-        on(track, "touchstart", onTrackClick, { passive: false });
-        on(track, "mousedown", function (e) {
-          e.preventDefault();
-          onTrackClick(e);
-          var rafId = 0;
-          function onDragMove(ev) {
-            ev.preventDefault();
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(function () {
-              onTrackClick(ev);
-            });
-          }
-          function onDragEnd() {
-            if (rafId) cancelAnimationFrame(rafId);
-            off(document, "mousemove", onDragMove);
-            off(document, "mouseup", onDragEnd);
-            off(document, "touchmove", onDragMove);
-            off(document, "touchend", onDragEnd);
-          }
-          on(document, "mousemove", onDragMove, { passive: false });
-          on(document, "mouseup", onDragEnd);
-          on(document, "touchmove", onDragMove, { passive: false });
-          on(document, "touchend", onDragEnd);
+      var trackMouseHandler = null;
+      var trackTouchHandler = null;
+      var dialDragRafId = 0;
+      function onDialDragMove(ev) {
+        ev.preventDefault();
+        if (dialDragRafId) cancelAnimationFrame(dialDragRafId);
+        dialDragRafId = requestAnimationFrame(function () {
+          onTrackClick(ev);
         });
       }
+      function onDialDragEnd() {
+        if (dialDragRafId) cancelAnimationFrame(dialDragRafId);
+        off(document, "mousemove", onDialDragMove);
+        off(document, "mouseup", onDialDragEnd);
+        off(document, "touchmove", onDialDragMove);
+        off(document, "touchend", onDialDragEnd);
+      }
+      if (track) {
+        on(track, "touchstart", onTrackClick, { passive: false });
+        trackMouseHandler = function (e) {
+          e.preventDefault();
+          onTrackClick(e);
+          on(document, "mousemove", onDialDragMove, { passive: false });
+          on(document, "mouseup", onDialDragEnd);
+          on(document, "touchmove", onDialDragMove, { passive: false });
+          on(document, "touchend", onDialDragEnd);
+        };
+        on(track, "mousedown", trackMouseHandler);
+      }
 
-      /* Expose API */
       container.mikiDial = {
         setValue: function (v, dispatch) { setValue(v, dispatch !== false); },
         getValue: function () { return parseFloat(input.value) || min; },
@@ -182,8 +181,25 @@
         setStep: function (v) { input.step = v; step = parseFloat(v); },
       };
 
-      /* Initialize values */
       setValue(parseFloat(input.value) || min, false);
+
+      registerDestroyHandler(container, function () {
+        off(input, "input", onInput);
+        off(input, "change", onInput);
+        off(input, "keydown", onKeyDown);
+        if (track) {
+          off(track, "touchstart", onTrackClick);
+          off(track, "mousedown", trackMouseHandler);
+          off(document, "mousemove", onDialDragMove);
+          off(document, "mouseup", onDialDragEnd);
+          off(document, "touchmove", onDialDragMove);
+          off(document, "touchend", onDialDragEnd);
+        }
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     },
 
     setValue: function (el, value, dispatch) {

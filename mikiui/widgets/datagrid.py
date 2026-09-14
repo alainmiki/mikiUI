@@ -77,6 +77,7 @@ Example
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from ..components import Button, Div, Input, Option, Select, Span, Table, Tbody, Td, Th, Thead, Tr
@@ -115,6 +116,10 @@ class DataGrid(Component):
         height: int | None = None,
         htmx_get: str | None = None,
         htmx_target: str | None = None,
+        sort_by: str | None = None,
+        sort_order: str = "asc",
+        filter_by: dict[str, str] | None = None,
+        search_query: str | None = None,
         **attrs: Any,
     ) -> None:
         attrs.setdefault("class_", "miki-datagrid")
@@ -128,6 +133,8 @@ class DataGrid(Component):
             attrs.setdefault("data-miki-htmx-get", htmx_get)
         if htmx_target:
             attrs.setdefault("data-miki-htmx-target", htmx_target)
+        if pagination:
+            attrs.setdefault("data-miki-page-size", str(page_size))
 
         self.columns = columns
         self.rows = rows
@@ -139,6 +146,18 @@ class DataGrid(Component):
         self.page = page
         self.page_size = page_size
         self.height = height
+        self.sort_by = sort_by
+        self.sort_order = sort_order if sort_order in ("asc", "desc") else "asc"
+        self.filter_by = filter_by or {}
+        self.search_query = search_query or ""
+
+        if not htmx_get and rows:
+            normalized = [self._normalize_row(r) for r in rows]
+            try:
+                rows_json = json.dumps(normalized)
+                attrs.setdefault("data-miki-rows", rows_json)
+            except (TypeError, ValueError):
+                pass
 
         children: list[Any] = []
 
@@ -169,7 +188,8 @@ class DataGrid(Component):
         children.append(table)
 
         if pagination:
-            total_pages = max(1, (len(self.rows) + self.page_size - 1) // self.page_size)
+            filtered_count = len(self._get_filtered_sorted_rows())
+            total_pages = max(1, (filtered_count + self.page_size - 1) // self.page_size)
             prev_btn = Button(_("pagination_prev", "Previous"), **{"data-miki-page": "prev"})
             page_info = Span(
                 f"{_('pagination_page', 'Page')} {page + 1} {_('pagination_of', 'of')} {total_pages}",
@@ -191,6 +211,83 @@ class DataGrid(Component):
         else:
             return (str(col[0]), str(col[1]), dict(col[2]))
 
+    def _parse_columns(self) -> tuple[list[str], list[str], list[dict]]:
+        labels: list[str] = []
+        fields: list[str] = []
+        options: list[dict] = []
+        for col in self.columns:
+            label, field, opts = self._parse_column(col)
+            labels.append(label)
+            fields.append(field)
+            options.append(opts)
+        return labels, fields, options
+
+    def _normalize_row(self, row: dict | list) -> dict:
+        if isinstance(row, dict):
+            return dict(row)
+        _, fields, _ = self._parse_columns()
+        return {
+            fields[i] if i < len(fields) else str(i): row[i] if i < len(row) else ""
+            for i in range(max(len(fields), len(row)))
+        }
+
+    def _apply_search(self, data: list) -> list:
+        if not self.search_query:
+            return data
+        q = self.search_query.lower()
+        if not data:
+            return data
+        if self.search_fields:
+            return [
+                r for r in data
+                if isinstance(r, dict) and any(
+                    q in str(r.get(f, "")).lower() for f in self.search_fields
+                )
+            ]
+        if isinstance(data[0], dict):
+            return [r for r in data if any(q in str(v).lower() for v in r.values())]
+        return [r for r in data if any(q in str(c).lower() for c in r)]
+
+    def _apply_filter(self, data: list) -> list:
+        if not self.filter_by:
+            return data
+        result: list = []
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            match = True
+            for field, value in self.filter_by.items():
+                if value and value.lower() not in str(row.get(field, "")).lower():
+                    match = False
+                    break
+            if match:
+                result.append(row)
+        return result
+
+    def _apply_sort(self, data: list) -> list:
+        if not self.sort_by:
+            return data
+        reverse = self.sort_order == "desc"
+
+        def sort_key(row: dict) -> tuple[int, float | str]:
+            val = row.get(self.sort_by, "")
+            try:
+                return (0, float(val))
+            except (ValueError, TypeError):
+                return (1, str(val).lower())
+
+        try:
+            return sorted(data, key=sort_key, reverse=reverse)
+        except (TypeError, ValueError):
+            return data
+
+    def _get_filtered_sorted_rows(self) -> list:
+        data = list(self.rows)
+        data = self._apply_search(data)
+        data = self._apply_filter(data)
+        data = self._apply_sort(data)
+        return data
+
     def _build_column_headers(self) -> list[Th]:
         headers: list[Th] = []
         for col in self.columns:
@@ -201,7 +298,10 @@ class DataGrid(Component):
             if opts.get("align"):
                 th_classes.append(f"miki-th-{opts['align']}")
 
-            th_attrs: dict[str, Any] = {"class_": " ".join(th_classes)}
+            th_attrs: dict[str, Any] = {
+                "class_": " ".join(th_classes),
+                "data-miki-col-field": field,
+            }
             if opts.get("type") == "number":
                 th_attrs["class_"] += " miki-th-number"
             if opts.get("align"):
@@ -246,7 +346,7 @@ class DataGrid(Component):
         return rows
 
     def _get_visible_rows(self) -> list:
-        data = list(self.rows)
+        data = self._get_filtered_sorted_rows()
         start = self.page * self.page_size
         end = start + self.page_size
         return data[start:end]

@@ -260,7 +260,7 @@ class TestResponsiveWidgets:
     """Test that widgets adapt to mobile viewports."""
 
     def test_chat_mobile_height(self, browser, server):
-        """Chat widget uses full viewport height on mobile."""
+        """Chat widget fills its container on mobile."""
         context = browser.new_context(viewport={"width": 375, "height": 667})
         page = context.new_page()
         html = _load_page(server, "/")
@@ -271,8 +271,11 @@ class TestResponsiveWidgets:
         if chat.count() > 0:
             box = chat.first.bounding_box()
             assert box is not None
-            # On mobile, chat should be tall (full viewport or close)
-            assert box["height"] >= 500, f"Chat height {box['height']} too small on mobile"
+            parent = chat.first.evaluate("el => el.parentElement.getBoundingClientRect()")
+            # On mobile, chat should fill its parent container (within 4px tolerance for borders)
+            assert box["height"] >= parent["height"] - 4, (
+                f"Chat height {box['height']} too small relative to parent {parent['height']}"
+            )
 
         context.close()
 

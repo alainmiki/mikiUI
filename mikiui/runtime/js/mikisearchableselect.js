@@ -8,7 +8,6 @@
       if (el.dataset.mikiInit === "true") return;
       el.dataset.mikiInit = "true";
 
-      // Wrap native select in a container with a filter input
       var filterInput = document.createElement("input");
       filterInput.type = "text";
       filterInput.className = "miki-searchable-filter";
@@ -25,7 +24,7 @@
       wrapper.appendChild(filterInput);
       wrapper.appendChild(el);
 
-      on(filterInput, "input", function () {
+      var inputHandler = function () {
         var filter = filterInput.value.toLowerCase();
         var options = el.querySelectorAll("option");
         var matchFound = false;
@@ -38,7 +37,20 @@
             options[i].style.display = "none";
           }
         }
+      };
+      on(filterInput, "input", inputHandler);
+
+      registerDestroyHandler(el, function () {
+        off(filterInput, "input", inputHandler);
+        if (wrapper.parentNode) {
+          wrapper.parentNode.insertBefore(el, wrapper);
+          wrapper.parentNode.removeChild(wrapper);
+        }
       });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

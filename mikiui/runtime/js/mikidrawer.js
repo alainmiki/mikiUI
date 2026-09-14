@@ -20,28 +20,30 @@
       drawer.setAttribute("tabindex", "-1");
       drawer.focus();
 
-      /* ESC key to close when drawer is open */
       if (!drawer.dataset.mikiEscBound) {
         drawer.dataset.mikiEscBound = "true";
-        on(document, "keydown", function onEsc(e) {
+        var escHandler = function onEsc(e) {
           if (e.key === "Escape" &&
               drawer.getAttribute("data-miki-drawer-esc-close") !== "false" &&
               drawer.classList.contains("miki-drawer-open")) {
             mikiDrawer.close(drawer);
             drawer.dataset.mikiEscBound = "false";
           }
-        });
+        };
+        on(document, "keydown", escHandler);
+        drawer._mikiEscHandler = escHandler;
       }
 
-      /* Focus first focusable element */
       var focusable = drawer.querySelectorAll(
         'a[href], input:not([disabled]):not([type="hidden"]), ' +
         'select:not([disabled]), textarea:not([disabled]), ' +
         'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
       if (focusable.length > 0) focusable[0].focus();
-      miki.focusTrap(drawer);
-      drawer.dataset.mikiFocusTrapped = "true";
+      if (drawer.dataset.mikiFocusTrapped !== "true") {
+        drawer._mikiFocusTrapCleanup = miki.focusTrap(drawer);
+        drawer.dataset.mikiFocusTrapped = "true";
+      }
 
       dispatch(drawer, "miki:drawer:opened", {});
     },
@@ -77,24 +79,44 @@
       if (el.dataset.mikiInit === "true") return;
       el.dataset.mikiInit = "true";
 
-      /* Overlay click/tap-to-close */
+      var overlayCleanup = null;
       var overlay = el.querySelector("[data-miki-drawer-overlay=\"true\"]");
       if (overlay) {
-        onPointer(overlay, "activate", function () {
+        overlayCleanup = onPointer(overlay, "activate", function () {
           mikiDrawer.close(el);
         });
       }
 
-      /* Close buttons */
+      var closeBtnCleanups = [];
       var closeBtns = el.querySelectorAll("[data-miki-drawer-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          onPointer(btn, "activate", function (e) {
+          var cleanup = onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiDrawer.close(el);
           });
+          closeBtnCleanups.push(cleanup);
         })(closeBtns[i]);
       }
+
+      registerDestroyHandler(el, function () {
+        if (overlayCleanup) overlayCleanup();
+        for (var j = 0; j < closeBtnCleanups.length; j++) {
+          closeBtnCleanups[j]();
+        }
+        if (el._mikiEscHandler) {
+          off(document, "keydown", el._mikiEscHandler);
+          el._mikiEscHandler = null;
+        }
+        if (el._mikiFocusTrapCleanup) {
+          el._mikiFocusTrapCleanup();
+          el._mikiFocusTrapCleanup = null;
+        }
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

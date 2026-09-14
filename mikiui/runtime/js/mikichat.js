@@ -4,22 +4,6 @@
   if (typeof window === "undefined") return;
   if (typeof window.mikiChat !== "undefined") return;
 
-  /* ---------------------------------------------------------------
-   * ChatUI — accessible chat log + input form.
-   *
-   * Features:
-   *  - Auto-scroll to bottom on new messages.
-   *  - Typing indicator with show()/hide().
-   *  - Enter to send (Shift+Enter for newline in multiline mode).
-   *  - Empty-input guard (no blank messages sent).
-   *  - XSS-safe message insertion (textContent, not innerHTML).
-   *  - Avatar + timestamp support via appendMessage().
-   *  - CustomEvents: miki:chat:send { text }, miki:chat:messageadded.
-   *  - Public API: mikiChat.appendMessage(el, {role,text,avatar,time}),
-   *    mikiChat.clear(el), mikiChat.scrollToBottom(el),
-   *    mikiChat.toggleTyping(el, bool).
-   * --------------------------------------------------------------- */
-
   function mikiChat() {}
 
   function esc(s) {
@@ -43,11 +27,16 @@
 
     if (log) mikiChat.scrollToBottom(el);
 
+    var inputHandler = null;
+    var keyHandler = null;
+    var submitHandler = null;
+    var observer = null;
+
     if (input && form) {
       var typingTimer = null;
       var isTyping = false;
 
-      on(input, "input", function () {
+      inputHandler = function () {
         if (!typingIndicator) return;
         if (!isTyping) {
           isTyping = true;
@@ -59,30 +48,38 @@
           typingIndicator.style.display = "none";
           mikiChat.scrollToBottom(el);
         }, 500);
-      });
+      };
 
-      /* Enter to send, Shift+Enter for newline (textarea only) */
-      on(input, "keydown", function (e) {
+      keyHandler = function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           mikiChat._submit(el, form, input);
         }
-      });
+      };
 
-      /* Submit handler */
-      on(form, "submit", function (e) {
+      submitHandler = function (e) {
         e.preventDefault();
         mikiChat._submit(el, form, input);
-      });
+      };
+
+      on(input, "input", inputHandler);
+      on(input, "keydown", keyHandler);
+      on(form, "submit", submitHandler);
     }
 
-    /* Auto-scroll on content changes */
     if (log && typeof MutationObserver !== "undefined") {
-      var observer = new MutationObserver(function () {
+      observer = new MutationObserver(function () {
         mikiChat.scrollToBottom(el);
       });
       observer.observe(log, { childList: true, subtree: true });
     }
+
+    registerDestroyHandler(el, function () {
+      if (input && inputHandler) off(input, "input", inputHandler);
+      if (input && keyHandler) off(input, "keydown", keyHandler);
+      if (form && submitHandler) off(form, "submit", submitHandler);
+      if (observer) observer.disconnect();
+    });
   };
 
   mikiChat._submit = function (el, form, input) {
@@ -94,7 +91,6 @@
 
     dispatch(el, "miki:chat:send", { text: text });
 
-    /* If the form has no hx-* / action, echo locally so the demo works */
     if (!form.getAttribute("hx-post") && !form.getAttribute("action")) {
       mikiChat.appendMessage(el, { role: "user", text: text });
       input.value = "";
@@ -169,6 +165,10 @@
     log.appendChild(bubble);
     mikiChat.scrollToBottom(el);
     dispatch(el, "miki:chat:messageadded", { role: role, text: text });
+  };
+
+  mikiChat.destroy = function (el) {
+    mikiDestroy(el);
   };
 
   window.mikiChat = mikiChat;

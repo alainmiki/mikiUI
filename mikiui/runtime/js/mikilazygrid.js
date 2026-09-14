@@ -41,6 +41,14 @@
           observer.observe(sentinel);
         }
       }
+
+      registerDestroyHandler(container, function () {
+        observer.disconnect();
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

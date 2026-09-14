@@ -28,7 +28,6 @@
         isOpen = true;
         container.setAttribute("data-miki-context-open", "true");
 
-        // Position the menu
         var rect = menu.getBoundingClientRect();
         var viewport = {
           width: window.innerWidth,
@@ -65,21 +64,20 @@
         });
       }
 
-      // Click-away to close
-      on(document, "click", function () {
+      var docClickHandler = function () {
         if (isOpen) {
           close();
         }
-      });
-
-      // ESC to close
-      on(document, "keydown", function (e) {
+      };
+      var docEscHandler = function (e) {
         if (e.key === "Escape" && isOpen) {
           close();
         }
-      });
+      };
 
-      // Menu keyboard navigation
+      on(document, "click", docClickHandler);
+      on(document, "keydown", docEscHandler);
+
       if (menu) {
         on(menu, "keydown", function (e) {
           var items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
@@ -98,6 +96,15 @@
           }
         });
       }
+
+      registerDestroyHandler(container, function () {
+        off(document, "click", docClickHandler);
+        off(document, "keydown", docEscHandler);
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

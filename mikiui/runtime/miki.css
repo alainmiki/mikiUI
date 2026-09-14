@@ -1690,6 +1690,8 @@ nav {
   border-radius: var(--miki-radius-lg, 0.75rem);
   background: var(--miki-surface, #fff);
   height: 320px;
+  max-height: 100%;
+  overflow: hidden;
 }
 .miki-chat-log {
   flex: 1;
@@ -3944,15 +3946,6 @@ input[type="range"].miki-slider {
 }
 
 /* ---------- Chat ---------- */
-.miki-chat {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--miki-border);
-  border-radius: var(--miki-radius-lg, 0.75rem);
-  background: var(--miki-surface, #fff);
-  height: 360px;
-  overflow: hidden;
-}
 .miki-chat-log {
   flex: 1;
   overflow-y: auto;
@@ -4286,9 +4279,8 @@ input[type="range"].miki-slider {
   transition: background 0.1s ease, color 0.1s ease;
 }
 .miki-editor-tab-close:hover { background: var(--miki-border, #555555); color: var(--miki-fg, #ffffff); }
-.miki-editor-tab[draggable="true"] { cursor: grab; }
-.miki-editor-tab[draggable="true"]:active { cursor: grabbing; }
-.miki-editor-tab.miki-dragging { opacity: 0.5; }
+.miki-editor-tab { cursor: pointer; }
+.miki-editor-tab.miki-dragging { opacity: 0.4; }
 .miki-editor-content-container { flex: 1; overflow: hidden; position: relative; }
 .miki-editor-content {
   position: absolute;
@@ -4347,22 +4339,34 @@ input[type="range"].miki-slider {
 }
 .miki-editor-drag-overlay.miki-visible { opacity: 1; }
 
+/* Drag ghost */
+.miki-editor-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  background: var(--miki-surface, #2d2d2d);
+  color: var(--miki-fg, #ffffff);
+  border: 1px solid var(--miki-accent, #007acc);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0.95;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  transform: translate(-50%, -50%);
+}
+
 /* Drop indicator */
 .miki-editor-drop-indicator {
-  position: absolute;
+  position: fixed;
   background: var(--miki-accent, #007acc);
   z-index: 20;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.1s ease;
+  border-radius: 1px;
 }
 .miki-editor-drop-indicator.miki-visible { opacity: 1; }
-.miki-splitview[data-miki-editor-area="true"][data-orientation="horizontal"] .miki-editor-drop-indicator {
-  width: 2px; height: 100%; top: 0;
-}
-.miki-splitview[data-miki-editor-area="true"][data-orientation="vertical"] .miki-editor-drop-indicator {
-  height: 2px; width: 100%; left: 0;
-}
 
 /* Responsive */
 @media (max-width: 640px) {

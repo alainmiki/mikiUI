@@ -20,7 +20,6 @@
       var minSize = parseInt(el.getAttribute("data-min-size") || "50", 10);
       var splitThreshold = parseInt(el.getAttribute("data-split-threshold") || "5", 10);
       var persistKey = el.getAttribute("data-miki-persist-key") || null;
-       var splitterWidth = parseInt(splitter.getAttribute("data-splitter-width") || "8", 10);
 
       var isHorizontal = orientation === "horizontal";
       var canDragX = (resizeMode === "horizontal" || resizeMode === "both");
@@ -33,15 +32,12 @@
       var dragStarted = false;
       var activeDragAxis = dragAxis;
 
-      /* Guard: only call preventDefault when the event is cancelable to
-         avoid browser "Ignored attempt to cancel a touch event" warnings. */
       function safePrevent(e) {
         if (e && e.cancelable) {
           e.preventDefault();
         }
       }
 
-      /* Normalize coordinates from mouse or touch event */
       function coords(e) {
         var p = (window.miki && miki.eventPoint) ? miki.eventPoint(e)
                : (e.touches && e.touches[0]) ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
@@ -82,7 +78,6 @@
         var dx = p.x - startPosX;
         var dy = p.y - startPosY;
 
-        /* For 'both' mode: lock axis on first meaningful movement */
         if (resizeMode === "both" && !dragStarted) {
           if (Math.abs(dx) > splitThreshold || Math.abs(dy) > splitThreshold) {
             activeDragAxis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
@@ -117,66 +112,53 @@
          splitter.classList.remove("miki-splitter-dragging");
          splitter.style.cursor = "";
 
-         /* Remove all possible event listeners (some may not have been bound) */
-        off(document, "pointermove", onMove);
-        off(document, "pointerup", onEnd);
-        off(document, "mousemove", onMove);
-        off(document, "mouseup", onEnd);
-        off(document, "touchmove", onMove);
-        off(document, "touchend", onEnd);
+         off(document, "pointermove", onMove);
+         off(document, "pointerup", onEnd);
+         off(document, "mousemove", onMove);
+         off(document, "mouseup", onEnd);
+         off(document, "touchmove", onMove);
+         off(document, "touchend", onEnd);
 
-        /* Persist layout if requested */
-        try {
-          if (persistKey && window.localStorage && window.mikiSplitView && typeof window.mikiSplitView.getLayout === "function") {
-            var layout = window.mikiSplitView.getLayout(el);
-            localStorage.setItem(persistKey, JSON.stringify(layout));
-          }
-        } catch (err) {
-          /* ignore storage errors */
-        }
+         try {
+           if (persistKey && window.localStorage && window.mikiSplitView && typeof window.mikiSplitView.getLayout === "function") {
+             var layout = window.mikiSplitView.getLayout(el);
+             localStorage.setItem(persistKey, JSON.stringify(layout));
+           }
+         } catch (err) {
+           /* ignore storage errors */
+         }
       }
 
       function onStart(e) {
-        /* Prevent double-init from pointerdown + mousedown firing together */
-        if (dragging) return;
-        /* Left-click only; ignore right-click/middle-click */
-        if (e.button !== undefined && e.button !== 0) return;
-        /* Ignore if not primary touch/mouse */
-        if (e.pointerType === "touch" && e.isPrimary === false) return;
-        safePrevent(e);
+         if (dragging) return;
+         if (e.button !== undefined && e.button !== 0) return;
+         if (e.pointerType === "touch" && e.isPrimary === false) return;
+         safePrevent(e);
 
-        dragging = true;
-        dragStarted = false;
-        activeDragAxis = dragAxis;
-        var p = coords(e);
-        startPosX = p.x;
-        startPosY = p.y;
-        startSizeFirstX = firstPane.offsetWidth;
-        startSizeFirstY = firstPane.offsetHeight;
-        splitter.classList.add("miki-splitter-dragging");
+         dragging = true;
+         dragStarted = false;
+         activeDragAxis = dragAxis;
+         var p = coords(e);
+         startPosX = p.x;
+         startPosY = p.y;
+         startSizeFirstX = firstPane.offsetWidth;
+         startSizeFirstY = firstPane.offsetHeight;
+         splitter.classList.add("miki-splitter-dragging");
 
-        /* Bind ALL event types so we work with pointer, mouse, and touch.
-           The onStart guard prevents double-init from pointerdown + mousedown. */
-        on(document, "pointermove", onMove, { passive: false });
-        on(document, "pointerup", onEnd);
-        on(document, "mousemove", onMove, { passive: false });
-        on(document, "mouseup", onEnd);
-        on(document, "touchmove", onMove, { passive: false });
-        on(document, "touchend", onEnd);
+         on(document, "pointermove", onMove, { passive: false });
+         on(document, "pointerup", onEnd);
+         on(document, "mousemove", onMove, { passive: false });
+         on(document, "mouseup", onEnd);
+         on(document, "touchmove", onMove, { passive: false });
+         on(document, "touchend", onEnd);
       }
 
-      /* Mouse down / touch start / pointer down — unified handler.
-         When PointerEvent is available, prefer pointer events but also
-         bind mousedown as a fallback (Playwright mouse actions may not
-         always fire pointerdown in headless mode). The onStart guard
-         prevents double-binding. */
        on(splitter, "mousedown", onStart);
       on(splitter, "touchstart", onStart, { passive: false });
       if (window.PointerEvent) {
         on(splitter, "pointerdown", onStart, { passive: false });
       }
 
-      /* Double-click to maximize/restore the first pane */
       on(splitter, "dblclick", function () {
         if (el.classList.contains("miki-split-maximized")) {
           el.classList.remove("miki-split-maximized");
@@ -199,7 +181,6 @@
         });
       });
 
-      /* Keyboard: arrow keys for fine adjustment */
       on(splitter, "keydown", function (e) {
         var step = e.shiftKey ? 1 : 5;
         var d = dims();
@@ -228,13 +209,29 @@
         }
       });
 
-      /* Make splitter focusable for keyboard + screen readers */
       splitter.setAttribute("tabindex", "0");
       splitter.setAttribute("role", "separator");
       if (!splitter.getAttribute("aria-label")) {
         splitter.setAttribute("aria-label", "Resize panes");
       }
       splitter.setAttribute("aria-orientation", isHorizontal ? "horizontal" : "vertical");
+
+      registerDestroyHandler(el, function () {
+        off(splitter, "mousedown", onStart);
+        off(splitter, "touchstart", onStart);
+        off(splitter, "pointerdown", onStart);
+        off(document, "pointermove", onMove);
+        off(document, "pointerup", onEnd);
+        off(document, "mousemove", onMove);
+        off(document, "mouseup", onEnd);
+        off(document, "touchmove", onMove);
+        off(document, "touchend", onEnd);
+        dragging = false;
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     },
 
      getLayout: function (el) {

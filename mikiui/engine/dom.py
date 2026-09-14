@@ -224,6 +224,41 @@ class Element:
         self.attrs["id"] = id
         return self
 
+    def remove_child(self, child: Any) -> Element:
+        """Remove *child* from this element.
+
+        *child* may be a child node or an integer index.
+        """
+        if isinstance(child, int):
+            if 0 <= child < len(self.children):
+                del self.children[child]
+        else:
+            try:
+                self.children.remove(child)
+            except ValueError:
+                pass
+        return self
+
+    def insert(self, index: int, child: Any) -> Element:
+        """Insert *child* at *index* among this element's children."""
+        self.children.insert(index, child)
+        return self
+
+    def set_attr(self, key: str, value: Any) -> Element:
+        """Set a single attribute on this element."""
+        self.attrs[key] = value
+        return self
+
+    def update(self, **attrs: Any) -> Element:
+        """Update multiple attributes on this element."""
+        self.attrs.update(attrs)
+        return self
+
+    def remove_attr(self, key: str) -> Element:
+        """Remove an attribute from this element."""
+        self.attrs.pop(key, None)
+        return self
+
     # -- serialization ---------------------------------------------------------
     def _render_attrs(self) -> str:
         parts: list[str] = []

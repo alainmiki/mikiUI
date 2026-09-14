@@ -97,7 +97,7 @@ class Navbar(Component):
             aria_expanded="false",
             **bridge_attr(
                 "click",
-                "var nav=this.closest('.miki-navbar'); var links=nav.querySelector('.miki-navbar-links'); var open=links.classList.toggle('open'); this.setAttribute('aria-expanded', String(open));",
+                "this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.toggle('open'); this.setAttribute('aria-expanded', this.closest('.miki-navbar').querySelector('.miki-navbar-links').classList.contains('open') ? 'true' : 'false')",
             ),
         )
 

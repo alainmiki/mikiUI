@@ -45,8 +45,16 @@
         }
       }
 
-      miki.on(container, "scroll", render);
+      on(container, "scroll", render);
       render();
+
+      registerDestroyHandler(container, function () {
+        off(container, "scroll", render);
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

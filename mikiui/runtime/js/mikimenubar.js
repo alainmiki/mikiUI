@@ -4,23 +4,8 @@
   if (typeof window === "undefined") return;
   if (typeof window.mikiMenuBar !== "undefined") return;
 
-  /* ---------------------------------------------------------------
-   * MenuBar — accessible, touch + mouse menu bar.
-   *
-   * Features:
-   *  - Click / tap a top-level label to toggle its dropdown.
-   *  - Hover-intent opens (configurable delay) for pointer users.
-   *  - Full keyboard support: Enter/Space/ArrowDown to open,
-   *    ArrowUp/ArrowDown to move between items, ArrowRight/Left to
-   *    move between top-level menus, Escape to close, Tab to leave.
-   *  - Click-away and Escape close all menus.
-   *  - Touch-friendly: tap outside closes, tap a label toggles.
-   *  - ARIA: aria-haspopup, aria-expanded, role=menu/menuitem.
-   *  - CustomEvents: miki:menubar:open, miki:menubar:close.
-   * --------------------------------------------------------------- */
-
-  var HOVER_OPEN_DELAY = 120;   // ms before hover opens a menu
-  var HOVER_CLOSE_DELAY = 250;  // ms before hover closes an un-hovered menu
+  var HOVER_OPEN_DELAY = 120;
+  var HOVER_CLOSE_DELAY = 250;
 
   function stop(e) { e.stopPropagation(); }
 
@@ -93,7 +78,6 @@
         var title = menu.querySelector(".miki-menu-title");
         if (!title) return;
 
-        /* --- Toggle on click / tap --- */
         on(title, "click", function (e) {
           e.preventDefault();
           e.stopPropagation();
@@ -101,7 +85,6 @@
           focusFirstItem(menu);
         });
 
-        /* --- Hover intent (pointer only, not touch) --- */
         on(title, "mouseenter", function () {
           if (isTouchDevice()) return;
           clearTimeout(hoverCloseTimer);
@@ -124,7 +107,6 @@
           hoverCloseTimer = setTimeout(closeAllMenus, HOVER_CLOSE_DELAY);
         });
 
-        /* --- Keyboard on the title button --- */
         on(title, "keydown", function (e) {
           switch (e.key) {
             case "Enter":
@@ -155,7 +137,6 @@
           }
         });
 
-        /* --- Keyboard inside the dropdown --- */
         on(menu, "keydown", function (e) {
           var items = Array.from(menu.querySelectorAll('.miki-menu-item > a, .miki-menu-item[tabindex]'));
           if (!items.length) return;
@@ -200,7 +181,6 @@
           }
         });
 
-        /* Prevent clicks inside dropdown from bubbling to document */
         on(menu, "click", stop);
       })(menus[i]);
     }
@@ -219,16 +199,29 @@
       return null;
     }
 
-    /* --- Click / tap outside closes menus --- */
-    on(document, "click", closeAllMenus);
-    on(document, "touchstart", function (e) {
+    var docClickHandler = function () { closeAllMenus(); };
+    var docTouchHandler = function (e) {
       if (!navBar.contains(e.target)) closeAllMenus();
-    });
-
-    /* --- Global Escape --- */
-    on(document, "keydown", function (e) {
+    };
+    var docEscHandler = function (e) {
       if (e.key === "Escape") closeAllMenus();
+    };
+
+    on(document, "click", docClickHandler);
+    on(document, "touchstart", docTouchHandler);
+    on(document, "keydown", docEscHandler);
+
+    registerDestroyHandler(navBar, function () {
+      off(document, "click", docClickHandler);
+      off(document, "touchstart", docTouchHandler);
+      off(document, "keydown", docEscHandler);
+      clearTimeout(hoverOpenTimer);
+      clearTimeout(hoverCloseTimer);
     });
+  };
+
+  mikiMenuBar.destroy = function (el) {
+    mikiDestroy(el);
   };
 
   window.mikiMenuBar = mikiMenuBar;

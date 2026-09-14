@@ -37,6 +37,32 @@
     );
   }
 
+  /* ===================== Destroy registry ===================== */
+
+  var _destroyHandlers = new WeakMap();
+
+  function mikiDestroy(el) {
+    if (!el) return;
+    var children = el.children;
+    for (var i = children.length - 1; i >= 0; i--) {
+      mikiDestroy(children[i]);
+    }
+    var handler = _destroyHandlers.get(el);
+    if (handler) {
+      try { handler(); } catch (e) {}
+      _destroyHandlers.delete(el);
+    }
+    if (el.removeAttribute) {
+      el.removeAttribute("data-miki-destroy");
+    }
+  }
+
+  function registerDestroyHandler(el, fn) {
+    if (!el || typeof fn !== "function") return;
+    _destroyHandlers.set(el, fn);
+    if (el.setAttribute) el.setAttribute("data-miki-destroy", "true");
+  }
+
   /* ===================== Dialog / Modal ===================== */
 
   /* ---- Focus trap helper ---- */
@@ -53,7 +79,6 @@
       );
     }
 
-    // Save the currently focused element so we can restore focus on close
     var active = document.activeElement;
     if (active && active !== document.body) {
       if (!active.id) active.id = generateId("miki-tabexit");
@@ -61,7 +86,6 @@
     }
 
     function trap(e) {
-      // Don't trap if the container is no longer open/visible
       var isOpen = container.hasAttribute("open") ||
         container.getAttribute("data-miki-modal-open") === "true" ||
         container.getAttribute("data-miki-dialog") === "true";
@@ -74,10 +98,8 @@
       var first = focusable[0];
       var last = focusable[focusable.length - 1];
 
-      // Check if focus is still inside the container
       var inside = container.contains(document.activeElement);
       if (!inside) {
-        // Focus left the container — bring it back to first
         e.preventDefault();
         first.focus();
         return;
@@ -100,6 +122,11 @@
 
     container.dataset.mikiFocusTrapped = "true";
     on(document, "keydown", trap);
+
+    return function cleanup() {
+      off(document, "keydown", trap);
+      container.dataset.mikiFocusTrapped = "false";
+    };
   }
 
   /* ===================== Pointer normalization ===================== */
@@ -191,6 +218,8 @@
   window.miki.resolveEl = resolveEl;
   window.miki.generateId = generateId;
   window.miki.dispatch = dispatch;
+  window.miki.destroy = mikiDestroy;
+  window.miki.registerDestroyHandler = registerDestroyHandler;
   window.miki.focusTrap = focusTrap;
   window.miki.onPointer = onPointer;
   window.miki.isTouchDevice = isTouchDevice;
@@ -212,4 +241,5 @@
   window.isTouchDevice = isTouchDevice;
   window.eventPoint = eventPoint;
   window.preventTouchScroll = preventTouchScroll;
+  window.mikiDestroy = mikiDestroy;
 })();

@@ -17,6 +17,310 @@
      prevent duplicate handlers when initAll runs multiple times. */
   var _boundElements = (typeof WeakSet !== "undefined") ? new WeakSet() : null;
 
+  /* ===================== Safe Action Dispatcher ===================== */
+  var ALLOWED_ACTIONS = [
+    "call", "callSafe", "dispatch", "emit", "on", "off",
+    "toggle", "open", "close", "submit", "navigate", "toggleClass", "remove"
+  ];
+
+  function parseArgs(argsStr) {
+    var args = [];
+    var current = "";
+    var depth = 0;
+    var inString = false;
+    var stringChar = "";
+
+    for (var i = 0; i < argsStr.length; i++) {
+      var c = argsStr[i];
+      if (inString) {
+        current += c;
+        if (c === stringChar && argsStr[i - 1] !== "\\") {
+          inString = false;
+        }
+      } else if (c === '"' || c === "'" || c === "`") {
+        inString = true;
+        stringChar = c;
+        current += c;
+      } else if (c === "(" || c === "[" || c === "{") {
+        depth++;
+        current += c;
+      } else if (c === ")" || c === "]" || c === "}") {
+        depth--;
+        current += c;
+      } else if (c === "," && depth === 0) {
+        args.push(current.trim());
+        current = "";
+      } else {
+        current += c;
+      }
+    }
+
+    if (current.trim()) {
+      args.push(current.trim());
+    }
+
+    return args;
+  }
+
+  function evaluateArg(arg, context) {
+    arg = arg.trim();
+    if (!arg) return undefined;
+
+    if (
+      (arg[0] === '"' && arg[arg.length - 1] === '"') ||
+      (arg[0] === "'" && arg[arg.length - 1] === "'")
+    ) {
+      return arg.slice(1, -1);
+    }
+
+    if (
+      !isNaN(arg) &&
+      arg !== "" &&
+      arg !== "true" &&
+      arg !== "false" &&
+      arg !== "null" &&
+      arg !== "undefined"
+    ) {
+      return parseFloat(arg);
+    }
+
+    if (arg === "true") return true;
+    if (arg === "false") return false;
+    if (arg === "null") return null;
+    if (arg === "undefined") return undefined;
+
+    if (arg === "this") return context.el;
+    if (arg === "event" || arg === "e") return context.event;
+    if (arg === "window") return window;
+    if (arg === "document") return document;
+
+    return undefined;
+  }
+
+  function evaluateObjectLiteral(str, context) {
+    str = str.trim();
+    if (!str || str === "{}") return {};
+
+    if (str[0] === "{" && str[str.length - 1] === "}") {
+      str = str.slice(1, -1).trim();
+    }
+
+    var obj = {};
+    var pairs = [];
+    var current = "";
+    var depth = 0;
+    var inString = false;
+    var stringChar = "";
+
+    for (var i = 0; i < str.length; i++) {
+      var c = str[i];
+      if (inString) {
+        current += c;
+        if (c === stringChar && str[i - 1] !== "\\") {
+          inString = false;
+        }
+      } else if (c === '"' || c === "'" || c === "`") {
+        inString = true;
+        stringChar = c;
+        current += c;
+      } else if (c === "(" || c === "[" || c === "{") {
+        depth++;
+        current += c;
+      } else if (c === ")" || c === "]" || c === "}") {
+        depth--;
+        current += c;
+      } else if (c === "," && depth === 0) {
+        pairs.push(current.trim());
+        current = "";
+      } else {
+        current += c;
+      }
+    }
+    if (current.trim()) pairs.push(current.trim());
+
+    for (var j = 0; j < pairs.length; j++) {
+      var pair = pairs[j];
+      var colonIdx = -1;
+      var pd = 0;
+      var pis = false;
+      var psc = "";
+
+      for (var k = 0; k < pair.length; k++) {
+        var ch = pair[k];
+        if (pis) {
+          if (ch === psc && pair[k - 1] !== "\\") pis = false;
+        } else if (ch === '"' || ch === "'" || ch === "`") {
+          pis = true;
+          psc = ch;
+        } else if (ch === "(" || ch === "[" || ch === "{") {
+          pd++;
+        } else if (ch === ")" || ch === "]" || ch === "}") {
+          pd--;
+        } else if (ch === ":" && pd === 0) {
+          colonIdx = k;
+          break;
+        }
+      }
+
+      if (colonIdx !== -1) {
+        var key = pair.substring(0, colonIdx).trim();
+        var val = pair.substring(colonIdx + 1).trim();
+
+        if (
+          (key[0] === '"' && key[key.length - 1] === '"') ||
+          (key[0] === "'" && key[key.length - 1] === "'")
+        ) {
+          key = key.slice(1, -1);
+        }
+
+        obj[key] = evaluateArg(val, context);
+      }
+    }
+
+    return obj;
+  }
+
+  function evaluateSafeExpression(expr, context) {
+    if (!/^(this|event|self)(?:\.[a-zA-Z_$][\w$]*(?:\([^)]*\))?)*$/.test(expr)) {
+      return undefined;
+    }
+
+    var tokens = [];
+    var i = 0;
+    while (i < expr.length) {
+      if (expr[i] === ".") {
+        i++;
+        continue;
+      }
+
+      var nameStart = i;
+      while (i < expr.length && /[a-zA-Z_$]/.test(expr[i])) {
+        i++;
+      }
+      var name = expr.substring(nameStart, i);
+
+      if (expr[i] === "(") {
+        var depth = 1;
+        var j = i + 1;
+        while (j < expr.length && depth > 0) {
+          if (expr[j] === "(") depth++;
+          else if (expr[j] === ")") depth--;
+          j++;
+        }
+        var argsStr = expr.substring(i + 1, j - 1);
+        tokens.push({ type: "method", name: name, args: argsStr });
+        i = j;
+      } else {
+        tokens.push({ type: "property", name: name });
+      }
+    }
+
+    if (tokens.length === 0) return undefined;
+
+    var obj;
+    var root = tokens[0];
+    if (root.name === "this") obj = context.el;
+    else if (root.name === "event") obj = context.event;
+    else if (root.name === "self") obj = context.el;
+    else if (root.name === "window") obj = window;
+    else if (root.name === "document") obj = document;
+    else return undefined;
+
+    for (var k = 1; k < tokens.length; k++) {
+      if (obj == null) return undefined;
+      var token = tokens[k];
+
+      if (token.type === "property") {
+        obj = obj[token.name];
+      } else if (token.type === "method") {
+        var args = parseArgs(token.args).map(function (a) {
+          return evaluateArg(a, context);
+        });
+        if (typeof obj[token.name] === "function") {
+          obj = obj[token.name].apply(obj, args);
+        } else {
+          return undefined;
+        }
+      }
+    }
+
+    return obj;
+  }
+
+  function executeSafeAction(eExpr, context) {
+    var match = eExpr.match(/^mikiBridge\.([a-zA-Z_$][\w$]*)\s*\((.*)\)$/s);
+    if (!match) {
+      console.warn("MikiUI: Unauthorized action expression skipped:", eExpr);
+      return;
+    }
+
+    var method = match[1];
+    if (ALLOWED_ACTIONS.indexOf(method) === -1) {
+      console.warn("MikiUI: Disallowed action method:", method);
+      return;
+    }
+
+    var rawArgs = parseArgs(match[2]);
+
+    switch (method) {
+      case "call": {
+        if (rawArgs.length < 2) return;
+        var moduleName = evaluateArg(rawArgs[0], context);
+        var fnName = evaluateArg(rawArgs[1], context);
+        var restArgs = rawArgs.slice(2).map(function (a) {
+          return evaluateArg(a, context);
+        });
+        return mikiBridge.call(moduleName, fnName, restArgs);
+      }
+      case "dispatch": {
+        if (rawArgs.length < 2) return;
+        var target = evaluateArg(rawArgs[0], context);
+        var name = evaluateArg(rawArgs[1], context);
+        var result = rawArgs[2] ? executeSafeAction(rawArgs[2], context) : undefined;
+        var detail = rawArgs[3] ? evaluateObjectLiteral(rawArgs[3], context) : undefined;
+        return mikiBridge.dispatch(target, name, result, detail);
+      }
+      case "callSafe": {
+        if (rawArgs.length < 2) return;
+        var fnBody = rawArgs[0].trim();
+        var thisArg = evaluateArg(rawArgs[1], context);
+
+        var expr = fnBody;
+        var funcWrapMatch = fnBody.match(/^function\s*\([^)]*\)\s*\{([\s\S]*)\}$/);
+        if (funcWrapMatch) {
+          expr = funcWrapMatch[1].trim();
+        }
+
+        var callMatch = expr.match(/^mikiBridge\.call\s*\((.*)\)$/s);
+        if (callMatch) {
+          var callArgs = parseArgs(callMatch[1]);
+          if (callArgs.length >= 2) {
+            var mod = evaluateArg(callArgs[0], context);
+            var fun = evaluateArg(callArgs[1], context);
+            var rest = callArgs.slice(2).map(function (a) {
+              return evaluateArg(a, context);
+            });
+            return mikiBridge.call(mod, fun, rest);
+          }
+        }
+
+        try {
+          var fn = new Function(expr);
+          return fn.call(thisArg);
+        } catch (err) {
+          console.warn("MikiUI: callSafe execution error:", err.message);
+          return undefined;
+        }
+      }
+      default: {
+        var methodArgs = rawArgs.map(function (a) {
+          return evaluateArg(a, context);
+        });
+        return mikiBridge[method].apply(mikiBridge, methodArgs);
+      }
+    }
+  }
+
   var mikiBridge = {
     /* -- Safe widget function lookup -- */
 
@@ -106,15 +410,37 @@
         });
       }
 
+      var _swapObserver = null;
+
+      document.addEventListener("htmx:beforeSwap", function (evt) {
+        var target = evt.detail && evt.detail.target ? evt.detail.target : null;
+        if (!target || target.nodeType !== 1) return;
+
+        _swapObserver = new MutationObserver(function (mutations) {
+          mutations.forEach(function (mutation) {
+            mutation.removedNodes.forEach(function (node) {
+              if (node.nodeType === 1) {
+                if (typeof window.mikiDestroy === "function") {
+                  window.mikiDestroy(node);
+                }
+              }
+            });
+          });
+        });
+
+        _swapObserver.observe(target, { childList: true, subtree: true });
+      });
+
       document.addEventListener("htmx:afterSwap", function (evt) {
+        if (_swapObserver) {
+          _swapObserver.disconnect();
+          _swapObserver = null;
+        }
+
         var target = evt.detail && evt.detail.target ? evt.detail.target : null;
         if (target) {
           mikiBridge.initElement(target);
         }
-      });
-
-      document.addEventListener("htmx:afterOnLoad", function () {
-        mikiBridge.initAll();
       });
     },
 
@@ -199,8 +525,7 @@
           (function (eName, eExpr) {
             miki.on(el, eName, function (e) {
               try {
-                var fn = new Function("event", "return (" + eExpr + ");");
-                fn.call(el, e);
+                executeSafeAction(eExpr, { el: el, event: e });
               } catch (err) {
                 /* Silently ignore handler errors */
               }
@@ -291,6 +616,50 @@
         window.__mikiInitRegistry = [];
       }
       window.__mikiInitRegistry.push({ selector: selector, name: name, init: init });
+    },
+
+    toggle: function (el) {
+      if (mikiToggle && typeof mikiToggle.toggle === "function")
+        return mikiToggle.toggle(el);
+      if (mikiCollapsible && typeof mikiCollapsible.toggle === "function")
+        return mikiCollapsible.toggle(el);
+      if (mikiModal && typeof mikiModal.toggle === "function") return mikiModal.toggle(el);
+      return undefined;
+    },
+
+    open: function (el) {
+      if (mikiDialog && typeof mikiDialog.open === "function") return mikiDialog.open(el);
+      if (mikiModal && typeof mikiModal.open === "function") return mikiModal.open(el);
+      if (mikiDrawer && typeof mikiDrawer.open === "function") return mikiDrawer.open(el);
+      if (mikiBottomSheet && typeof mikiBottomSheet.open === "function")
+        return mikiBottomSheet.open(el);
+      return undefined;
+    },
+
+    close: function (el) {
+      if (mikiDialog && typeof mikiDialog.close === "function") return mikiDialog.close(el);
+      if (mikiModal && typeof mikiModal.close === "function") return mikiModal.close(el);
+      if (mikiDrawer && typeof mikiDrawer.close === "function") return mikiDrawer.close(el);
+      if (mikiBottomSheet && typeof mikiBottomSheet.close === "function")
+        return mikiBottomSheet.close(el);
+      return undefined;
+    },
+
+    submit: function (el) {
+      if (el && el.form) return el.form.submit();
+      return undefined;
+    },
+
+    navigate: function (url) {
+      if (typeof url === "string") window.location.href = url;
+    },
+
+    toggleClass: function (el, className) {
+      if (el && className) el.classList.toggle(className);
+    },
+
+    remove: function (el) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
     },
   };
 

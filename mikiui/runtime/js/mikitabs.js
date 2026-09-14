@@ -82,10 +82,10 @@
       container.dataset.mikiInit = "true";
 
       var tabs = container.querySelectorAll('[role="tab"]');
+      var tabHandlers = [];
       for (var i = 0; i < tabs.length; i++) {
         (function (tab, idx) {
-          /* Click (also fires on tap for mouse fallback) */
-          onPointer(tab, "activate", function (e) {
+          var activateCleanup = onPointer(tab, "activate", function (e) {
             e.preventDefault();
             var group = tab.getAttribute("data-miki-tab-group") || tab.getAttribute("aria-controls");
             if (group) {
@@ -96,8 +96,7 @@
             }
           });
 
-          /* Keyboard navigation */
-          on(tab, "keydown", function (e) {
+          var keyHandler = function (e) {
             var tablist = tab.parentNode;
             var allTabs = Array.from(tablist.children);
             var currentIndex = allTabs.indexOf(tab);
@@ -124,9 +123,9 @@
               e.preventDefault();
               tab.click();
             }
-          });
+          };
+          on(tab, "keydown", keyHandler);
 
-          /* Touch swipe: detect horizontal swipe to switch tabs */
           var startX = 0, startY = 0, endX = 0, endY = 0;
           on(tab, "touchstart", function (e) {
             if (e.touches && e.touches.length > 0) {
@@ -134,7 +133,7 @@
               startY = e.touches[0].clientY;
             }
           });
-          on(tab, "touchend", function (e) {
+          var touchEndHandler = function (e) {
             if (!startX || !startY) return;
             endX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0;
             endY = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0;
@@ -142,22 +141,40 @@
             var dy = endY - startY;
             var absDx = Math.abs(dx);
             var absDy = Math.abs(dy);
-            /* Only treat as swipe if horizontal movement dominates */
             if (absDx > 30 && absDx > absDy * 1.5) {
               var tablistEl = tab.parentNode;
               var allTabsLocal = Array.from(tablistEl.children);
               var currentIdx = allTabsLocal.indexOf(tab);
               if (dx > 0 && currentIdx > 0) {
-                /* Swipe right => previous tab */
                 allTabsLocal[currentIdx - 1].click();
               } else if (dx < 0 && currentIdx < allTabsLocal.length - 1) {
-                /* Swipe left => next tab */
                 allTabsLocal[currentIdx + 1].click();
               }
             }
+          };
+          on(tab, "touchend", touchEndHandler);
+
+          tabHandlers.push({
+            activateCleanup: activateCleanup,
+            tab: tab,
+            keyHandler: keyHandler,
+            touchEndHandler: touchEndHandler
           });
         })(tabs[i], i);
       }
+
+      registerDestroyHandler(container, function () {
+        for (var k = 0; k < tabHandlers.length; k++) {
+          var th = tabHandlers[k];
+          if (th.activateCleanup) th.activateCleanup();
+          off(th.tab, "keydown", th.keyHandler);
+          off(th.tab, "touchend", th.touchEndHandler);
+        }
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

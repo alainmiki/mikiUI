@@ -16,7 +16,7 @@
 
 MikiUI is a Python-first UI framework that lets you build **web applications and native desktop windows** from a single codebase. No JavaScript required for logic — just Python classes that map to HTML, with a modern component API, built-in security, and real-time capabilities.
 
-> **Mobile (PWA)** support is planned for v0.3. The web output is already responsive and mobile-friendly; native mobile wrappers (Capacitor) are on the roadmap.
+> **Mobile (PWA)** support is planned for v1. The web output is already responsive and mobile-friendly; native mobile wrappers (Capacitor) and native bridges are on the v1 roadmap.
 
 ## Why MikiUI?
 
@@ -265,9 +265,8 @@ mikiui build --target desktop
 
 | Version | Focus |
 |---------|-------|
-| v0.2 | Core framework hardening, security, API docs, CLI |
-| v0.3 | Mobile wrappers (Capacitor), PWA, native bridges |
-| v0.4 | Plugin marketplace, database/Redis integration |
+| v1.0 | Mobile wrappers (Capacitor), PWA, native bridges |
+| v2.0 | Plugin marketplace, database/Redis integration |
 
 ---
 

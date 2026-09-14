@@ -214,6 +214,13 @@
         var pos = isHorizontal ? touch.clientX : touch.clientY;
         onDragStart(pos);
       }, { passive: false });
+
+      registerDestroyHandler(editorArea, function () {
+        off(document, "mousemove", onMouseMove);
+        off(document, "mouseup", onMouseUp);
+        off(document, "touchmove", onTouchMove);
+        off(document, "touchend", onTouchEnd);
+      });
     }
   };
 

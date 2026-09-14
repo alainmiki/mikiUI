@@ -8,38 +8,55 @@
       if (el.dataset.mikiInit === "true") return;
       el.dataset.mikiInit = "true";
 
-      var closeBtns = el.querySelectorAll("[data-miki-messagebox-close=\"true\"]");
-      for (var i = 0; i < closeBtns.length; i++) {
-        (function (btn) {
-          onPointer(btn, "activate", function (e) {
-            e.preventDefault();
-            mikiMessageBox.close(el);
-          });
-        })(closeBtns[i]);
-      }
-
-      // ESC to close
-      on(el, "keydown", function (e) {
+      var escHandler = function (e) {
         if (e.key === "Escape") {
           mikiMessageBox.close(el);
         }
-      });
+      };
+      on(el, "keydown", escHandler);
 
-      // Click/Tap on overlay background
+      var closeBtnCleanups = [];
+      var closeBtns = el.querySelectorAll("[data-miki-messagebox-close=\"true\"]");
+      for (var i = 0; i < closeBtns.length; i++) {
+        (function (btn) {
+          var cleanup = onPointer(btn, "activate", function (e) {
+            e.preventDefault();
+            mikiMessageBox.close(el);
+          });
+          closeBtnCleanups.push(cleanup);
+        })(closeBtns[i]);
+      }
+
+      var overlayCleanup = null;
       if (el.getAttribute("data-miki-close-on-overlay") !== "false") {
-        onPointer(el, "activate", function (e) {
+        overlayCleanup = onPointer(el, "activate", function (e) {
           if (e.target === el) {
             mikiMessageBox.close(el);
           }
         });
       }
+
+      registerDestroyHandler(el, function () {
+        off(el, "keydown", escHandler);
+        if (overlayCleanup) overlayCleanup();
+        for (var j = 0; j < closeBtnCleanups.length; j++) {
+          closeBtnCleanups[j]();
+        }
+        if (el._mikiFocusTrapCleanup) {
+          el._mikiFocusTrapCleanup();
+          el._mikiFocusTrapCleanup = null;
+        }
+      });
     },
 
     close: function (el) {
       el.style.display = "none";
       el.setAttribute("data-miki-messagebox-open", "false");
       el.setAttribute("aria-hidden", "true");
-      el.dataset.mikiFocusTrapped = "false";
+      if (el._mikiFocusTrapCleanup) {
+        el._mikiFocusTrapCleanup();
+        el._mikiFocusTrapCleanup = null;
+      }
       dispatch(el, "miki:messagebox:closed", {});
     },
 
@@ -48,7 +65,6 @@
       el.setAttribute("data-miki-messagebox-open", "true");
       el.setAttribute("aria-hidden", "false");
 
-      // Focus trap
       var focusable = el.querySelectorAll(
         'a[href], input:not([disabled]):not([type="hidden"]), ' +
         'select:not([disabled]), textarea:not([disabled]), ' +
@@ -57,9 +73,13 @@
       if (focusable.length > 0) {
         focusable[0].focus();
       }
-      miki.focusTrap(el);
+      el._mikiFocusTrapCleanup = miki.focusTrap(el);
 
       dispatch(el, "miki:messagebox:opened", {});
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

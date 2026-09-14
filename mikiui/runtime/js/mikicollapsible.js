@@ -10,23 +10,21 @@
 
       var header = el.querySelector("[data-miki-collapsible-header=\"true\"]");
       if (header) {
-        onPointer(header, "activate", function () {
+        var activateCleanup = onPointer(header, "activate", function () {
           mikiCollapsible.toggle(el);
         });
-        on(header, "keydown", function (e) {
+        var keyHandler = function (e) {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             mikiCollapsible.toggle(el);
           }
-        });
-      }
+        };
+        on(header, "keydown", keyHandler);
 
-      // Accordion: only one open at a time
-      if (el.getAttribute("data-miki-accordion") === "true") {
-        var allInGroup = document.querySelectorAll(
-          '[data-miki-accordion-group="' + (el.getAttribute("data-miki-accordion-group") || "") + '"][data-miki-collapsible="true"]'
-        );
-        // Group auto-init handled below
+        registerDestroyHandler(el, function () {
+          if (activateCleanup) activateCleanup();
+          off(header, "keydown", keyHandler);
+        });
       }
     },
 
@@ -43,7 +41,6 @@
      open: function (el) {
        el = resolveEl(el);
        if (!el) return;
-      // Close siblings if within an accordion group
       var group = el.getAttribute("data-miki-accordion-group");
       if (group) {
         var siblings = document.querySelectorAll(
@@ -93,6 +90,10 @@
       }
 
       dispatch(el, "miki:collapsible:closed", {});
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

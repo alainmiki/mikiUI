@@ -35,7 +35,7 @@ def test_datagrid_pagination_slices_rows():
     grid = DataGrid(["C"], rows, pagination=True, page=0, page_size=10)
     html = render(grid)
     assert html.count("<tr") > 1  # header + 10 rows
-    assert "r0" in html and "r10" not in html
+    assert ">r0</td>" in html and ">r10</td>" not in html
 
 
 def test_datagrid_search_fields():
@@ -398,6 +398,123 @@ def test_datagrid_no_alpine_xdata():
     grid = DataGrid(["Name", "Age"], [["Alice", 30], ["Bob", 25]])
     html = render(grid)
     assert "x_data" not in html
+
+
+def test_datagrid_search_filters_rows():
+    rows = [
+        {"Name": "Alice", "Role": "Admin"},
+        {"Name": "Bob", "Role": "User"},
+        {"Name": "Charlie", "Role": "Admin"},
+    ]
+    grid = DataGrid(["Name", "Role"], rows, search_query="ali", page_size=10)
+    html = render(grid)
+    assert "Alice" in html
+    tds = _extract_td_texts(html)
+    assert "Bob" not in tds
+    assert "Charlie" not in tds
+
+
+def test_datagrid_search_fields_limits_scope():
+    rows = [
+        {"Name": "Alice", "Email": "alice@x.com"},
+        {"Name": "Bob", "Email": "bob@x.com"},
+    ]
+    # Searching Name field for "bob" should match Bob but not Alice
+    grid = DataGrid(["Name", "Email"], rows, search_query="bob", search_fields=["Name"], page_size=10)
+    html = render(grid)
+    tds = _extract_td_texts(html)
+    assert "Bob" in tds
+    assert "Alice" not in tds
+
+
+def test_datagrid_sort_order():
+    rows = [
+        {"Name": "Charlie", "Age": 35},
+        {"Name": "Alice", "Age": 30},
+        {"Name": "Bob", "Age": 25},
+    ]
+    grid = DataGrid(["Name", "Age"], rows, sort_by="Name", sort_order="asc", page_size=10)
+    html = render(grid)
+    tds = _extract_td_texts(html)
+    assert tds[0] == "Alice"
+    assert tds[2] == "Bob"
+    assert tds[4] == "Charlie"
+
+
+def test_datagrid_sort_desc():
+    rows = [
+        {"Name": "Alice", "Age": 30},
+        {"Name": "Bob", "Age": 25},
+        {"Name": "Charlie", "Age": 35},
+    ]
+    grid = DataGrid(["Name", "Age"], rows, sort_by="Name", sort_order="desc", page_size=10)
+    html = render(grid)
+    tds = _extract_td_texts(html)
+    assert tds[0] == "Charlie"
+    assert tds[2] == "Bob"
+    assert tds[4] == "Alice"
+
+
+def test_datagrid_filter_by_column():
+    rows = [
+        {"Name": "Alice", "Role": "Admin"},
+        {"Name": "Bob", "Role": "User"},
+        {"Name": "Charlie", "Role": "Admin"},
+    ]
+    grid = DataGrid(["Name", "Role"], rows, filter_by={"Role": "Admin"}, page_size=10)
+    html = render(grid)
+    tds = _extract_td_texts(html)
+    assert "Alice" in tds
+    assert "Charlie" in tds
+    assert "Bob" not in tds
+
+
+def test_datagrid_pagination_with_filtered_count():
+    rows = [{"Name": f"User{i}", "Role": "Admin" if i % 2 == 0 else "User"} for i in range(20)]
+    grid = DataGrid(["Name", "Role"], rows, filter_by={"Role": "admin"}, pagination=True, page=0, page_size=5)
+    html = render(grid)
+    assert html.count("<tr") == 5  # 5 data rows on first page
+    assert "Page 1 of 2" in html
+
+
+def test_datagrid_data_miki_rows_present_for_client_side():
+    rows = [{"Name": "Alice"}, {"Name": "Bob"}]
+    grid = DataGrid(["Name"], rows)
+    html = render(grid)
+    assert "data-miki-rows" in html
+
+
+def test_datagrid_col_field_attr_on_headers():
+    grid = DataGrid(["Name", "Age"], [["Alice", 30]], sortable=True)
+    html = render(grid)
+    assert 'data-miki-col-field="Name"' in html
+    assert 'data-miki-col-field="Age"' in html
+
+
+def test_datagrid_search_sort_filter_combined():
+    rows = [
+        {"Name": "Charlie", "Role": "Admin", "Age": 35},
+        {"Name": "Alice", "Role": "User", "Age": 30},
+        {"Name": "Bob", "Role": "Admin", "Age": 25},
+    ]
+    grid = DataGrid(
+        ["Name", "Role", "Age"],
+        rows,
+        search_query="ali",
+        sort_by="Age",
+        sort_order="asc",
+        page_size=10,
+    )
+    html = render(grid)
+    tds = _extract_td_texts(html)
+    assert "Alice" in tds
+    assert "Bob" not in tds
+    assert "Charlie" not in tds
+
+
+def _extract_td_texts(html: str) -> list[str]:
+    import re
+    return re.findall(r'<td[^>]*>(.*?)</td>', html, re.DOTALL)
 
 
 def test_drawer_close_has_data_attr():

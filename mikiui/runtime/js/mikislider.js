@@ -24,38 +24,40 @@
         miki.dispatch(input, "miki:slider:change", { value: input.value });
       }
 
-      on(input, "input", updateValue);
-      on(input, "change", updateValue);
+      var inputHandler = function () { updateValue(); };
+      var changeHandler = function () { updateValue(); };
+      on(input, "input", inputHandler);
+      on(input, "change", changeHandler);
 
-      /* Touch drag: prevent page scroll while dragging the thumb */
-      on(input, "touchstart", function (e) {
+      var touchStartHandler = function (e) {
         input.dataset.mikiDragging = "true";
         var touch = e.touches && e.touches[0];
         input.dataset.touchStartX = touch ? touch.clientX : 0;
         input.dataset.touchStartY = touch ? touch.clientY : 0;
-      });
+      };
 
-      on(input, "touchmove", function (e) {
+      var touchMoveHandler = function (e) {
         if (input.dataset.mikiDragging === "true") {
           var touch = e.touches && e.touches[0];
-          /* Allow native range input to update value; just prevent scroll */
           if (touch) {
             var dx = Math.abs(touch.clientX - parseFloat(input.dataset.touchStartX || 0));
             var dy = Math.abs(touch.clientY - parseFloat(input.dataset.touchStartY || 0));
-            /* If horizontal movement, prevent vertical scroll */
             if (dx >= dy) {
               e.preventDefault();
             }
           }
         }
-      }, { passive: false });
+      };
 
-      on(input, "touchend", function () {
+      var touchEndHandler = function () {
         input.dataset.mikiDragging = "false";
-      });
+      };
 
-      /* Keyboard: PageUp/PageDown for 10-step increments */
-      on(input, "keydown", function (e) {
+      on(input, "touchstart", touchStartHandler);
+      on(input, "touchmove", touchMoveHandler, { passive: false });
+      on(input, "touchend", touchEndHandler);
+
+      var keyHandler = function (e) {
         var min = parseFloat(input.min) || 0;
         var max = parseFloat(input.max) || 100;
         var step = parseFloat(input.step) || 1;
@@ -70,11 +72,27 @@
           input.value = Math.max(min, current - step * 10);
           updateValue();
         }
-      });
+      };
+      on(input, "keydown", keyHandler);
 
-      /* Initial fill styling */
+      var fillHandler = function () { mikiSlider.updateFill(input); };
+      on(input, "input", fillHandler);
+
       mikiSlider.updateFill(input);
-      on(input, "input", function () { mikiSlider.updateFill(input); });
+
+      registerDestroyHandler(container, function () {
+        off(input, "input", inputHandler);
+        off(input, "change", changeHandler);
+        off(input, "touchstart", touchStartHandler);
+        off(input, "touchmove", touchMoveHandler);
+        off(input, "touchend", touchEndHandler);
+        off(input, "keydown", keyHandler);
+        off(input, "input", fillHandler);
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     },
 
     updateFill: function (input) {

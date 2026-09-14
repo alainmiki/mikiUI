@@ -20,11 +20,21 @@
         }
       }
 
-      // Initialize each collapsible in the accordion
       var collapsibles = container.querySelectorAll("[data-miki-collapsible=\"true\"]");
       for (var j = 0; j < collapsibles.length; j++) {
         mikiCollapsible.init(collapsibles[j]);
       }
+
+      registerDestroyHandler(container, function () {
+        var children = container.querySelectorAll("[data-miki-collapsible=\"true\"]");
+        for (var c = 0; c < children.length; c++) {
+          mikiDestroy(children[c]);
+        }
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

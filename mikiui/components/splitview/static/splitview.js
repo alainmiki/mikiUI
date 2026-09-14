@@ -201,149 +201,267 @@
     /* ---- Drag & Drop Tabs ---- */
 
     initDragDrop: function (editorArea) {
-      var dragOverlay = null;
+      var DRAG_THRESHOLD = 4;
+      var HOLD_DELAY = 180;
+      var pointerId = null;
+      var startX = 0;
+      var startY = 0;
+      var startTime = 0;
+      var dragTab = null;
+      var dragGroupId = null;
+      var dragIndex = null;
+      var dragging = false;
+      var ghost = null;
+      var dropIndicator = null;
+      var holdTimer = null;
+      var rafId = null;
 
-      function getTabFromGroup(groupId, index) {
-        var group = document.querySelector('[data-group-id="' + groupId + '"]');
-        if (!group) return null;
-        var tabs = group.querySelectorAll("[data-miki-tab=\"true\"]");
-        return tabs[index] || null;
+      function getAllEditorAreas() {
+        return Array.from(document.querySelectorAll('[data-miki-editor-area="true"]'));
       }
 
-      editorArea.addEventListener("dragover", function (e) {
-        var tab = e.target.closest("[data-miki-tab=\"true\"]");
-        if (!tab) return;
+      function getTabGroup(tab) {
+        return tab.closest('[data-miki-editor-group="true"]');
+      }
 
-        var sourceGroupId = e.dataTransfer.types.indexOf("application/miki-tab-group") !== -1
-          ? e.dataTransfer.getData("application/miki-tab-group")
-          : null;
+      function getGroupId(group) {
+        return group.getAttribute("data-group-id");
+      }
 
-        if (!sourceGroupId) return;
+      function getTabIndex(tab) {
+        return parseInt(tab.getAttribute("data-miki-tab-index") || "0", 10);
+      }
 
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
+      function createGhost(tab) {
+        var g = document.createElement("div");
+        g.className = "miki-editor-drag-ghost";
+        g.textContent = tab.textContent.trim();
+        g.style.width = tab.offsetWidth + "px";
+        document.body.appendChild(g);
+        return g;
+      }
 
-        // Show drop indicator
-        if (!dragOverlay) {
-          dragOverlay = document.createElement("div");
-          dragOverlay.className = "miki-editor-drag-overlay";
-          document.body.appendChild(dragOverlay);
-        }
+      function createDropIndicator() {
+        var d = document.createElement("div");
+        d.className = "miki-editor-drop-indicator";
+        document.body.appendChild(d);
+        return d;
+      }
 
-        var rect = tab.getBoundingClientRect();
-        var midX = rect.left + rect.width / 2;
-        var midY = rect.top + rect.height / 2;
-        var before = e.clientX < midX || (e.clientX >= midX && e.clientY < midY);
+      function positionGhost(e) {
+        if (!ghost) return;
+        ghost.style.left = (e.clientX - ghost.offsetWidth / 2) + "px";
+        ghost.style.top = (e.clientY - 12) + "px";
+      }
 
-        dragOverlay.textContent = before ? "Insert before" : "Insert after";
-        dragOverlay.style.left = (e.clientX + 12) + "px";
-        dragOverlay.style.top = (e.clientY - 24) + "px";
-        dragOverlay.classList.add("miki-visible");
-      });
-
-      editorArea.addEventListener("dragleave", function (e) {
-        if (dragOverlay) {
-          dragOverlay.classList.remove("miki-visible");
-        }
-      });
-
-      editorArea.addEventListener("drop", function (e) {
-        if (dragOverlay) {
-          dragOverlay.classList.remove("miki-visible");
-          document.body.removeChild(dragOverlay);
-          dragOverlay = null;
-        }
-
-        var sourceGroupId = e.dataTransfer.getData("application/miki-tab-group");
-        var sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-
-        if (isNaN(sourceIndex) || !sourceGroupId) return;
-
-        var targetTab = e.target.closest("[data-miki-tab=\"true\"]");
-        var targetGroupEl = e.target.closest("[data-miki-editor-group=\"true\"]");
-        if (!targetGroupEl) return;
-
-        var targetGroupId = targetGroupEl.getAttribute("data-group-id");
-
-        // If dropping on empty area of a group (not on a tab), move to end
-        var targetIndex;
-        if (targetTab && targetTab.getAttribute("data-miki-tab-group") === targetGroupId) {
-          var targetTabs = Array.from(targetGroupEl.querySelectorAll("[data-miki-tab=\"true\"]"));
-          targetIndex = targetTabs.indexOf(targetTab);
-          var rect = targetTab.getBoundingClientRect();
-          if (e.clientX > rect.left + rect.width / 2) targetIndex += 1;
+      function showDropIndicator(targetTab, before) {
+        if (!dropIndicator) dropIndicator = createDropIndicator();
+        var rect = targetTab.getBoundingClientRect();
+        if (before) {
+          dropIndicator.style.left = rect.left + "px";
+          dropIndicator.style.width = "2px";
         } else {
-          targetIndex = targetGroupEl.querySelectorAll("[data-miki-tab=\"true\"]").length;
+          dropIndicator.style.left = (rect.left + rect.width) + "px";
+          dropIndicator.style.width = "2px";
         }
+        dropIndicator.style.top = rect.top + "px";
+        dropIndicator.style.height = rect.height + "px";
+        dropIndicator.classList.add("miki-visible");
+      }
 
-        // Same group: move within
-        if (sourceGroupId === targetGroupId) {
-          var srcGroup = document.querySelector('[data-group-id="' + sourceGroupId + '"]');
-          if (!srcGroup) return;
-          var srcTabs = srcGroup.querySelectorAll("[data-miki-tab=\"true\"]");
-          var srcPanels = srcGroup.querySelectorAll(".miki-editor-content");
-          if (sourceIndex >= srcTabs.length) return;
-          var mvTab = srcTabs[sourceIndex];
-          var mvPanel = srcPanels[sourceIndex];
-          if (!mvTab) return;
+      function hideDropIndicator() {
+        if (dropIndicator) dropIndicator.classList.remove("miki-visible");
+      }
 
-          // Adjust target index after removal
+      function getDropTarget(x, y) {
+        var areas = getAllEditorAreas();
+        var prevDisplay = ghost ? ghost.style.display : "";
+        if (ghost) ghost.style.display = "none";
+        var result = null;
+        for (var a = 0; a < areas.length; a++) {
+          var area = areas[a];
+          var rect = area.getBoundingClientRect();
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            var tab = document.elementFromPoint(x, y);
+            if (tab) {
+              var editorTab = tab.closest("[data-miki-tab=\"true\"]");
+              if (editorTab) {
+                result = editorTab;
+                break;
+              }
+            }
+          }
+        }
+        if (ghost) ghost.style.display = prevDisplay;
+        return result;
+      }
+
+      function moveTab(sourceGroup, sourceIndex, targetGroup, targetIndex) {
+        var srcTabs = sourceGroup.querySelectorAll("[data-miki-tab=\"true\"]");
+        var srcPanels = sourceGroup.querySelectorAll(".miki-editor-content");
+        if (sourceIndex >= srcTabs.length) return;
+
+        var mvTab = srcTabs[sourceIndex];
+        var mvPanel = srcPanels[sourceIndex];
+        if (!mvTab) return;
+
+        if (sourceGroup === targetGroup) {
+          var allTabs = sourceGroup.querySelectorAll("[data-miki-tab=\"true\"]");
+          var allPanels = sourceGroup.querySelectorAll(".miki-editor-content");
           var adjusted = targetIndex > sourceIndex ? targetIndex - 1 : targetIndex;
-          var allTabs = srcGroup.querySelectorAll("[data-miki-tab=\"true\"]");
           var refTab = allTabs[adjusted] || null;
-          var allPanels = srcGroup.querySelectorAll(".miki-editor-content");
           var refPanel = allPanels[adjusted] || null;
 
           if (refTab) {
             mvTab.parentNode.insertBefore(mvTab, refTab);
-            mvPanel.parentNode.insertBefore(mvPanel, refPanel);
+            if (mvPanel && refPanel) mvPanel.parentNode.insertBefore(mvPanel, refPanel);
           } else {
             mvTab.parentNode.appendChild(mvTab);
-            mvPanel.parentNode.appendChild(mvPanel);
+            if (mvPanel) mvPanel.parentNode.appendChild(mvPanel);
           }
-          mikiEditorArea._reindexGroup(srcGroup);
-          mikiEditorArea.showTab(sourceGroupId, adjusted, true);
+          mikiEditorArea._reindexGroup(sourceGroup);
+          mikiEditorArea.showTab(getGroupId(sourceGroup), adjusted, true);
         } else {
-          // Cross-group move: remove from source, insert into target
-          var srcGrp = document.querySelector('[data-group-id="' + sourceGroupId + '"]');
-          if (!srcGrp) return;
-          var sTabs = srcGrp.querySelectorAll("[data-miki-tab=\"true\"]");
-          var sPanels = srcGrp.querySelectorAll(".miki-editor-content");
-          if (sourceIndex >= sTabs.length) return;
-          var mTab = sTabs[sourceIndex];
-          var mPanel = sPanels[sourceIndex];
-          if (!mTab) return;
-          mTab.remove();
-          if (mPanel) mPanel.remove();
-          mikiEditorArea._reindexGroup(srcGrp);
+          mvTab.remove();
+          if (mvPanel) mvPanel.remove();
+          mikiEditorArea._reindexGroup(sourceGroup);
 
-          // Insert into target
-          var tTabbar = targetGroupEl.querySelector(".miki-editor-tabbar");
-          var tContainer = targetGroupEl.querySelector(".miki-editor-content-container");
+          var tTabbar = targetGroup.querySelector(".miki-editor-tabbar");
+          var tContainer = targetGroup.querySelector(".miki-editor-content-container");
           if (tTabbar && tContainer) {
             var tTabs = tTabbar.querySelectorAll("[data-miki-tab=\"true\"]");
             var tPanels = tContainer.querySelectorAll(".miki-editor-content");
             var refT = tTabs[targetIndex] || null;
             var refP = tPanels[targetIndex] || null;
             if (refT) {
-              tTabbar.insertBefore(mTab, refT);
-              tContainer.insertBefore(mPanel, refP);
+              tTabbar.insertBefore(mvTab, refT);
+              if (mvPanel && refP) tContainer.insertBefore(mvPanel, refP);
             } else {
-              tTabbar.appendChild(mTab);
-              tContainer.appendChild(mPanel);
+              tTabbar.appendChild(mvTab);
+              if (mvPanel) tContainer.appendChild(mvPanel);
             }
           }
-          mikiEditorArea._reindexGroup(targetGroupEl);
-          mikiEditorArea.showTab(targetGroupId, Math.min(targetIndex, targetGroupEl.querySelectorAll("[data-miki-tab=\"true\"]").length - 1), true);
+          mikiEditorArea._reindexGroup(targetGroup);
+          var newTargetIdx = Math.min(targetIndex, targetGroup.querySelectorAll("[data-miki-tab=\"true\"]").length - 1);
+          mikiEditorArea.showTab(getGroupId(targetGroup), newTargetIdx < 0 ? 0 : newTargetIdx, true);
 
-          // Re-activate source if it still has tabs
-          var srcRemaining = srcGrp.querySelectorAll("[data-miki-tab=\"true\"]");
+          var srcRemaining = sourceGroup.querySelectorAll("[data-miki-tab=\"true\"]");
           if (srcRemaining.length) {
-            mikiEditorArea.showTab(sourceGroupId, Math.min(sourceIndex, srcRemaining.length - 1), false);
+            mikiEditorArea.showTab(getGroupId(sourceGroup), Math.min(sourceIndex, srcRemaining.length - 1), false);
+          }
+        }
+      }
+
+      function onPointerDown(e) {
+        var tab = e.target.closest("[data-miki-tab=\"true\"]");
+        if (!tab || e.button !== 0) return;
+        if (tab.classList.contains("miki-dragging")) return;
+
+        pointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startTime = Date.now();
+        dragTab = tab;
+        dragGroupId = getGroupId(getTabGroup(tab));
+        dragIndex = getTabIndex(tab);
+        dragging = false;
+
+        holdTimer = setTimeout(function () {
+          if (pointerId === null) return;
+          dragging = true;
+          dragTab.classList.add("miki-dragging");
+          dragTab.style.opacity = "0.4";
+          ghost = createGhost(dragTab);
+          positionGhost(e);
+          document.body.style.cursor = "grabbing";
+          dragTab.setPointerCapture(e.pointerId);
+        }, HOLD_DELAY);
+      }
+
+      function onPointerMove(e) {
+        if (pointerId === null) return;
+        if (pointerId !== e.pointerId) return;
+
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+
+        if (!dragging) {
+          if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+            dragging = true;
+            if (dragTab) {
+              dragTab.classList.add("miki-dragging");
+              dragTab.style.opacity = "0.4";
+              ghost = createGhost(dragTab);
+              positionGhost(e);
+              document.body.style.cursor = "grabbing";
+              dragTab.setPointerCapture(e.pointerId);
+            }
+          }
+          return;
+        }
+
+        if (ghost) positionGhost(e);
+
+        var target = getDropTarget(e.clientX, e.clientY);
+        if (target && target !== dragTab) {
+          var rect = target.getBoundingClientRect();
+          var midX = rect.left + rect.width / 2;
+          showDropIndicator(target, e.clientX < midX);
+        } else {
+          hideDropIndicator();
+        }
+      }
+
+      function onPointerUp(e) {
+        if (pointerId === null) return;
+        if (pointerId !== e.pointerId) return;
+
+        clearTimeout(holdTimer);
+        holdTimer = null;
+
+        var wasDragging = dragging;
+        var tab = dragTab;
+
+        pointerId = null;
+        dragging = false;
+        hideDropIndicator();
+
+        if (ghost) {
+          document.body.removeChild(ghost);
+          ghost = null;
+        }
+        document.body.style.cursor = "";
+
+        if (tab) {
+          tab.classList.remove("miki-dragging");
+          tab.style.opacity = "";
+        }
+
+        if (wasDragging && tab) {
+          var target = getDropTarget(e.clientX, e.clientY);
+          if (target && target !== tab) {
+            var targetGroup = getTabGroup(target);
+            var targetIndex = getTabIndex(target);
+            var sourceGroup = getTabGroup(tab);
+            var rect = target.getBoundingClientRect();
+            var adjustedTargetIndex = targetIndex + (e.clientX >= rect.left + rect.width / 2 ? 1 : 0);
+            moveTab(sourceGroup, dragIndex, targetGroup, adjustedTargetIndex);
           }
         }
 
-        e.preventDefault();
+        dragTab = null;
+        dragGroupId = null;
+        dragIndex = null;
+      }
+
+      editorArea.addEventListener("pointerdown", onPointerDown);
+      editorArea.addEventListener("pointermove", onPointerMove);
+      editorArea.addEventListener("pointerup", onPointerUp);
+      editorArea.addEventListener("pointercancel", onPointerUp);
+      editorArea.addEventListener("lostpointercapture", function () {
+        if (dragging) onPointerUp({ clientX: startX, clientY: startY, pointerId: pointerId });
       });
     },
 

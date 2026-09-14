@@ -13,30 +13,43 @@
         el.style.display = "none";
       }
 
-      // Close buttons — works on both mouse click and touch tap
+      var escHandler = function (e) {
+        if (e.key === "Escape" && el.getAttribute("data-miki-close-on-escape") !== "false") {
+          mikiModal.close(el);
+        }
+      };
+      on(el, "keydown", escHandler);
+
+      var closeBtnCleanups = [];
       var closeBtns = el.querySelectorAll("[data-miki-modal-close=\"true\"]");
       for (var i = 0; i < closeBtns.length; i++) {
         (function (btn) {
-          onPointer(btn, "activate", function (e) {
+          var cleanup = onPointer(btn, "activate", function (e) {
             e.preventDefault();
             mikiModal.close(el);
           });
+          closeBtnCleanups.push(cleanup);
         })(closeBtns[i]);
       }
 
-      // Click/Tap on overlay (outside panel) closes
+      var overlayCleanup = null;
       if (el.getAttribute("data-miki-close-on-overlay") !== "false") {
-        onPointer(el, "activate", function (e) {
+        overlayCleanup = onPointer(el, "activate", function (e) {
           if (e.target === el) {
             mikiModal.close(el);
           }
         });
       }
 
-      // ESC key
-      on(el, "keydown", function (e) {
-        if (e.key === "Escape" && el.getAttribute("data-miki-close-on-escape") !== "false") {
-          mikiModal.close(el);
+      registerDestroyHandler(el, function () {
+        off(el, "keydown", escHandler);
+        if (overlayCleanup) overlayCleanup();
+        for (var j = 0; j < closeBtnCleanups.length; j++) {
+          closeBtnCleanups[j]();
+        }
+        if (el._mikiFocusTrapCleanup) {
+          el._mikiFocusTrapCleanup();
+          el._mikiFocusTrapCleanup = null;
         }
       });
     },
@@ -50,7 +63,7 @@
        el.setAttribute("aria-hidden", "false");
 
        if (el.dataset.mikiFocusTrapped !== "true") {
-         miki.focusTrap(el);
+         el._mikiFocusTrapCleanup = miki.focusTrap(el);
        }
 
        var focusable = el.querySelectorAll(
@@ -69,11 +82,14 @@
        el = resolveEl(el);
        if (!el) return;
 
-       el.style.display = "none";
-       el.setAttribute("data-miki-modal-open", "false");
-       el.setAttribute("aria-hidden", "true");
-       el.dataset.mikiFocusTrapped = "false";
-       if (el.dataset.mikiFocusTrapReturn) {
+      el.style.display = "none";
+      el.setAttribute("data-miki-modal-open", "false");
+      el.setAttribute("aria-hidden", "true");
+      if (el._mikiFocusTrapCleanup) {
+        el._mikiFocusTrapCleanup();
+        el._mikiFocusTrapCleanup = null;
+      }
+      if (el.dataset.mikiFocusTrapReturn) {
          var ret = document.getElementById(el.dataset.mikiFocusTrapReturn);
          if (ret) ret.focus();
          delete el.dataset.mikiFocusTrapReturn;
@@ -89,6 +105,10 @@
        } else {
          mikiModal.show(el);
        }
+     },
+
+     destroy: function (el) {
+       mikiDestroy(el);
      }
   };
 

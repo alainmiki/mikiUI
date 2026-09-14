@@ -25,7 +25,6 @@
       var panel = sheet.querySelector(".miki-bottom-sheet-panel");
       if (!panel) return;
 
-      /* Save original body overflow to restore on close */
       if (!sheet.dataset.mikiSavedOverflow) {
         sheet.dataset.mikiSavedOverflow = document.body.style.overflow || "";
       }
@@ -73,30 +72,30 @@
       var panel = sheet.querySelector(".miki-bottom-sheet-panel");
       if (!panel) return;
 
-      /* Backdrop click/tap to close */
+      var backdropCleanup = null;
       if (backdrop) {
-        onPointer(backdrop, "activate", function () {
+        backdropCleanup = onPointer(backdrop, "activate", function () {
           mikiBottomSheet.close(sheet);
         });
       }
 
-      /* Close buttons */
+      var closeBtnCleanup = null;
       var closeBtn = sheet.querySelector("[data-miki-bottom-sheet-close=\"true\"]");
       if (closeBtn) {
-        onPointer(closeBtn, "activate", function (e) {
+        closeBtnCleanup = onPointer(closeBtn, "activate", function (e) {
           e.preventDefault();
           mikiBottomSheet.close(sheet);
         });
       }
 
-      /* ESC key to close — check if sheet is open */
-      on(document, "keydown", function onEsc(e) {
+      var escHandler = function onEsc(e) {
         if (e.key === "Escape" && sheet.getAttribute("data-miki-bottom-sheet-open") === "true") {
           mikiBottomSheet.close(sheet);
         }
-      });
+      };
+      on(document, "keydown", escHandler);
 
-      /* Drag-to-close on touch */
+      var dragHandlers = [];
       var startY = 0;
       var currentY = 0;
       var isDragging = false;
@@ -130,7 +129,6 @@
         if (diff > 100) {
           mikiBottomSheet.close(sheet);
         } else {
-          /* Reset to fully open state without inline transform */
           panel.style.transform = "";
         }
         startY = 0;
@@ -139,12 +137,32 @@
 
       if (dragHandle) {
         on(dragHandle, "touchstart", onDragStart, { passive: true });
+        dragHandlers.push({ el: dragHandle, event: "touchstart", handler: onDragStart, opts: { passive: true } });
         on(dragHandle, "touchmove", onDragMove, { passive: true });
+        dragHandlers.push({ el: dragHandle, event: "touchmove", handler: onDragMove, opts: { passive: true } });
         on(dragHandle, "touchend", onDragEnd);
+        dragHandlers.push({ el: dragHandle, event: "touchend", handler: onDragEnd, opts: false });
         on(dragHandle, "mousedown", onDragStart, { passive: true });
+        dragHandlers.push({ el: dragHandle, event: "mousedown", handler: onDragStart, opts: { passive: true } });
         on(document, "mousemove", onDragMove, { passive: true });
+        dragHandlers.push({ el: document, event: "mousemove", handler: onDragMove, opts: { passive: true } });
         on(document, "mouseup", onDragEnd);
+        dragHandlers.push({ el: document, event: "mouseup", handler: onDragEnd, opts: false });
       }
+
+      registerDestroyHandler(sheet, function () {
+        if (backdropCleanup) backdropCleanup();
+        if (closeBtnCleanup) closeBtnCleanup();
+        off(document, "keydown", escHandler);
+        for (var k = 0; k < dragHandlers.length; k++) {
+          var h = dragHandlers[k];
+          off(h.el, h.event, h.handler, h.opts);
+        }
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     }
   };
 

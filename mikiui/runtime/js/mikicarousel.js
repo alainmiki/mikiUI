@@ -16,17 +16,21 @@
       var prevBtn = el.querySelector(".miki-carousel-prev");
       var nextBtn = el.querySelector(".miki-carousel-next");
 
+      var nextCleanup = null;
+      var prevCleanup = null;
       if (nextBtn) {
-        onPointer(nextBtn, "activate", function () { mikiCarousel.next(el); });
+        nextCleanup = onPointer(nextBtn, "activate", function () { mikiCarousel.next(el); });
       }
       if (prevBtn) {
-        onPointer(prevBtn, "activate", function () { mikiCarousel.prev(el); });
+        prevCleanup = onPointer(prevBtn, "activate", function () { mikiCarousel.prev(el); });
       }
 
+      var dotCleanups = [];
       for (var i = 0; i < dots.length; i++) {
         (function (dot, idx) {
           dot.setAttribute("data-index", idx);
-          onPointer(dot, "activate", function () { mikiCarousel.goTo(el, idx); });
+          var cleanup = onPointer(dot, "activate", function () { mikiCarousel.goTo(el, idx); });
+          dotCleanups.push(cleanup);
         })(dots[i], i);
       }
 
@@ -36,17 +40,16 @@
         mikiCarousel.startAutoplay(el, interval);
       }
 
-      on(el, "mouseenter", function () {
-        mikiCarousel.stopAutoplay(el);
-      });
-      on(el, "mouseleave", function () {
+      var enterHandler = function () { mikiCarousel.stopAutoplay(el); };
+      var leaveHandler = function () {
         if (el.getAttribute("data-autoplay") === "true") {
           var interval = parseInt(el.getAttribute("data-interval") || "4000", 10);
           mikiCarousel.startAutoplay(el, interval);
         }
-      });
+      };
+      on(el, "mouseenter", enterHandler);
+      on(el, "mouseleave", leaveHandler);
 
-      /* Keyboard navigation */
       on(el, "keydown", function (e) {
         if (e.key === "ArrowLeft") {
           e.preventDefault();
@@ -57,12 +60,13 @@
         }
       });
 
-      /* Mobile: swipe navigation */
       var startX = 0;
       var startY = 0;
-      var threshold = 50; /* Minimum swipe distance */
-      var restraint = 100; /* Maximum allowed perpendicular distance */
+      var threshold = 50;
+      var restraint = 100;
       var allowswipe = true;
+      var endX = 0;
+      var endY = 0;
 
       on(el, "touchstart", function (e) {
         if (e.touches.length !== 1) return;
@@ -70,20 +74,13 @@
         startX = touch.clientX;
         startY = touch.clientY;
         allowswipe = true;
-        /* Pause autoplay while interacting */
         mikiCarousel.stopAutoplay(el);
       }, { passive: true });
 
       on(el, "touchmove", function (e) {
         if (e.touches.length !== 1 || !allowswipe) return;
-        if (el.getAttribute("data-autoplay") === "true") {
-          /* Autoplay was stopped on touchstart, restart on touchend */
-        }
       }, { passive: true });
 
-      /* Swipe detection with touchmove tracking */
-      var endX = 0;
-      var endY = 0;
       on(el, "touchmove", function (e) {
         if (e.touches.length !== 1) return;
         endX = e.touches[0].clientX;
@@ -94,19 +91,32 @@
         var distX = endX - startX;
         var distY = endY - startY;
         if (Math.abs(distX) >= threshold && Math.abs(distY) <= restraint) {
-          /* Horizontal swipe */
           if (distX > 0) {
             mikiCarousel.prev(el);
           } else {
             mikiCarousel.next(el);
           }
         }
-        /* Restart autoplay if needed */
         if (el.getAttribute("data-autoplay") === "true") {
           var interval = parseInt(el.getAttribute("data-interval") || "4000", 10);
           mikiCarousel.startAutoplay(el, interval);
         }
       });
+
+      registerDestroyHandler(el, function () {
+        if (nextCleanup) nextCleanup();
+        if (prevCleanup) prevCleanup();
+        for (var j = 0; j < dotCleanups.length; j++) {
+          dotCleanups[j]();
+        }
+        off(el, "mouseenter", enterHandler);
+        off(el, "mouseleave", leaveHandler);
+        mikiCarousel.stopAutoplay(el);
+      });
+    },
+
+    destroy: function (el) {
+      mikiDestroy(el);
     },
 
     next: function (el) {
