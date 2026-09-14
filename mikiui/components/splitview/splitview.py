@@ -192,7 +192,6 @@ class EditorGroup(Component):
                 "data_miki_tab": "true",
                 "data_miki_tab_group": group_id,
                 "data_miki_tab_index": str(i),
-                "draggable": "true",
             }
             tabbar_children.append(Div(*tab_content_parts, **tab_btn_attrs))
 

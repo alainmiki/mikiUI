@@ -1238,6 +1238,7 @@ def kitchen():
                     style=CARD_NO_PAD + "; height: 20rem",
                 ),
                 H3("Dial"),
+                Dial(value=50, min=0, max=100, step=2, size=140),
                 Div(
                     Div(
                         Dial(value=50, min=0, max=100, step=2, size=140),

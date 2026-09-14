@@ -3188,7 +3188,7 @@ textarea {
 
 /* ---- Dial (circular rotary knob) ---- */
 .miki-dial {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
@@ -3218,7 +3218,7 @@ textarea {
     var(--miki-accent, #6366f1) 0% 0%,
     transparent 0% 100%
   );
-  transition: background 0.1s ease-out;
+  transition: background 0.05s linear;
 }
 .miki-dial-knob {
   position: absolute;
@@ -3227,7 +3227,7 @@ textarea {
   background: var(--miki-accent);
   border-radius: 8px;
   transform-origin: center bottom;
-  transition: transform 0.1s ease-out;
+  transition: transform 0.05s linear;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -3261,11 +3261,10 @@ textarea {
   font-weight: 600;
   color: var(--miki-fg);
 }
-/* Hidden range input: captures drag events, invisible */
+/* Hidden range input: captures drag events, constrained to track */
 .miki-dial-input {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;

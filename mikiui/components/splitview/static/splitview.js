@@ -54,27 +54,123 @@
       mikiEditorArea.initDragDrop(el);
     },
 
+    openFile: function (groupId, label, content, icon) {
+      var group = document.querySelector('[data-group-id="' + groupId + '"]');
+      if (!group) return null;
+
+      var tabbar = group.querySelector(".miki-editor-tabbar");
+      var container = group.querySelector(".miki-editor-content-container");
+      if (!tabbar || !container) return null;
+
+      var tabs = tabbar.querySelectorAll("[data-miki-tab=\"true\"]");
+      var newIndex = tabs.length;
+
+      var tabId = groupId + "-tab-" + newIndex;
+      var panelId = groupId + "-panel-" + newIndex;
+
+      var tabContentParts = [];
+      if (icon) {
+        tabContentParts.push('<span class="miki-editor-tab-icon">' + icon + '</span>');
+      }
+      tabContentParts.push(label);
+
+      var closeBtn = '<button type="button" class="miki-editor-tab-close" role="button" aria-label="Close tab" data-miki-tab-close="true" data-miki-tab-group="' + groupId + '" data-miki-tab-index="' + newIndex + '">×</button>';
+      tabContentParts.push(closeBtn);
+
+      var tabHtml = '<div class="miki-editor-tab" role="tab" id="' + tabId + '" aria-selected="true" aria-controls="' + panelId + '" tabindex="0" data-miki-tab="true" data-miki-tab-group="' + groupId + '" data-miki-tab-index="' + newIndex + '">' + tabContentParts.join("") + '</div>';
+
+      var panelHtml = '<div class="miki-editor-content miki-editor-content-active" id="' + panelId + '">' + content + '</div>';
+
+      tabbar.insertAdjacentHTML("beforeend", tabHtml);
+      container.insertAdjacentHTML("beforeend", panelHtml);
+
+      var newTab = tabbar.querySelector('[data-miki-tab-index="' + newIndex + '"]');
+      if (newTab) {
+        mikiEditorArea._bindTabEvents(newTab, newIndex);
+      }
+
+      mikiEditorArea.showTab(groupId, newIndex, true);
+      dispatch(group, "miki:editor:fileopened", { groupId: groupId, index: newIndex, label: label });
+
+      return newIndex;
+    },
+
+    _bindTabEvents: function (tab, idx) {
+      on(tab, "click", function (e) {
+        if (e.target.closest('[data-miki-tab-close="true"]')) return;
+        var groupId = tab.getAttribute("data-miki-tab-group");
+        mikiEditorArea.showTab(groupId, parseInt(tab.getAttribute("data-miki-tab-index") || String(idx), 10));
+      });
+
+      var closeBtn = tab.querySelector('[data-miki-tab-close="true"]');
+      if (closeBtn) {
+        on(closeBtn, "click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var groupId = tab.getAttribute("data-miki-tab-group");
+          mikiEditorArea.closeTab(groupId, parseInt(tab.getAttribute("data-miki-tab-index") || String(idx), 10));
+        });
+      }
+
+      on(tab, "keydown", function (e) {
+        var groupEl = tab.closest("[data-miki-editor-group=\"true\"]");
+        if (!groupEl) return;
+        var allTabs = Array.from(groupEl.querySelectorAll("[data-miki-tab=\"true\"]"));
+        var currentIndex = allTabs.indexOf(tab);
+        var newIndex = currentIndex;
+
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          newIndex = (currentIndex + 1) % allTabs.length;
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          newIndex = (currentIndex - 1 + allTabs.length) % allTabs.length;
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          newIndex = 0;
+        } else if (e.key === "End") {
+          e.preventDefault();
+          newIndex = allTabs.length - 1;
+        } else if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          var groupId = tab.getAttribute("data-miki-tab-group");
+          mikiEditorArea.showTab(groupId, currentIndex);
+          return;
+        }
+
+        if (newIndex !== currentIndex && allTabs[newIndex]) {
+          allTabs[newIndex].focus();
+          var gid = tab.getAttribute("data-miki-tab-group");
+          mikiEditorArea.showTab(gid, newIndex);
+        }
+      });
+    },
+
     /* ---- Group / Tabs ---- */
 
     initGroup: function (group) {
       var tabs = group.querySelectorAll("[data-miki-tab=\"true\"]");
       for (var i = 0; i < tabs.length; i++) {
         (function (tab, idx) {
+          function getCurrentIndex() {
+            return parseInt(tab.getAttribute("data-miki-tab-index") || String(idx), 10);
+          }
+
           // Tab click
           on(tab, "click", function (e) {
-            if (e.target.closest("[data-miki-tab-close=\"true\"]")) return;
+            if (e.target.closest('[data-miki-tab-close="true"]')) return;
             var groupId = tab.getAttribute("data-miki-tab-group");
-            mikiEditorArea.showTab(groupId, idx);
+            mikiEditorArea.showTab(groupId, getCurrentIndex());
           });
 
           // Close button
-          var closeBtn = tab.querySelector("[data-miki-tab-close=\"true\"]");
+          var closeBtn = tab.querySelector('[data-miki-tab-close="true"]');
           if (closeBtn) {
             on(closeBtn, "click", function (e) {
               e.preventDefault();
               e.stopPropagation();
               var groupId = tab.getAttribute("data-miki-tab-group");
-              mikiEditorArea.closeTab(groupId, idx);
+              mikiEditorArea.closeTab(groupId, getCurrentIndex());
             });
           }
 
@@ -110,20 +206,6 @@
               var gid = tab.getAttribute("data-miki-tab-group");
               mikiEditorArea.showTab(gid, newIndex);
             }
-          });
-
-          // Drag start for tabs
-          on(tab, "dragstart", function (e) {
-            tab.classList.add("miki-dragging");
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", idx.toString());
-            e.dataTransfer.setData("application/miki-tab-group", tab.getAttribute("data-miki-tab-group") || "");
-            dispatch(tab, "miki:editor:tabdragstart", { tabIndex: idx, groupId: tab.getAttribute("data-miki-tab-group") });
-          });
-
-          on(tab, "dragend", function () {
-            tab.classList.remove("miki-dragging");
-            dispatch(tab, "miki:editor:tabdragend", {});
           });
         })(tabs[i], i);
       }

@@ -145,13 +145,21 @@
     _getPageInfo: function (el) {
       var page = 0;
       var pageSize = 10;
-      var infoEl = el.querySelector("[data-miki-page-info]");
-      if (infoEl) {
-        var match = infoEl.textContent.match(/Page\s*(\d+)\s*of\s*(\d+)/);
-        if (match) {
-          page = parseInt(match[1], 10) - 1;
+
+      var currentPageAttr = el.getAttribute("data-miki-current-page");
+      if (currentPageAttr !== null) {
+        page = parseInt(currentPageAttr, 10);
+        el.removeAttribute("data-miki-current-page");
+      } else {
+        var infoEl = el.querySelector("[data-miki-page-info]");
+        if (infoEl) {
+          var match = infoEl.textContent.match(/Page\s*(\d+)\s*of\s*(\d+)/);
+          if (match) {
+            page = parseInt(match[1], 10) - 1;
+          }
         }
       }
+
       var sizeAttr = el.getAttribute("data-miki-page-size");
       if (sizeAttr) pageSize = parseInt(sizeAttr, 10);
       return { page: page, pageSize: pageSize };
